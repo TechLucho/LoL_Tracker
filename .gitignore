@@ -1,0 +1,13 @@
+# Archivos temporales de Python (Basura)
+__pycache__/
+*.pyc
+
+# Base de Datos (Para no subir tus datos personales a Internet por error)
+data/*.db
+*.db
+*.sqlite3
+
+# Archivos de sistema o entorno
+.env
+.vscode/
+.DS_Store

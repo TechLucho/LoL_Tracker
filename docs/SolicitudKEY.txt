@@ -1,0 +1,5 @@
+Project Name: Personal Performance Tracker
+
+Description: "I am developing a local, personal Python dashboard using Streamlit to track my own ranked performance and improvement metrics. The application allows me to log my matches (using Match-V5), calculate my average CS/min and KDA over time, and write personal notes about specific matchups to improve my gameplay strategy. It helps me enforce a 'Stop-Loss' rule to prevent tilting.
+
+Technical Details: The app runs locally on my PC. It makes calls to Account-V1 (to get my PUUID) and Match-V5 (to get post-game stats). It stores this data in a local SQLite database for personal viewing only. No data is shared, and it is not a public website."
