@@ -46,22 +46,29 @@ class LoLClient:
             else:
                 raise err
 
-    def get_recent_matches(self, summoner_name: str, limit: int = 5) -> list:
-        """Descarga las últimas 'limit' partidas."""
+    def get_recent_matches(self, summoner_name: str, limit: int = 10, queue: int = 420) -> list:
+        """
+        Descarga las últimas 'limit' partidas.
+        queue=420 -> Ranked Solo/Duo
+        queue=440 -> Ranked Flex
+        queue=None -> Todas
+        """
         try:
             # 1. Obtener PUUID
             summoner_info = self.get_summoner_info(summoner_name)
             puuid = summoner_info['puuid']
             
-            # 2. Buscar lista de IDs
+            # 2. Buscar lista de IDs (FILTRANDO POR RANKED SOLO/DUO)
             match_ids = self.lol_watcher.match.matchlist_by_puuid(
                 self.continental_route, 
                 puuid, 
-                count=limit
+                count=limit,
+                queue=queue
             )
             
             if not match_ids:
-                raise ValueError(f"No se encontraron partidas para {summoner_name}.")
+                # Si no encuentra ranked, no falla, devuelve lista vacía para avisar
+                return []
             
             # 3. Procesar cada partida
             results = []

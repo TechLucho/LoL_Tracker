@@ -182,6 +182,84 @@ class MatchDatabase:
             return [dict(row) for row in self.cursor.fetchall()]
         except sqlite3.Error as e:
             raise sqlite3.Error(f"Error Scout: {e}")
+        
+    
+    def get_champion_performance(self) -> List[Dict[str, Any]]:
+        """
+        Obtiene estadísticas de rendimiento agrupadas por campeón.
+        Útil para identificar tus mejores y peores campeones.
+    
+        Returns:
+            List[Dict]: Lista de diccionarios con estadísticas por campeón:
+                - champion: Nombre del campeón
+                - games_played: Total de partidas jugadas
+                - wins: Total de victorias
+                - losses: Total de derrotas
+                - winrate: Porcentaje de victorias
+                - avg_kills: Promedio de kills
+                - avg_deaths: Promedio de deaths
+                - avg_assists: Promedio de assists
+                - kda_ratio: Ratio KDA calculado
+                - avg_cs_min: Promedio de CS por minuto
+            
+        Raises:
+            sqlite3.Error: Si hay error en la consulta
+        """
+        champion_stats_query = """
+        SELECT 
+            champion,
+            COUNT(*) as games_played,
+            SUM(win) as wins,
+            AVG(kills) as avg_kills,
+            AVG(deaths) as avg_deaths,
+            AVG(assists) as avg_assists,
+            AVG(cs_min) as avg_cs_min
+        FROM matches
+        GROUP BY champion
+        ORDER BY games_played DESC, wins DESC
+        """
+    
+        try:
+            self.cursor.execute(champion_stats_query)
+            rows = self.cursor.fetchall()
+        
+            champion_stats = []
+            for row in rows:
+                games_played = row['games_played']
+                wins = row['wins'] or 0
+                losses = games_played - wins
+            
+                # Calcular winrate
+                winrate = round((wins / games_played * 100), 1) if games_played > 0 else 0.0
+            
+                # Calcular KDA ratio (evitar división por cero)
+                avg_kills = row['avg_kills'] or 0
+                avg_deaths = row['avg_deaths'] or 0
+                avg_assists = row['avg_assists'] or 0
+            
+                if avg_deaths > 0:
+                    kda_ratio = round((avg_kills + avg_assists) / avg_deaths, 2)
+                else:
+                    kda_ratio = round(avg_kills + avg_assists, 2)
+            
+                stats = {
+                    'champion': row['champion'],
+                    'games_played': games_played,
+                    'wins': wins,
+                    'losses': losses,
+                    'winrate': winrate,
+                    'avg_kills': round(avg_kills, 1),
+                    'avg_deaths': round(avg_deaths, 1),
+                    'avg_assists': round(avg_assists, 1),
+                    'kda_ratio': kda_ratio,
+                    'avg_cs_min': round(row['avg_cs_min'] or 0, 1)
+                }
+                champion_stats.append(stats)
+        
+            return champion_stats
+        
+        except sqlite3.Error as e:
+            raise sqlite3.Error(f"Error al obtener estadísticas por campeón: {e}")
 
     def close(self):
         if self.connection: self.connection.close()
