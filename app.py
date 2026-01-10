@@ -1,405 +1,484 @@
 import streamlit as st
 from riot_client import LoLClient
 from database import MatchDatabase
-from riotwatcher import ApiError
-import sqlite3
 import pandas as pd
+import plotly.graph_objects as go
+import numpy as np
+import time
 
 # Configuración de la página
 st.set_page_config(
-    page_title="LoL Performance Tracker",
-    page_icon="🎮",
+    page_title="LoL Tryhard Tracker",
+    page_icon="🛡️",
     layout="wide"
 )
 
 # Inicializar session_state
-if 'api_key' not in st.session_state: st.session_state.api_key = ""
-if 'riot_id' not in st.session_state: st.session_state.riot_id = ""
-if 'region' not in st.session_state: st.session_state.region = "EUW1"
-if 'last_match_data' not in st.session_state: st.session_state.last_match_data = None
-if 'last_match_id' not in st.session_state: st.session_state.last_match_id = None
-if 'config_saved' not in st.session_state: st.session_state.config_saved = False
-if 'matchup_history' not in st.session_state: st.session_state.matchup_history = None
+if 'api_key' not in st.session_state: 
+    st.session_state.api_key = ""
+if 'riot_id' not in st.session_state: 
+    st.session_state.riot_id = ""
+if 'region' not in st.session_state: 
+    st.session_state.region = "EUW1"
+if 'last_match_data' not in st.session_state: 
+    st.session_state.last_match_data = None
+if 'last_match_id' not in st.session_state: 
+    st.session_state.last_match_id = None
+if 'config_saved' not in st.session_state: 
+    st.session_state.config_saved = False
 
-# ============ SIDEBAR ============
-st.sidebar.title("⚙️ Configuración")
+# ============ SIDEBAR: CONFIGURACIÓN & OKRs ============
+st.sidebar.title("⚙️ El Cuartel General")
+
 with st.sidebar:
-    api_key_input = st.text_input("Riot API Key", type="password", value=st.session_state.api_key)
-    riot_id_input = st.text_input("Riot ID", value=st.session_state.riot_id, placeholder="Ej: Lucho77#0709")
-    region_input = st.selectbox("Región", ['EUW1', 'NA1', 'LA1', 'LA2'], index=0)
-    
-    if st.button("💾 Guardar Configuración", use_container_width=True):
-        if not api_key_input or not riot_id_input:
-            st.error("⚠️ Completa todos los campos.")
-        else:
-            st.session_state.api_key = api_key_input
-            st.session_state.riot_id = riot_id_input
-            st.session_state.region = region_input
-            st.session_state.config_saved = True
-            st.success("✅ Configuración guardada")
-    
+    # 1. Credenciales
+    with st.expander("🔐 Credenciales", expanded=not st.session_state.config_saved):
+        api_key_input = st.text_input("Riot API Key", type="password", value=st.session_state.api_key)
+        riot_id_input = st.text_input("Riot ID", value=st.session_state.riot_id, placeholder="Ej: Faker#KR1")
+        region_input = st.selectbox("Región", ['EUW1', 'NA1', 'LA1', 'LA2'], index=0)
+        
+        if st.button("💾 Guardar Accesos", use_container_width=True):
+            if not api_key_input or not riot_id_input:
+                st.error("Faltan datos.")
+            else:
+                st.session_state.api_key = api_key_input
+                st.session_state.riot_id = riot_id_input
+                st.session_state.region = region_input
+                st.session_state.config_saved = True
+                st.success("Configuración guardada")
+
     st.markdown("---")
     
-    # === LA CONSTITUCIÓN ===
-    st.markdown("### 📜 La Constitución")
+    # 2. LA CONSTITUCIÓN (Reglas estrictas)
+    st.subheader("📜 La Constitución")
+    
+    # Definición del Champion Pool (Regla de oro)
+    st.markdown("**🛡️ Champion Pool (Max 3)**")
+    main_champs_str = st.text_area("Tus Mains (separados por coma)", 
+                                 value="Jax, Fiora, Camille", 
+                                 help="Si juegas algo fuera de esto, la app te avisará.")
+    main_champs = [c.strip().lower() for c in main_champs_str.split(',')]
+
+    # Verificación de Estado Mental (Regla de 3 Bloques)
     try:
         db = MatchDatabase()
         last_3 = db.get_recent_matches(3)
-        if len(last_3) >= 1:
+        db.close()
+        
+        if len(last_3) > 0:
             wins = sum(1 for m in last_3 if m['win'])
             losses = len(last_3) - wins
-            # Lógica simple: si en las ultimas 3 hay 2 derrotas recientes
-            # (Podemos refinar esto, pero para empezar visualmente:)
-            current_streak_losses = 0
-            for m in last_3:
-                if not m['win']: current_streak_losses += 1
-                else: break
             
-            if current_streak_losses >= 2:
-                st.error(f"⛔ STOP: {current_streak_losses} Derrotas seguidas.")
-            elif wins == 3 and len(last_3)==3:
-                st.success("🔥 ON FIRE: 3 Victorias.")
+            # Lógica de STOP
+            streak_losses = 0
+            for m in last_3:
+                if not m['win']: 
+                    streak_losses += 1
+                else: 
+                    break
+            
+            st.markdown("#### Estado Actual:")
+            if streak_losses >= 2:
+                st.error(f"⛔ **STOP OBLIGATORIO**\n\nLlevas {streak_losses} derrotas seguidas. Cierra el juego 1 hora.")
+            elif wins == 3 and len(last_3) == 3:
+                st.success("🔥 **ON FIRE**\n\n3/3 Victorias. Sigue jugando hasta perder.")
             else:
-                st.info(f"Últimas: {' '.join(['✅' if m['win'] else '❌' for m in last_3])}")
-        db.close()
-    except Exception:
-        pass
+                st.info(f"Racha: {' '.join(['✅' if m['win'] else '❌' for m in last_3])}")
+                st.caption("Recuerda: Bloques de 3 partidas.")
+    except Exception as e:
+        st.caption(f"No hay datos suficientes para mostrar estado.")
 
-    # === OKR TRACKER (ESTILO MÉTRICAS) ===
     st.markdown("---")
-    st.markdown("### 🎯 Objetivos (OKR)")
+
+    # 3. OKRs (Objetivos Escalables)
+    st.subheader("🎯 Objetivos (Sprint)")
+    
+    # Inputs configurables para OKRs
+    target_cs = st.number_input("Meta CS/min", value=7.5, step=0.1)
+    target_deaths = st.number_input("Tope Muertes/game", value=4.0, step=0.5)
+    target_wr = st.number_input("Meta Winrate %", value=55.0, step=1.0)
     
     try:
         db = MatchDatabase()
         stats = db.get_stats_summary() 
         db.close()
         
-        # 1. Farm (Objetivo: 7.0)
-        target_cs = 7.0
-        current_cs = stats['cs_min_avg']
-        delta_cs = round(current_cs - target_cs, 1)
+        # CS Metric
+        delta_cs = round(stats['cs_min_avg'] - target_cs, 1)
+        st.metric("🌾 Farm Promedio", f"{stats['cs_min_avg']}", delta=delta_cs)
         
-        st.metric(
-            label="🌾 Farm (Meta: 7.0)",
-            value=f"{current_cs}",
-            delta=f"{delta_cs} CS/min",
-            delta_color="normal" # Verde si es positivo, Rojo si es negativo
-        )
-
-        # 2. Winrate (Objetivo: 50%)
-        target_wr = 50.0
-        current_wr = stats['winrate']
-        delta_wr = round(current_wr - target_wr, 1)
-        
-        st.metric(
-            label="🏆 Winrate (Meta: >50%)",
-            value=f"{current_wr}%",
-            delta=f"{delta_wr}%",
-            delta_color="normal"
-        )
+        # Deaths Metric
+        try:
+            avg_deaths_actual = float(stats['kda'].split('/')[1].strip())
+            delta_deaths = round(target_deaths - avg_deaths_actual, 1) 
+            st.metric("💀 Muertes Promedio", f"{avg_deaths_actual}", delta=delta_deaths, delta_color="normal")
+        except:
+            st.caption("Sin datos de KDA aún")
 
     except Exception as e:
-        st.error(f"Error cargando objetivos: {e}")
+        st.write("Juega partidas para ver métricas.")
 
-    # === ESTADISTICAS ===
-    st.markdown("---")
-    st.markdown("### 📊 Stats Globales")
-    try:
-        db = MatchDatabase()
-        stats = db.get_stats_summary()
-        c1, c2 = st.columns(2)
-        c1.metric("Games", stats['total_games'])
-        c1.metric("Winrate", f"{stats['winrate']}%")
-        c2.metric("KDA", stats['kda'])
-        db.close()
-    except Exception:
-        st.error("Error DB")
-
-# ============ MAIN ============
-st.title("🎮 LoL Performance Tracker")
+# ============ MAIN APP ============
+st.title("🛡️ LoL Tryhard Tracker")
 
 if not st.session_state.config_saved:
-    st.warning("⚠️ Configura tu cuenta en la barra lateral.")
+    st.warning("⚠️ Configura tus credenciales y Champion Pool en la barra lateral.")
     st.stop()
 
-# ============ PESTAÑAS ============
-tab1, tab2 = st.tabs(["📊 Diario", "🏆 Champion Pool"])
+# Pestañas de navegación
+tab1, tab2, tab3 = st.tabs(["📊 Diario & Sincronización", "🔎 Scout & Matchups", "🏆 Champion Pool"])
 
-# --- PESTAÑA 1: DIARIO ---
+# --- TAB 1: DIARIO (Sincronización y Análisis Post-Game) ---
 with tab1:
-    # BOTÓN DE SINCRONIZACIÓN (MODIFICADO: 10 RANKED)
-    if st.button("🔄 Sincronizar (10 Ranked Solo/Duo)", use_container_width=True, type="primary"):
-        with st.spinner("Analizando tus Rankeds..."):
-            try:
-                client = LoLClient(st.session_state.api_key, st.session_state.region)
-                db = MatchDatabase()
-                
-                # Pedimos 10 partidas y forzamos queue=420 (Solo/Duo)
-                matches = client.get_recent_matches(st.session_state.riot_id, limit=10, queue=420)
-                
-                new_count = 0
-                for m in matches:
-                    if db.save_match(m):
-                        new_count += 1
-                
-                # Cargar la MÁS RECIENTE por defecto
-                if matches:
-                    latest = matches[0]
-                    st.session_state.last_match_data = latest
-                    st.session_state.last_match_id = latest['game_id']
-                    st.session_state.matchup_history = db.get_matchup_notes(latest['champion_name'], latest['enemy_champion'])
-                
-                if new_count > 0:
-                    st.balloons()
-                    st.success(f"✨ Se han importado {new_count} Rankeds nuevas.")
-                else:
-                    if not matches:
-                        st.warning("No se encontraron partidas Ranked Solo/Duo recientes.")
-                    else:
-                        st.info("📌 Todo actualizado. No hay Rankeds nuevas.")
-                db.close()
-            except Exception as e:
-                st.error(f"❌ Error: {e}")
+    # === GRÁFICO DE PROGRESO (LP) ===
+    st.subheader("📈 Tendencia de LP")
+    try:
+        db = MatchDatabase()
+        history_matches = db.get_recent_matches(20)
+        db.close()
 
-    # ============ VISUALIZACIÓN ============
+        if len(history_matches) > 1:
+            # Invertir para ir del pasado al futuro
+            history_matches = history_matches[::-1]
+            
+            dates = []
+            lp_changes = []
+            current_lp = 0
+            
+            for m in history_matches:
+                change = m['lp_change'] if m['lp_change'] is not None else 0
+                current_lp += change
+                
+                short_date = m['date'].split(' ')[0][5:]
+                dates.append(f"{short_date} ({m['champion']})")
+                lp_changes.append(current_lp)
+            
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=dates, 
+                y=lp_changes,
+                mode='lines+markers',
+                name='LP',
+                line=dict(color='#00cc96', width=3),
+                marker=dict(size=8)
+            ))
+            
+            fig.update_layout(
+                title="Evolución de LP Acumulado (Últimas 20)",
+                xaxis_title="Partida",
+                yaxis_title="LP Ganado/Perdido (Neto)",
+                height=300,
+                margin=dict(l=20, r=20, t=40, b=20),
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)'
+            )
+            
+            fig.add_hline(y=0, line_dash="dash", line_color="gray")
+            
+            st.plotly_chart(fig, use_container_width=True)
+            
+        else:
+            st.info("Juega y registra LP en al menos 2 partidas para ver tu gráfica.")
+            
+    except Exception as e:
+        st.error(f"No se pudo cargar el gráfico: {e}")
+
+    # === SECCIÓN NUEVA: HEATMAP DE HORARIOS ===
+    st.subheader("🕰️ Tu Horario Biológico (Heatmap)")
+    
+    try:
+        db = MatchDatabase()
+        heat_data = db.get_activity_heatmap_data()
+        db.close()
+
+        if heat_data:
+            days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+            hours = [str(i) for i in range(24)]
+            z_data = np.zeros((7, 24))
+            text_data = [["" for _ in range(24)] for _ in range(7)]
+
+            for d in heat_data:
+                d_idx = int(d['weekday']) 
+                h_idx = int(d['hour'])
+                games = d['games']
+                wins = d['wins']
+                wr = int((wins/games)*100) if games > 0 else 0
+                
+                z_data[d_idx][h_idx] = games
+                text_data[d_idx][h_idx] = f"{games} Games<br>WR: {wr}%"
+
+            fig_heat = go.Figure(data=go.Heatmap(
+                z=z_data,
+                x=hours,
+                y=days,
+                hoverongaps=False,
+                colorscale='Greens',
+                text=text_data,
+                hoverinfo='text+y+x'
+            ))
+
+            fig_heat.update_layout(
+                title="Concentración de Partidas (Día vs Hora)",
+                xaxis_title="Hora del día",
+                height=350,
+                margin=dict(l=20, r=20, t=40, b=20),
+                xaxis=dict(dtick=2)
+            )
+            
+            st.plotly_chart(fig_heat, use_container_width=True)
+            st.caption("💡 **Tip:** Si el verde es muy oscuro en la madrugada y tu WR es bajo, ¡vete a dormir!")
+        else:
+            st.info("Juega más partidas para generar tu heatmap de actividad.")
+            
+    except Exception as e:
+        st.error(f"Error en Heatmap: {e}")
+    
+    st.divider()
+    col_sync, col_status = st.columns([1, 3])
+    with col_sync:
+        if st.button("🔄 Sincronizar Rankeds", type="primary", use_container_width=True):
+            with st.spinner("Conectando con Riot..."):
+                try:
+                    client = LoLClient(st.session_state.api_key, st.session_state.region)
+                    db = MatchDatabase()
+                    matches = client.get_recent_matches(st.session_state.riot_id, limit=5, queue=420)
+                    
+                    new_count = 0
+                    for m in matches:
+                        if db.save_match(m): 
+                            new_count += 1
+                    
+                    if matches:
+                        st.session_state.last_match_data = matches[0]
+                        st.session_state.last_match_id = matches[0]['game_id']
+                    
+                    if new_count > 0:
+                        st.success(f"✨ {new_count} partidas nuevas.")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.info("Todo actualizado.")
+                    db.close()
+                except Exception as e:
+                    st.error(f"Error al sincronizar: {str(e)}")
+
+    # FORMULARIO DE ANÁLISIS (La parte subjetiva)
     if st.session_state.last_match_data:
         m = st.session_state.last_match_data
         
-        # Tarjeta Principal
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Campeón", m['champion_name'])
-        c2.metric("KDA", f"{m['kills']}/{m['deaths']}/{m['assists']}")
-        c3.metric("Resultado", "Victoria 🏆" if m['win'] else "Derrota 💀")
-        c4.metric("Vs", m['enemy_champion'])
+        # Validar Constitución (Champion Pool)
+        is_otp = m['champion_name'].lower() in main_champs
         
         st.divider()
+        st.subheader(f"🔍 Análisis: {m['champion_name']} vs {m['enemy_champion']}")
         
-        # Inteligencia de Matchup
-        if st.session_state.matchup_history:
-            # Filtramos para no contar la partida actual si ya está en el historial
-            history = [h for h in st.session_state.matchup_history if h['date'] != m['date']]
-            
-            if history:
-                st.info(f"💡 **Historial vs {m['enemy_champion']}:** Tienes {len(history)} partidas previas.")
-                last = history[0]
-                st.markdown(f"**Última vez ({last['date']}):** {last['result']} con {last['kda']}.")
-                if last['notes']:
-                    st.warning(f"📝 **Tus notas pasadas:** {last['notes']}")
-        
-        st.divider()
-        
+        if not is_otp:
+            st.error(f"⚠️ **ALERTA DE CONSTITUCIÓN**: Has jugado {m['champion_name']}, que NO está en tu lista de Mains ({', '.join(main_champs)}). ¡No improvises en Ranked!")
+
         # Formulario
-        st.subheader("📝 Análisis")
-        
-        # Intentamos cargar datos guardados
         db = MatchDatabase()
         saved = db.get_match_by_id(st.session_state.last_match_id) or {}
         db.close()
         
-        with st.form("analysis"):
-            c1, c2 = st.columns(2)
+        with st.form("post_game_analysis"):
+            c1, c2, c3 = st.columns(3)
             with c1:
-                lp = st.number_input("LP Change", value=saved.get('lp_change', 0))
-                tilt = st.slider("Tilt (1-5)", 1, 5, saved.get('tilt_level', 1))
-                impact = st.selectbox("Impacto", ["Carree", "Fui Carreado", "Invisible", "Inteé"], 
-                                    index=0 if not saved.get('impact_rating') else ["Carree", "Fui Carreado", "Invisible", "Inteé"].index(saved['impact_rating']))
+                lp = st.number_input("LP Ganados/Perdidos", value=saved.get('lp_change', 0))
             with c2:
-                vod = st.checkbox("VOD Review?", value=bool(saved.get('vod_review', 0)))
-                notes = st.text_area("Notas / Matchup", value=saved.get('notes', ""))
-                
-            if st.form_submit_button("💾 Guardar"):
+                tilt = st.slider("Nivel de Tilt (1=Zen, 5=Rage)", 1, 5, saved.get('tilt_level', 1))
+            with c3:
+                impact_options = ["Carree (1v9)", "Hice mi trabajo", "Fui Carreado", "Invisible", "Inteé (Perdí la lane)"]
+                impact_index = 0
+                if saved.get('impact_rating') and saved['impact_rating'] in impact_options:
+                    impact_index = impact_options.index(saved['impact_rating'])
+                impact = st.selectbox("Tu Impacto", impact_options, index=impact_index)
+            
+            notes = st.text_area("🧠 Notas de Matchup (Estrategia para la próxima)", 
+                               placeholder="Ej: Nivel 1 fuerte, cuidado con su E. Comprar Cortacuras temprano.",
+                               value=saved.get('notes', ""))
+            
+            vod = st.checkbox("📺 VOD Review Realizada", value=bool(saved.get('vod_review', 0)))
+            
+            if st.form_submit_button("💾 Guardar Análisis"):
                 db = MatchDatabase()
                 db.update_match_details(st.session_state.last_match_id, lp, tilt, impact, notes, vod)
-                st.success("Guardado!")
-                st.rerun()
+                db.close()
+                st.success("Datos guardados. ¡A por la siguiente!")
 
-    # Historial
+    # HISTORIAL RECIENTE
     st.divider()
-    st.subheader("📜 Historial")
-    try:
-        db = MatchDatabase()
-        recents = db.get_recent_matches(10)
-        
-        if recents:
-            for r in recents:
-                # Calcular KDA ratio
-                kda_ratio = ((r['kills'] + r['assists']) / r['deaths']) if r['deaths'] > 0 else (r['kills'] + r['assists'])
-                
-                # Título del expander con emojis y resultado
-                expander_title = f"{'🏆' if r['win'] else '💀'} {r['champion']} - {r['role']} | {r['kills']}/{r['deaths']}/{r['assists']} | {r['date']}"
-                
-                with st.expander(expander_title):
-                    # Fila 1: Métricas clave
-                    col1, col2, col3, col4 = st.columns(4)
-                    
-                    with col1:
-                        st.metric("KDA", f"{r['kills']}/{r['deaths']}/{r['assists']}")
-                        st.caption(f"Ratio: {kda_ratio:.2f}")
-                    
-                    with col2:
-                        st.metric("CS Total", r['cs_total'])
-                        st.caption(f"CS/min: {r['cs_min']:.1f}")
-                    
-                    with col3:
-                        st.metric("Control Wards", r['control_wards'])
-                    
-                    with col4:
-                        if r['lp_change'] is not None:
-                            delta_color = "normal" if r['lp_change'] >= 0 else "inverse"
-                            st.metric("LP Change", 
-                                     f"{'+' if r['lp_change'] > 0 else ''}{r['lp_change']}", 
-                                     delta=f"{r['lp_change']} LP",
-                                     delta_color=delta_color)
-                        else:
-                            st.metric("LP Change", "N/A")
-                    
-                    st.divider()
-                    
-                    # Fila 2: Matchup e Impacto
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        enemy = r['enemy_champion'] if r['enemy_champion'] else 'Unknown'
-                        st.markdown(f"**⚔️ Matchup:** {r['champion']} vs **{enemy}**")
-                        if r['tilt_level']:
-                            tilt_emoji = "😌" if r['tilt_level'] <= 2 else ("😐" if r['tilt_level'] == 3 else "😤")
-                            st.markdown(f"**Tilt Level:** {tilt_emoji} {r['tilt_level']}/5")
-                    
-                    with col2:
-                        if r['impact_rating']:
-                            impact_emoji = {
-                                "Carreé": "💪",
-                                "Carree": "💪",
-                                "Fui Carreado": "🚌",
-                                "Invisible": "👻",
-                                "Inteé": "💩"
-                            }.get(r['impact_rating'], "❓")
-                            st.markdown(f"**Impacto:** {impact_emoji} {r['impact_rating']}")
-                        
-                        if r['vod_review']:
-                            st.markdown("**VOD Review:** ✅ Revisado")
-                        else:
-                            st.markdown("**VOD Review:** ❌ Sin revisar")
-                    
-                    # Notas
-                    if r['notes']:
-                        st.divider()
-                        st.markdown("**📝 Notas:**")
-                        st.info(r['notes'])
-        else:
-            st.info("No hay partidas registradas aún. ¡Carga tu primera partida!")
-        
-        db.close()
-    except Exception as e:
-        st.error(f"Error al cargar el historial: {e}")
-
-# ============ TAB 2: CHAMPION POOL (CON ICONOS) ============
-with tab2:
-    st.subheader("🏆 Análisis de Champion Pool")
-    st.markdown("Rendimiento detallado de cada campeón jugado")
+    st.subheader("📜 Últimas Partidas")
+    db = MatchDatabase()
+    recents = db.get_recent_matches(10)
+    db.close()
     
+    # Función auxiliar para Badges (VERSIÓN SEGURA)
+    def get_badges(match):
+        badges = []
+        
+        # Usar .get() para evitar KeyError
+        duration = match.get('game_duration_minutes', 30.0) 
+        if duration is None: 
+            duration = 30.0
+        
+        cs_min = match.get('cs_min', 0)
+        if cs_min >= 7.5:
+            badges.append("🌾 CS God")
+        elif cs_min < 5.0 and duration > 15: 
+            badges.append("⚠️ Farm Pobre")
+            
+        deaths = match.get('deaths', 0)
+        if deaths <= 2:
+            badges.append("🧱 Muralla")
+        elif deaths >= 7:
+            badges.append("🤡 Feeder")
+            
+        if match.get('control_wards', 0) >= 3:
+            badges.append("👁️ Visionary")
+            
+        kills = match.get('kills', 0)
+        assists = match.get('assists', 0)
+        safe_deaths = deaths if deaths > 0 else 1
+        
+        kda_calc = (kills + assists) / safe_deaths
+        if kda_calc > 4.0:
+            badges.append("🔥 Carry")
+            
+        return " | ".join(badges)
+
+    for r in recents:
+        color_emoji = "✅" if r['win'] else "❌"
+        kda_display = f"{r['kills']}/{r['deaths']}/{r['assists']}"
+        badges_str = get_badges(r)
+        
+        expander_title = f"{color_emoji} {r['champion']} vs {r['enemy_champion']} | {kda_display}"
+        
+        with st.expander(expander_title):
+            if badges_str:
+                st.caption(f"🏅 Logros: :blue-background[{badges_str}]")
+            
+            colA, colB, colC = st.columns(3)
+            
+            with colA:
+                st.markdown(f"**CS/min:** {r['cs_min']}")
+                st.markdown(f"**Wards:** {r['control_wards']}")
+                if r['lp_change']:
+                    lp_color = "green" if r['lp_change'] > 0 else "red"
+                    st.markdown(f"**LP:** :{lp_color}[{r['lp_change']}]")
+            
+            with colB:
+                st.markdown(f"**Tilt:** {r['tilt_level']}/5")
+                st.markdown(f"**Impacto:** {r['impact_rating']}")
+                if r['vod_review']: 
+                    st.markdown("✅ **VOD Review hecha**")
+                else:
+                    st.markdown("❌ **Pendiente VOD**")
+
+            with colC:
+                if r['notes']:
+                    st.info(f"📝 {r['notes']}")
+                else:
+                    st.caption("Sin notas tácticas.")
+
+# --- TAB 2: SCOUT (La Guía de Estrategia) ---
+with tab2:
+    st.subheader("🔎 Scout de Matchups")
+    
+    # 1. SECCIÓN NUEVA: DETECTOR DE NEMESIS
     try:
         db = MatchDatabase()
-        champion_stats = db.get_champion_performance()
+        nemesis_list = db.get_nemesis_list(min_games=2)
         db.close()
         
-        if champion_stats:
-            # Convertir a DataFrame
-            df = pd.DataFrame(champion_stats)
+        if nemesis_list:
+            st.markdown("### ⚠️ Tus Pesadillas (Nemesis)")
+            st.caption("Rivales contra los que estadísticamente sufres más.")
             
-            # --- NUEVO: AÑADIR IMÁGENES ---
-            # Definimos el parche actual (puedes actualizarlo manualmente si salen nuevos champs)
-            current_patch = "16.1.1"
+            cols = st.columns(min(len(nemesis_list), 5))
             
-            # Creamos la columna con la URL de la imagen para cada campeón
-            # Data Dragon usa el nombre del campeón (ej: "Ashe", "Garen")
-            df['Imagen'] = df['champion'].apply(
-                lambda x: f"https://ddragon.leagueoflegends.com/cdn/{current_patch}/img/champion/{x}.png"
-            )
+            for idx, col in enumerate(cols):
+                if idx < len(nemesis_list):
+                    n = nemesis_list[idx]
+                    
+                    wr = int(n['winrate'])
+                    wr_color = "red" if wr < 40 else "orange"
+                    
+                    with col:
+                        with st.container(border=True):
+                            st.markdown(f"**{n['enemy_champion']}**")
+                            st.markdown(f"📉 WR: :{wr_color}[{wr}%]")
+                            st.caption(f"Partidas: {n['games']} ({n['wins']}W)")
+                            st.markdown(f"💀 Deaths: **{round(n['avg_deaths'], 1)}**")
+            
+            st.divider()
+    except Exception as e:
+        st.error(f"Error cargando Nemesis: {e}")
 
-            # Reordenamos columnas para poner la imagen primero
-            df = df[['Imagen', 'champion', 'games_played', 'wins', 'losses', 'winrate', 'kda_ratio', 'avg_cs_min']]
+    # 2. SECCIÓN ORIGINAL: BÚSQUEDA MANUAL
+    st.markdown("Busca en tu base de conocimiento antes de que empiece la línea.")
+    
+    col_search1, col_search2 = st.columns(2)
+    with col_search1:
+        my_champ_search = st.text_input("Yo juego con...", placeholder="Ej: Jax")
+    with col_search2:
+        enemy_champ_search = st.text_input("Contra...", placeholder="Ej: Renekton")
+        
+    if my_champ_search or enemy_champ_search:
+        db = MatchDatabase()
+        results = []
+        if my_champ_search and enemy_champ_search:
+            results = db.get_matchup_notes(my_champ_search, enemy_champ_search)
+        elif enemy_champ_search:
+            results = db.get_matches_vs_enemy(f"%{enemy_champ_search}%")
             
-            # Renombrar columnas para mejor presentación
-            df = df.rename(columns={
-                'champion': 'Campeón',
-                'games_played': 'Partidas',
-                'wins': 'Wins',     # Abreviamos para que quepa mejor
-                'losses': 'Losses',   # Abreviamos
-                'winrate': 'Winrate',
-                'kda_ratio': 'KDA',
-                'avg_cs_min': 'CS/min'
-            })
+        db.close()
+        
+        if results:
+            st.success(f"Encontradas {len(results)} partidas previas.")
+            for res in results:
+                with st.container(border=True):
+                    c1, c2 = st.columns([1, 4])
+                    with c1:
+                        st.markdown(f"**{res['champion']}** vs **{res['enemy_champion']}**")
+                        st.caption(res['date'].split()[0])
+                        result_emoji = "✅" if res['win'] else "❌"
+                        st.markdown(f"{result_emoji} {'Ganada' if res['win'] else 'Perdida'}")
+                    with c2:
+                        if res['notes']:
+                            st.info(f"💡 {res['notes']}")
+                        else:
+                            st.markdown("*Sin notas registradas*")
+        else:
+            st.warning("No tienes datos previos de este enfrentamiento. ¡Juega con cuidado y anota todo al final!")
+
+# --- TAB 3: CHAMPION POOL ---
+with tab3:
+    st.subheader("🏆 Rendimiento de Champion Pool")
+    try:
+        db = MatchDatabase()
+        stats = db.get_champion_performance()
+        db.close()
+        
+        if stats:
+            df = pd.DataFrame(stats)
+            current_patch = "14.24.1"
+            df['Icono'] = df['champion'].apply(lambda x: f"https://ddragon.leagueoflegends.com/cdn/{current_patch}/img/champion/{x}.png")
             
-            # Configurar el dataframe visualmente
+            df = df[['Icono', 'champion', 'games_played', 'winrate', 'kda_ratio', 'avg_cs_min']]
+            
             st.dataframe(
                 df,
                 column_config={
-                    "Imagen": st.column_config.ImageColumn(
-                        "Icono", 
-                        help="Campeón"
-                    ),
-                    "Winrate": st.column_config.ProgressColumn(
-                        "Winrate",
-                        help="Porcentaje de victorias",
-                        format="%.1f%%",
-                        min_value=0,
-                        max_value=100,
-                    ),
-                    "KDA": st.column_config.NumberColumn(
-                        "KDA",
-                        format="%.2f ⭐"
-                    ),
-                    "CS/min": st.column_config.NumberColumn(
-                        "CS/min",
-                        format="%.1f 🌾"
-                    )
+                    "Icono": st.column_config.ImageColumn("Champ"),
+                    "winrate": st.column_config.ProgressColumn("Winrate", format="%.1f%%", min_value=0, max_value=100),
+                    "kda_ratio": st.column_config.NumberColumn("KDA", format="%.2f"),
+                    "avg_cs_min": st.column_config.NumberColumn("CS/min", format="%.1f 🌾"),
                 },
                 hide_index=True,
-                use_container_width=True
+                use_container_width=True,
+                height=500
             )
-            
-            # Métricas destacadas (Insights)
-            st.divider()
-            st.subheader("📈 Insights")
-            
-            col1, col2, col3 = st.columns(3)
-            
-            # Campeón más jugado (Usamos iloc[0] porque la query SQL ya ordena por partidas)
-            most_played = df.iloc[0]
-            with col1:
-                st.metric(
-                    "🎯 Campeón Más Jugado", 
-                    most_played['Campeón'],
-                    f"{most_played['Partidas']} partidas"
-                )
-            
-            # Filtrar para KDA y Winrate (mínimo 3 partidas para que sea relevante)
-            df_filtered = df[df['Partidas'] >= 3]
-            
-            if not df_filtered.empty:
-                # Mejor Winrate
-                best_wr = df_filtered.loc[df_filtered['Winrate'].idxmax()]
-                with col2:
-                    st.metric(
-                        "🏆 Mejor Winrate", 
-                        best_wr['Campeón'],
-                        f"{best_wr['Winrate']:.1f}%"
-                    )
-                
-                # Mejor KDA
-                best_kda = df_filtered.loc[df_filtered['KDA'].idxmax()]
-                with col3:
-                    st.metric(
-                        "⚡ Mejor KDA", 
-                        best_kda['Campeón'],
-                        f"{best_kda['KDA']:.2f}"
-                    )
-            else:
-                st.info("Juega al menos 3 partidas con un campeón para desbloquear insights avanzados.")
-            
         else:
-            st.info("🎮 Aún no hay datos de campeones. ¡Empieza a jugar y registrar partidas!")
-            
+            st.info("Aún no hay estadísticas suficientes.")
     except Exception as e:
-        st.error(f"❌ Error al cargar estadísticas de campeones: {e}")
+        st.error(f"Error cargando stats: {e}")

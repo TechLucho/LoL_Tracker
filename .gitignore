@@ -2,7 +2,7 @@
 __pycache__/
 *.pyc
 
-# Base de Datos (Para no subir tus datos personales a Internet por error)
+# Base de Datos
 data/*.db
 *.db
 *.sqlite3
