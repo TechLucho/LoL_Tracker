@@ -37,10 +37,11 @@ if 'last_match_data' not in st.session_state:
     st.session_state.last_match_data = None
 if 'last_match_id' not in st.session_state: 
     st.session_state.last_match_id = None
+if 'editing_match_id' not in st.session_state: 
+    st.session_state.editing_match_id = None
 if 'config_saved' not in st.session_state: 
     # [MEJORA] Si ya hay datos en el .env, asumimos que está configurado
     st.session_state.config_saved = bool(st.session_state.riot_id)
-
 # ============ SIDEBAR: CONFIGURACIÓN & OKRs ============
 st.sidebar.title("⚙️ El Cuartel General")
 
@@ -124,7 +125,7 @@ with st.sidebar:
         
         # Deaths Metric
         try:
-            avg_deaths_actual = float(stats['kda'].split('/')[1].strip())
+            avg_deaths_actual = float(stats['kda']  ('/')[1].strip())
             delta_deaths = round(target_deaths - avg_deaths_actual, 1) 
             st.metric("💀 Muertes Promedio", f"{avg_deaths_actual}", delta=delta_deaths, delta_color="normal")
         except:
@@ -164,7 +165,7 @@ with tab1:
                 change = m['lp_change'] if m['lp_change'] is not None else 0
                 current_lp += change
                 
-                short_date = m['date'].split(' ')[0][5:]
+                short_date = m['date'].strftime('%m-%d')
                 dates.append(f"{short_date} ({m['champion']})")
                 lp_changes.append(current_lp)
             
@@ -199,7 +200,7 @@ with tab1:
         st.error(f"No se pudo cargar el gráfico: {e}")
 
     # === SECCIÓN NUEVA: HEATMAP DE HORARIOS ===
-    st.subheader("🕰️ Tu Horario Biológico (Heatmap)")
+    st.subheader("🕰️ Tu Horario Biológico (Winrate)")
     
     try:
         db = MatchDatabase()
@@ -209,7 +210,9 @@ with tab1:
         if heat_data:
             days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
             hours = [str(i) for i in range(24)]
-            z_data = np.zeros((7, 24))
+            
+            # Iniciamos con NaN para que lo vacío no se pinte de rojo
+            z_data = np.full((7, 24), np.nan)
             text_data = [["" for _ in range(24)] for _ in range(7)]
 
             for d in heat_data:
@@ -219,31 +222,37 @@ with tab1:
                 wins = d['wins']
                 wr = int((wins/games)*100) if games > 0 else 0
                 
-                z_data[d_idx][h_idx] = games
-                text_data[d_idx][h_idx] = f"{games} Games<br>WR: {wr}%"
+                # El color (z) ahora es el Winrate
+                z_data[d_idx][h_idx] = wr
+                
+                # El texto sigue mostrando detalles
+                text_data[d_idx][h_idx] = f"WR: {wr}%<br>{games} Games<br>({wins}W - {games-wins}L)"
 
             fig_heat = go.Figure(data=go.Heatmap(
                 z=z_data,
                 x=hours,
                 y=days,
                 hoverongaps=False,
-                colorscale='Greens',
+                colorscale='RdYlGn',  # Escala Rojo-Amarillo-Verde
+                zmin=0,               # 0% es el rojo más fuerte
+                zmax=100,             # 100% es el verde más fuerte
                 text=text_data,
-                hoverinfo='text+y+x'
+                hoverinfo='text'      # Solo mostrar nuestro texto personalizado
             ))
 
             fig_heat.update_layout(
-                title="Concentración de Partidas (Día vs Hora)",
+                title="Rendimiento por Horario (Rojo=Lose / Verde=Win)",
                 xaxis_title="Hora del día",
                 height=350,
                 margin=dict(l=20, r=20, t=40, b=20),
-                xaxis=dict(dtick=2)
+                xaxis=dict(dtick=2),
+                plot_bgcolor='rgba(0,0,0,0)' # Fondo transparente para lo vacío
             )
             
             st.plotly_chart(fig_heat, use_container_width=True)
-            st.caption("💡 **Tip:** Si el verde es muy oscuro en la madrugada y tu WR es bajo, ¡vete a dormir!")
+            st.caption("💡 **Interpretación:** Evita jugar en las horas rojas. Busca tus bloques verdes.")
         else:
-            st.info("Juega más partidas para generar tu heatmap de actividad.")
+            st.info("Juega más partidas para generar tu heatmap de rendimiento.")
             
     except Exception as e:
         st.error(f"Error en Heatmap: {e}")
@@ -315,81 +324,123 @@ with tab1:
             
             vod = st.checkbox("📺 VOD Review Realizada", value=bool(saved.get('vod_review', 0)))
             
+            # Lógica de cierre automático
             if st.form_submit_button("💾 Guardar Análisis"):
                 db = MatchDatabase()
                 db.update_match_details(st.session_state.last_match_id, lp, tilt, impact, notes, vod)
                 db.close()
-                st.success("Datos guardados. ¡A por la siguiente!")
+                
+                st.success("✅ Datos guardados. Cerrando formulario...")
+                
+                # 1. Esperamos un poquito para que te dé tiempo a leer el mensaje verde
+                time.sleep(1.5)
+                
+                # 2. Borramos los datos de la "última partida" de la memoria temporal
+                st.session_state.last_match_data = None
+                st.session_state.last_match_id = None
+                
+                # 3. Forzamos la recarga de la página (ahora se verá limpia)
+                st.rerun()
 
-    # HISTORIAL RECIENTE
+    # HISTORIAL RECIENTE CON EDICIÓN
     st.divider()
-    st.subheader("📜 Últimas Partidas")
+    st.subheader("📜 Historial de Partidas")
     db = MatchDatabase()
     recents = db.get_recent_matches(10)
     db.close()
     
-    # Función auxiliar para Badges
+    # Función auxiliar para Badges (La mantenemos igual)
     def get_badges(match):
         badges = []
-        
-        duration = match.get('game_duration_minutes', 30.0) 
-        if duration is None: 
-            duration = 30.0
-        
+        duration = match.get('game_duration_minutes', 30.0) or 30.0
         cs_min = match.get('cs_min', 0)
-        if cs_min >= 7.5:
-            badges.append("🌾 CS God")
-        elif cs_min < 5.0 and duration > 15: 
-            badges.append("⚠️ Farm Pobre")
-            
         deaths = match.get('deaths', 0)
-        if deaths <= 2:
-            badges.append("🧱 Muralla")
-        elif deaths >= 7:
-            badges.append("🤡 Feeder")
+        
+        if cs_min >= 7.5: badges.append("🌾 CS God")
+        elif cs_min < 5.0 and duration > 15: badges.append("⚠️ Farm Pobre")
+        
+        if deaths <= 2: badges.append("🧱 Muralla")
+        elif deaths >= 7: badges.append("🤡 Feeder")
             
-        if match.get('control_wards', 0) >= 3:
-            badges.append("👁️ Visionary")
-            
+        if match.get('control_wards', 0) >= 3: badges.append("👁️ Visionary")
+        
         kills = match.get('kills', 0)
         assists = match.get('assists', 0)
         safe_deaths = deaths if deaths > 0 else 1
-        
-        kda_calc = (kills + assists) / safe_deaths
-        if kda_calc > 4.0:
-            badges.append("🔥 Carry")
+        if (kills + assists) / safe_deaths > 4.0: badges.append("🔥 Carry")
             
         return " | ".join(badges)
 
     for r in recents:
+        # Título del Expander
         color_emoji = "✅" if r['win'] else "❌"
         kda_display = f"{r['kills']}/{r['deaths']}/{r['assists']}"
-        badges_str = get_badges(r)
-        
-        expander_title = f"{color_emoji} {r['champion']} vs {r['enemy_champion']} | {kda_display}"
+        expander_title = f"{color_emoji} {r['champion']} vs {r['enemy_champion']} | {kda_display} | {r['date'].strftime('%d-%m %H:%M')}"
         
         with st.expander(expander_title):
-            if badges_str:
-                st.caption(f"🏅 Logros: :blue-background[{badges_str}]")
             
-            colA, colB, colC = st.columns(3)
-            
-            with colA:
-                st.markdown(f"**CS/min:** {r['cs_min']}")
-                st.markdown(f"**Wards:** {r['control_wards']}")
-                if r['lp_change']:
-                    lp_color = "green" if r['lp_change'] > 0 else "red"
-                    st.markdown(f"**LP:** :{lp_color}[{r['lp_change']}]")
-            
-            with colB:
-                st.markdown(f"**Tilt:** {r['tilt_level']}/5")
-                st.markdown(f"**Impacto:** {r['impact_rating']}")
-                if r['vod_review']: 
-                    st.markdown("✅ **VOD Review hecha**")
-                else:
-                    st.markdown("❌ **Pendiente VOD**")
+            # === MODO EDICIÓN (Si le diste al botón editar de esta partida) ===
+            if st.session_state.editing_match_id == r['game_id']:
+                st.info(f"✍️ Editando partida: {r['champion']} vs {r['enemy_champion']}")
+                
+                with st.form(key=f"edit_form_{r['game_id']}"):
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        new_lp = st.number_input("LP Change", value=r['lp_change'] if r['lp_change'] is not None else 0)
+                    with c2:
+                        new_tilt = st.slider("Tilt", 1, 5, r['tilt_level'] if r['tilt_level'] else 1)
+                    with c3:
+                        impact_opts = ["Carree (1v9)", "Hice mi trabajo", "Fui Carreado", "Invisible", "Inteé (Perdí la lane)"]
+                        curr_impact = r['impact_rating'] if r['impact_rating'] in impact_opts else "Hice mi trabajo"
+                        new_impact = st.selectbox("Impacto", impact_opts, index=impact_opts.index(curr_impact))
+                    
+                    new_notes = st.text_area("Notas", value=r['notes'] if r['notes'] else "")
+                    new_vod = st.checkbox("VOD Review", value=bool(r['vod_review']))
+                    
+                    col_save, col_cancel = st.columns([1, 1])
+                    with col_save:
+                        if st.form_submit_button("💾 Guardar Cambios", type="primary"):
+                            db = MatchDatabase()
+                            db.update_match_details(r['game_id'], new_lp, new_tilt, new_impact, new_notes, new_vod)
+                            db.close()
+                            st.success("Guardado!")
+                            time.sleep(0.5)
+                            # Cerrar modo edición
+                            st.session_state.editing_match_id = None
+                            st.rerun()
+                            
+                    with col_cancel:
+                        # Truco: Un form_submit_button secundario actúa como cancelar si no hacemos nada
+                        if st.form_submit_button("❌ Cancelar"):
+                            st.session_state.editing_match_id = None
+                            st.rerun()
 
-            with colC:
+            # === MODO VISUALIZACIÓN (Lo normal) ===
+            else:
+                badges_str = get_badges(r)
+                if badges_str:
+                    st.caption(f"🏅 Logros: :blue-background[{badges_str}]")
+                
+                colA, colB, colC = st.columns([2, 2, 1])
+                
+                with colA:
+                    st.markdown(f"**CS/min:** {r['cs_min']}")
+                    st.markdown(f"**Wards:** {r['control_wards']}")
+                    if r['lp_change']:
+                        lp_color = "green" if r['lp_change'] > 0 else "red"
+                        st.markdown(f"**LP:** :{lp_color}[{r['lp_change']}]")
+                
+                with colB:
+                    st.markdown(f"**Tilt:** {r['tilt_level']}/5")
+                    st.markdown(f"**Impacto:** {r['impact_rating']}")
+                    if r['vod_review']: st.markdown("✅ **VOD**")
+
+                with colC:
+                    # EL BOTÓN DE EDITAR
+                    if st.button("✏️ Editar", key=f"btn_edit_{r['game_id']}"):
+                        st.session_state.editing_match_id = r['game_id']
+                        st.rerun()
+
                 if r['notes']:
                     st.info(f"📝 {r['notes']}")
                 else:
@@ -455,7 +506,7 @@ with tab2:
                     c1, c2 = st.columns([1, 4])
                     with c1:
                         st.markdown(f"**{res['champion']}** vs **{res['enemy_champion']}**")
-                        st.caption(res['date'].split()[0])
+                        st.caption(res['date'].strftime('%Y-%m-%d'))
                         result_emoji = "✅" if res['win'] else "❌"
                         st.markdown(f"{result_emoji} {'Ganada' if res['win'] else 'Perdida'}")
                     with c2:
