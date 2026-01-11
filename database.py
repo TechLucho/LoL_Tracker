@@ -1,37 +1,56 @@
 import os
-import sqlite3
+import psycopg2
+from psycopg2.extras import RealDictCursor
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
 class MatchDatabase:
-    """Clase para gestionar la persistencia de partidas de League of Legends usando SQLite."""
+    """Clase para gestionar la persistencia de partidas usando PostgreSQL (Supabase)."""
     
-    def __init__(self, db_path: str = None):
-        # 1. Lógica de rutas
-        if db_path is None:
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            data_dir = os.path.join(base_dir, 'data')
-            
-            # Crear la carpeta data si no existe
-            if not os.path.exists(data_dir):
-                os.makedirs(data_dir)
-                
-            self.db_path = os.path.join(data_dir, 'lol_tracker.db')
-        else:
-            self.db_path = db_path
+    def __init__(self):
+        # 1. Obtener credenciales de variables de entorno
+        self.host = os.getenv("DB_HOST")
+        self.database = os.getenv("DB_NAME")
+        self.user = os.getenv("DB_USER")
+        self.password = os.getenv("DB_PASSWORD")
+        self.port = os.getenv("DB_PORT", "5432")
 
-        # 2. Conexión y Configuración
-        self.connection = sqlite3.connect(self.db_path)
-        self.connection.row_factory = sqlite3.Row  # Permite acceder a columnas por nombre
-        self.cursor = self.connection.cursor()
-        self.create_table()
+        # Verificar que existen
+        if not all([self.host, self.database, self.user, self.password]):
+            # Fallback para desarrollo local si no hay env vars configuradas, o lanzar error
+            print("⚠️ Faltan credenciales de Base de Datos en .env")
+            self.connection = None
+            return
+
+        # 2. Conexión
+        try:
+            self.connection = psycopg2.connect(
+                host=self.host,
+                database=self.database,
+                user=self.user,
+                password=self.password,
+                port=self.port
+            )
+            self.connection.autocommit = False # Manejamos transacciones manualmente
+        except Exception as e:
+            print(f"Error conectando a BD: {e}")
+            self.connection = None
+
+        if self.connection:
+            self.create_table()
     
+    def get_cursor(self):
+        """Devuelve un cursor que permite acceder a columnas por nombre."""
+        if self.connection:
+            return self.connection.cursor(cursor_factory=RealDictCursor)
+        return None
+
     def create_table(self):
-        """Crea la tabla 'matches' si no existe."""
+        """Crea la tabla 'matches' si no existe (Sintaxis PostgreSQL)."""
         create_table_query = """
         CREATE TABLE IF NOT EXISTS matches (
             game_id TEXT PRIMARY KEY,
-            date TEXT NOT NULL,
+            date TIMESTAMP,
             champion TEXT NOT NULL,
             role TEXT NOT NULL,
             kills INTEGER NOT NULL,
@@ -40,30 +59,32 @@ class MatchDatabase:
             cs_total INTEGER NOT NULL,
             cs_min REAL NOT NULL,
             control_wards INTEGER NOT NULL,
-            win INTEGER NOT NULL,
+            win BOOLEAN NOT NULL,
             enemy_champion TEXT,
             game_duration_minutes REAL,
             lp_change INTEGER,
             tilt_level INTEGER,
             impact_rating TEXT,
             notes TEXT,
-            vod_review INTEGER DEFAULT 0
+            vod_review BOOLEAN DEFAULT FALSE
         )
         """
         try:
-            self.cursor.execute(create_table_query)
+            with self.connection.cursor() as cursor:
+                cursor.execute(create_table_query)
             self.connection.commit()
-        except sqlite3.Error as e:
-            raise sqlite3.Error(f"Error al crear la tabla: {e}")
+        except Exception as e:
+            self.connection.rollback()
+            print(f"Error al crear la tabla: {e}")
     
     def save_match(self, match_data: Dict[str, Any]) -> bool:
         """Guarda una partida en la base de datos."""
+        if not self.connection: return False
+        
         try:
             game_id = match_data.get('game_id')
-            if not game_id:
-                raise ValueError("El diccionario match_data no contiene 'game_id'")
+            if not game_id: return False
 
-            # Calcular CS/min si no viene incluido
             game_duration = match_data.get('game_duration_minutes', 0)
             if 'cs_min' not in match_data:
                 cs_min = round(match_data['cs_total'] / game_duration, 2) if game_duration > 0 else 0.0
@@ -72,160 +93,154 @@ class MatchDatabase:
             
             match_date = match_data.get('date', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
             
+            # Sintaxis Postgres para "INSERT OR IGNORE" es "ON CONFLICT DO NOTHING"
             insert_query = """
-            INSERT OR IGNORE INTO matches (
+            INSERT INTO matches (
                 game_id, date, champion, role, kills, deaths, assists,
                 cs_total, cs_min, control_wards, win, enemy_champion, game_duration_minutes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (game_id) DO NOTHING
             """
         
-            self.cursor.execute(insert_query, (
-                game_id,
-                match_date,
-                match_data['champion_name'],
-                match_data['role'],
-                match_data['kills'],
-                match_data['deaths'],
-                match_data['assists'],
-                match_data['cs_total'],
-                cs_min,
-                match_data['control_wards_bought'],
-                1 if match_data['win'] else 0,
-                match_data.get('enemy_champion', 'Unknown'),
-                game_duration
-            ))
+            with self.connection.cursor() as cursor:
+                cursor.execute(insert_query, (
+                    game_id,
+                    match_date,
+                    match_data['champion_name'],
+                    match_data['role'],
+                    match_data['kills'],
+                    match_data['deaths'],
+                    match_data['assists'],
+                    match_data['cs_total'],
+                    cs_min,
+                    match_data['control_wards_bought'],
+                    bool(match_data['win']), # Postgres usa bool
+                    match_data.get('enemy_champion', 'Unknown'),
+                    game_duration
+                ))
+                inserted = cursor.rowcount > 0
             self.connection.commit()
-            return self.cursor.rowcount > 0
+            return inserted
             
-        except sqlite3.Error as e:
-            self.connection.rollback()
-            raise sqlite3.Error(f"Error al guardar la partida: {e}")
         except Exception as e:
             self.connection.rollback()
-            raise Exception(f"Error inesperado al guardar: {e}")
+            raise Exception(f"Error al guardar la partida: {e}")
     
     def update_match_details(self, game_id: str, lp_change: Optional[int] = None, 
                            tilt_level: Optional[int] = None, impact_rating: Optional[str] = None, 
                            notes: Optional[str] = None, vod_review: Optional[bool] = None) -> bool:
         """Actualiza los detalles subjetivos de una partida."""
-        if tilt_level is not None and (tilt_level < 1 or tilt_level > 5):
-            raise ValueError("tilt_level debe estar entre 1 y 5")
-        
+        if not self.connection: return False
+
         update_fields = []
         params = []
         
         if lp_change is not None: 
-            update_fields.append("lp_change = ?")
+            update_fields.append("lp_change = %s")
             params.append(lp_change)
         if tilt_level is not None: 
-            update_fields.append("tilt_level = ?")
+            update_fields.append("tilt_level = %s")
             params.append(tilt_level)
         if impact_rating is not None: 
-            update_fields.append("impact_rating = ?")
+            update_fields.append("impact_rating = %s")
             params.append(impact_rating)
         if notes is not None: 
-            update_fields.append("notes = ?")
+            update_fields.append("notes = %s")
             params.append(notes)
         if vod_review is not None: 
-            update_fields.append("vod_review = ?")
-            params.append(1 if vod_review else 0)
+            update_fields.append("vod_review = %s")
+            params.append(bool(vod_review))
         
-        if not update_fields: 
-            return False
+        if not update_fields: return False
         
         params.append(game_id)
-        update_query = f"UPDATE matches SET {', '.join(update_fields)} WHERE game_id = ?"
+        update_query = f"UPDATE matches SET {', '.join(update_fields)} WHERE game_id = %s"
         
         try:
-            self.cursor.execute(update_query, params)
+            with self.connection.cursor() as cursor:
+                cursor.execute(update_query, params)
+                updated = cursor.rowcount > 0
             self.connection.commit()
-            return self.cursor.rowcount > 0
-        except sqlite3.Error as e:
+            return updated
+        except Exception as e:
             self.connection.rollback()
-            raise sqlite3.Error(f"Error al actualizar: {e}")
+            raise Exception(f"Error al actualizar: {e}")
     
     def get_recent_matches(self, limit: int = 10) -> List[Dict[str, Any]]:
-        """Obtiene las últimas N partidas ordenadas por fecha."""
-        select_query = "SELECT * FROM matches ORDER BY date DESC LIMIT ?"
+        if not self.connection: return []
+        select_query = "SELECT * FROM matches ORDER BY date DESC LIMIT %s"
         try:
-            self.cursor.execute(select_query, (limit,))
-            return [dict(row) for row in self.cursor.fetchall()]
-        except sqlite3.Error as e:
-            raise sqlite3.Error(f"Error al leer partidas: {e}")
+            with self.get_cursor() as cursor:
+                cursor.execute(select_query, (limit,))
+                return cursor.fetchall()
+        except Exception as e:
+            print(f"Error: {e}")
+            return []
         
     def get_stats_summary(self) -> Dict[str, Any]:
-        """Obtiene un resumen estadístico general."""
+        if not self.connection: return {}
         try:
-            self.cursor.execute("SELECT COUNT(*), SUM(win) FROM matches")
-            result = self.cursor.fetchone()
-            total_games = result[0] if result[0] else 0
-            total_wins = result[1] if result[1] else 0
-            winrate = (total_wins / total_games * 100) if total_games > 0 else 0.0
-            
-            self.cursor.execute("SELECT AVG(kills), AVG(deaths), AVG(assists), AVG(cs_min) FROM matches")
-            result = self.cursor.fetchone()
-            avg_k = result[0] if result[0] else 0
-            avg_d = result[1] if result[1] else 0
-            avg_a = result[2] if result[2] else 0
-            avg_cs = result[3] if result[3] else 0
-            
+            with self.get_cursor() as cursor:
+                # Stats Generales
+                cursor.execute("SELECT COUNT(*) as total, SUM(CASE WHEN win THEN 1 ELSE 0 END) as wins FROM matches")
+                gen = cursor.fetchone()
+                total_games = gen['total'] if gen else 0
+                total_wins = gen['wins'] if gen and gen['wins'] else 0
+                winrate = (total_wins / total_games * 100) if total_games > 0 else 0.0
+                
+                # Promedios
+                cursor.execute("SELECT AVG(kills) as k, AVG(deaths) as d, AVG(assists) as a, AVG(cs_min) as cs FROM matches")
+                avgs = cursor.fetchone()
+                
             return {
                 'total_games': total_games,
                 'total_wins': total_wins,
                 'winrate': round(winrate, 1),
-                'kda': f"{round(avg_k, 1)} / {round(avg_d, 1)} / {round(avg_a, 1)}",
-                'cs_min_avg': round(avg_cs, 1)
+                'kda': f"{round(avgs['k'], 1)} / {round(avgs['d'], 1)} / {round(avgs['a'], 1)}" if avgs and avgs['k'] else "0/0/0",
+                'cs_min_avg': round(avgs['cs'], 1) if avgs and avgs['cs'] else 0
             }
         except Exception as e:
-            print(f"Error en get_stats_summary: {e}")
-            return {
-                'total_games': 0, 
-                'total_wins': 0, 
-                'winrate': 0, 
-                'kda': "0 / 0 / 0", 
-                'cs_min_avg': 0
-            }
+            print(f"Error stats: {e}")
+            return {}
 
     def get_match_by_id(self, game_id: str) -> Optional[Dict[str, Any]]:
-        """Obtiene una partida específica por su ID."""
+        if not self.connection: return None
         try:
-            self.cursor.execute("SELECT * FROM matches WHERE game_id = ?", (game_id,))
-            row = self.cursor.fetchone()
-            return dict(row) if row else None
-        except sqlite3.Error:
+            with self.get_cursor() as cursor:
+                cursor.execute("SELECT * FROM matches WHERE game_id = %s", (game_id,))
+                return cursor.fetchone()
+        except Exception:
             return None
 
     def get_matchup_notes(self, my_champion: str, enemy_champion: str) -> List[Dict[str, Any]]:
-        """Historial Específico (Yo con X vs Él con Y)"""
-        matchup_query = """
-        SELECT * FROM matches 
-        WHERE champion = ? AND enemy_champion = ? 
-        ORDER BY date DESC
-        """
+        if not self.connection: return []
+        query = "SELECT * FROM matches WHERE champion = %s AND enemy_champion = %s ORDER BY date DESC"
         try:
-            self.cursor.execute(matchup_query, (my_champion, enemy_champion))
-            return [dict(row) for row in self.cursor.fetchall()]
-        except sqlite3.Error as e:
-            print(f"Error en get_matchup_notes: {e}")
+            with self.get_cursor() as cursor:
+                cursor.execute(query, (my_champion, enemy_champion))
+                return cursor.fetchall()
+        except Exception:
             return []
 
-    def get_matches_vs_enemy(self, enemy_champion: str) -> List[Dict[str, Any]]:
-        """Busca todas las partidas contra un campeón enemigo específico."""
-        query = "SELECT * FROM matches WHERE enemy_champion LIKE ? ORDER BY date DESC"
+    def get_matches_vs_enemy(self, enemy_champion_pattern: str) -> List[Dict[str, Any]]:
+        if not self.connection: return []
+        # En Postgres LIKE es Case Sensitive, ILIKE no lo es
+        query = "SELECT * FROM matches WHERE enemy_champion ILIKE %s ORDER BY date DESC"
         try:
-            self.cursor.execute(query, (enemy_champion,))
-            return [dict(row) for row in self.cursor.fetchall()]
-        except sqlite3.Error as e:
-            print(f"Error en get_matches_vs_enemy: {e}")
+            with self.get_cursor() as cursor:
+                cursor.execute(query, (enemy_champion_pattern,))
+                return cursor.fetchall()
+        except Exception:
             return []
     
     def get_champion_performance(self) -> List[Dict[str, Any]]:
-        """Obtiene estadísticas de rendimiento agrupadas por campeón."""
-        champion_stats_query = """
+        if not self.connection: return []
+        # Sintaxis Postgres para CAST de booleanos a int para sumar: SUM(win::int)
+        query = """
         SELECT 
             champion,
             COUNT(*) as games_played,
-            SUM(win) as wins,
+            SUM(CASE WHEN win THEN 1 ELSE 0 END) as wins,
             AVG(kills) as avg_kills,
             AVG(deaths) as avg_deaths,
             AVG(assists) as avg_assists,
@@ -234,94 +249,60 @@ class MatchDatabase:
         GROUP BY champion
         ORDER BY games_played DESC, wins DESC
         """
-    
         try:
-            self.cursor.execute(champion_stats_query)
-            rows = self.cursor.fetchall()
-        
-            champion_stats = []
-            for row in rows:
-                games_played = row['games_played']
-                wins = row['wins'] if row['wins'] else 0
-                losses = games_played - wins
-            
-                # Calcular winrate
-                winrate = round((wins / games_played * 100), 1) if games_played > 0 else 0.0
-            
-                # Calcular KDA ratio (evitar división por cero)
-                avg_kills = row['avg_kills'] if row['avg_kills'] else 0
-                avg_deaths = row['avg_deaths'] if row['avg_deaths'] else 0
-                avg_assists = row['avg_assists'] if row['avg_assists'] else 0
-            
-                if avg_deaths > 0:
-                    kda_ratio = round((avg_kills + avg_assists) / avg_deaths, 2)
-                else:
-                    kda_ratio = round(avg_kills + avg_assists, 2)
-            
-                stats = {
-                    'champion': row['champion'],
-                    'games_played': games_played,
-                    'wins': wins,
-                    'losses': losses,
-                    'winrate': winrate,
-                    'avg_kills': round(avg_kills, 1),
-                    'avg_deaths': round(avg_deaths, 1),
-                    'avg_assists': round(avg_assists, 1),
-                    'kda_ratio': kda_ratio,
-                    'avg_cs_min': round(row['avg_cs_min'] if row['avg_cs_min'] else 0, 1)
-                }
-                champion_stats.append(stats)
-        
-            return champion_stats
-        
-        except sqlite3.Error as e:
-            print(f"Error en get_champion_performance: {e}")
+            with self.get_cursor() as cursor:
+                cursor.execute(query)
+                return cursor.fetchall()
+        except Exception as e:
+            print(f"Error champ perf: {e}")
             return []
         
     def get_nemesis_list(self, min_games: int = 2) -> List[Dict[str, Any]]:
-        """Identifica a los campeones enemigos contra los que peor te va."""
+        if not self.connection: return []
         query = """
         SELECT 
             enemy_champion,
             COUNT(*) as games,
-            SUM(win) as wins,
-            CAST(SUM(win) AS FLOAT) / COUNT(*) * 100 as winrate,
+            SUM(CASE WHEN win THEN 1 ELSE 0 END) as wins,
+            (CAST(SUM(CASE WHEN win THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*)) * 100 as winrate,
             AVG(cs_min) as avg_cs_min,
             AVG(deaths) as avg_deaths
         FROM matches
         WHERE enemy_champion IS NOT NULL AND enemy_champion != 'Unknown'
         GROUP BY enemy_champion
-        HAVING games >= ?
+        HAVING COUNT(*) >= %s
         ORDER BY winrate ASC, games DESC
         LIMIT 5
         """
         try:
-            self.cursor.execute(query, (min_games,))
-            return [dict(row) for row in self.cursor.fetchall()]
-        except sqlite3.Error as e:
-            print(f"Error en get_nemesis_list: {e}")
+            with self.get_cursor() as cursor:
+                cursor.execute(query, (min_games,))
+                return cursor.fetchall()
+        except Exception as e:
+            print(e)
             return []
 
     def get_activity_heatmap_data(self) -> List[Dict[str, Any]]:
-        """Extrae datos para el Heatmap (Día de semana vs Hora)."""
-        # SQLite strftime: %w = día semana (0-6), %H = hora (00-23)
+        if not self.connection: return []
+        # PostgreSQL usa EXTRACT(DOW ...) para día semana (0=Domingo)
+        # y EXTRACT(HOUR ...) para hora
         query = """
         SELECT 
-            strftime('%w', date) as weekday,
-            strftime('%H', date) as hour,
+            CAST(EXTRACT(DOW FROM date) AS INTEGER) as weekday,
+            CAST(EXTRACT(HOUR FROM date) AS INTEGER) as hour,
             COUNT(*) as games,
-            SUM(win) as wins
+            SUM(CASE WHEN win THEN 1 ELSE 0 END) as wins
         FROM matches
         GROUP BY weekday, hour
         """
         try:
-            self.cursor.execute(query)
-            return [dict(row) for row in self.cursor.fetchall()]
-        except sqlite3.Error as e:
-            print(f"Error en get_activity_heatmap_data: {e}")
+            with self.get_cursor() as cursor:
+                cursor.execute(query)
+                return cursor.fetchall()
+        except Exception as e:
+            print(e)
             return []
 
     def close(self):
-        """Cierra la conexión a la base de datos."""
         if self.connection: 
             self.connection.close()

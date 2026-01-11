@@ -1,10 +1,15 @@
 import streamlit as st
+import os
+from dotenv import load_dotenv  # [NUEVO] Importar librería
 from riot_client import LoLClient
 from database import MatchDatabase
 import pandas as pd
 import plotly.graph_objects as go
 import numpy as np
 import time
+
+# [NUEVO] Cargar variables de entorno al inicio
+load_dotenv()
 
 # Configuración de la página
 st.set_page_config(
@@ -13,39 +18,50 @@ st.set_page_config(
     layout="wide"
 )
 
+# [NUEVO] Obtener API KEY segura
+API_KEY = os.getenv("RIOT_API_KEY")
+
+# Validación de seguridad
+if not API_KEY:
+    st.error("⛔ ERROR CRÍTICO: No se encontró la API KEY.")
+    st.info("Por favor, crea un archivo llamado '.env' en la carpeta del proyecto y añade: RIOT_API_KEY=RGAPI-Tu-Clave")
+    st.stop()
+
 # Inicializar session_state
-if 'api_key' not in st.session_state: 
-    st.session_state.api_key = ""
 if 'riot_id' not in st.session_state: 
-    st.session_state.riot_id = ""
+    # [MEJORA] Carga el Riot ID del .env por defecto, o lo deja vacío
+    st.session_state.riot_id = os.getenv("RIOT_ID", "")
 if 'region' not in st.session_state: 
-    st.session_state.region = "EUW1"
+    st.session_state.region = os.getenv("RIOT_REGION", "EUW1")
 if 'last_match_data' not in st.session_state: 
     st.session_state.last_match_data = None
 if 'last_match_id' not in st.session_state: 
     st.session_state.last_match_id = None
 if 'config_saved' not in st.session_state: 
-    st.session_state.config_saved = False
+    # [MEJORA] Si ya hay datos en el .env, asumimos que está configurado
+    st.session_state.config_saved = bool(st.session_state.riot_id)
 
 # ============ SIDEBAR: CONFIGURACIÓN & OKRs ============
 st.sidebar.title("⚙️ El Cuartel General")
 
 with st.sidebar:
-    # 1. Credenciales
-    with st.expander("🔐 Credenciales", expanded=not st.session_state.config_saved):
-        api_key_input = st.text_input("Riot API Key", type="password", value=st.session_state.api_key)
-        riot_id_input = st.text_input("Riot ID", value=st.session_state.riot_id, placeholder="Ej: Faker#KR1")
-        region_input = st.selectbox("Región", ['EUW1', 'NA1', 'LA1', 'LA2'], index=0)
+    # 1. Credenciales (SIMPLIFICADO)
+    with st.expander("👤 Perfil de Jugador", expanded=not st.session_state.config_saved):
+        # [MODIFICADO] Ya no pedimos la API Key por pantalla
+        st.success("🔑 API Key: Cargada seguramente desde .env")
         
-        if st.button("💾 Guardar Accesos", use_container_width=True):
-            if not api_key_input or not riot_id_input:
-                st.error("Faltan datos.")
+        riot_id_input = st.text_input("Riot ID", value=st.session_state.riot_id, placeholder="Ej: Faker#KR1")
+        region_input = st.selectbox("Región", ['EUW1', 'NA1', 'LA1', 'LA2'], 
+                                  index=['EUW1', 'NA1', 'LA1', 'LA2'].index(st.session_state.region) if st.session_state.region in ['EUW1', 'NA1', 'LA1', 'LA2'] else 0)
+        
+        if st.button("💾 Actualizar Perfil", use_container_width=True):
+            if not riot_id_input:
+                st.error("Falta el Riot ID.")
             else:
-                st.session_state.api_key = api_key_input
                 st.session_state.riot_id = riot_id_input
                 st.session_state.region = region_input
                 st.session_state.config_saved = True
-                st.success("Configuración guardada")
+                st.success("Perfil actualizado")
 
     st.markdown("---")
     
@@ -96,7 +112,6 @@ with st.sidebar:
     # Inputs configurables para OKRs
     target_cs = st.number_input("Meta CS/min", value=7.5, step=0.1)
     target_deaths = st.number_input("Tope Muertes/game", value=4.0, step=0.5)
-    target_wr = st.number_input("Meta Winrate %", value=55.0, step=1.0)
     
     try:
         db = MatchDatabase()
@@ -122,7 +137,7 @@ with st.sidebar:
 st.title("🛡️ LoL Tryhard Tracker")
 
 if not st.session_state.config_saved:
-    st.warning("⚠️ Configura tus credenciales y Champion Pool en la barra lateral.")
+    st.warning("⚠️ Confirma tu Riot ID en la barra lateral para empezar.")
     st.stop()
 
 # Pestañas de navegación
@@ -239,7 +254,8 @@ with tab1:
         if st.button("🔄 Sincronizar Rankeds", type="primary", use_container_width=True):
             with st.spinner("Conectando con Riot..."):
                 try:
-                    client = LoLClient(st.session_state.api_key, st.session_state.region)
+                    # [MODIFICADO] Usamos la variable global API_KEY cargada desde .env
+                    client = LoLClient(API_KEY, st.session_state.region)
                     db = MatchDatabase()
                     matches = client.get_recent_matches(st.session_state.riot_id, limit=5, queue=420)
                     
@@ -312,11 +328,10 @@ with tab1:
     recents = db.get_recent_matches(10)
     db.close()
     
-    # Función auxiliar para Badges (VERSIÓN SEGURA)
+    # Función auxiliar para Badges
     def get_badges(match):
         badges = []
         
-        # Usar .get() para evitar KeyError
         duration = match.get('game_duration_minutes', 30.0) 
         if duration is None: 
             duration = 30.0
