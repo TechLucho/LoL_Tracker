@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #0F0F13;
+  --color-card: #1A1A21;
+  --color-card-hover: #22222B;
+  --color-accent-purple: #A855F7;
+  --color-accent-purple-dim: #7C3AED;
+  --color-status-win: #059669;
+  --color-status-win-bg: #05966920;
+  --color-status-loss: #991B1B;
+  --color-status-loss-bg: #991B1B20;
+  --color-border: #2A2A35;
+  --color-text-primary: #F3F4F6;
+  --color-text-secondary: #9CA3AF;
+  --color-text-muted: #6B7280;
+
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+body {
+  margin: 0;
+  background-color: #0A0A0F;
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-page-enter {
+  animation: page-enter 0.3s ease-out both;
+}
+
+/* Skeleton "shimmer": barrido de brillo sobre el bloque base (sustituye al pulse uniforme).
+   El elemento base mantiene su bg; el ::after barre un gradiente de izquierda a derecha. */
+@keyframes shimmer-sweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.07) 50%,
+    transparent
+  );
+  animation: shimmer-sweep 1.6s infinite;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2A2A35 transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #2A2A35;
+  border-radius: 3px;
+}

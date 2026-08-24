@@ -34,8 +34,39 @@ Clone the repository and install dependencies:
 ```bash
 git clone https://github.com/TechLucho/LoL_Tracker.git
 cd LoL_Tracker
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 ```
+
+### 3. Running the server — SINGLE PROCESS ONLY
+
+The API keeps sync state (`/api/sync/status`) and latency metrics **in process memory**, so it
+must run as exactly ONE uvicorn worker. The app verifies this at startup and refuses to boot
+with multiple workers:
+
+```bash
+# ✅ local development (auto-reload)
+python -m uvicorn backend.app.main:app --reload
+
+# ✅ production-ish: single worker
+python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+
+# ❌ refuses to boot on purpose: each worker would keep its own sync state and
+#    /api/sync/status polling would return different results per request
+python -m uvicorn backend.app.main:app --workers 2
+```
+
+Procfile equivalent (Heroku/Fly/Railway):
+
+```
+web: python -m uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+```
+
+Scale vertically (a bigger instance), not horizontally into more worker processes.
+
+> **Windows note:** async psycopg requires a selector event loop. Uvicorn only forces one when
+> `--reload` is active, so on Windows ALWAYS develop with `--reload` (as documented above); a
+> bare `uvicorn` run will boot in degraded mode and warn you at startup. Production should be
+> Linux/Docker anyway.
 
 ---
 

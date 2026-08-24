@@ -11,3 +11,6 @@ data/*.db
 .env
 .vscode/
 .DS_Store
+
+# Backups de Supabase (contienen datos reales)
+backups/
