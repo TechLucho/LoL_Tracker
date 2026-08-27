@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, RefreshCw } from 'lucide-react'
+import { ChevronDown, RefreshCw, Gamepad2 } from 'lucide-react'
 import type { UIMatch, QueueFilter, MatchReviewUpdate } from '../data/types'
 import { DDragon, QUEUE_LABELS } from '../data/constants'
 import { useIcons } from '../hooks/useMetadata'
@@ -92,7 +92,7 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
               <button
                 key={opt.key}
                 onClick={() => onFilterChange(opt.key)}
-                className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                className={`rounded-md px-3 py-2 text-[11px] font-semibold transition-colors ${
                   queueFilter === opt.key
                     ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
                     : 'text-gray-500 hover:text-gray-300'
@@ -111,7 +111,7 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
           <button
             onClick={onSync}
             disabled={isSyncing}
-            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider transition-all active:scale-95 ${
+            className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[11px] font-bold uppercase tracking-wider transition-all active:scale-95 ${
               isSyncing
                 ? 'cursor-not-allowed bg-gray-800 text-gray-500'
                 : 'bg-purple-500 text-white shadow-lg shadow-purple-500/20 hover:bg-purple-400'
@@ -146,7 +146,7 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
       {/* Empty state */}
       {!isLoading && !isError && matches.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12">
-          <span className="text-3xl">🎮</span>
+          <Gamepad2 className="h-8 w-8 text-gray-600" />
           <p className="mt-3 text-base font-medium text-gray-300">No matches found</p>
           <p className="mt-1 text-sm text-gray-500">
             {queueFilter !== 'all'
@@ -170,8 +170,16 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
             return (
               <div key={m.game_id}>
                 <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setExpandedId(isExpanded ? null : m.game_id)}
-                  className={`${ROW_GRID} cursor-pointer border-b border-gray-800/50 px-4 py-3 transition-colors hover:bg-white/[0.02] ${
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setExpandedId(isExpanded ? null : m.game_id)
+                    }
+                  }}
+                  className={`${ROW_GRID} cursor-pointer border-b border-gray-800/50 px-4 py-3 transition-colors hover:bg-white/[0.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-inset ${
                     isExpanded ? 'bg-white/[0.03]' : ''
                   } bg-gradient-to-r ${
                     m.win
@@ -310,7 +318,7 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
           <button
             onClick={onLoadMore}
             disabled={isLoadingMore}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-[11px] font-bold uppercase tracking-wider transition-all active:scale-95 ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider transition-all active:scale-95 ${
               isLoadingMore
                 ? 'cursor-not-allowed bg-gray-800 text-gray-500'
                 : 'bg-[#0A0A10] text-purple-300 ring-1 ring-purple-500/30 hover:bg-purple-500/10'

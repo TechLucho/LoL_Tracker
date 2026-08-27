@@ -29,6 +29,7 @@ from backend.app.observability import (
     observability_middleware,
     setup_logging,
 )
+from backend.app.ratelimit import RateLimitMiddleware
 from backend.app.routers import (
     config,
     constitution,
@@ -130,6 +131,18 @@ def _hint_windows_event_loop() -> None:
 
 settings = get_settings()
 
+# Sentry: solo si SENTRY_DSN está configurado. Captura errores del backend y los envía
+# a Sentry (self-hosted o saas) para que no se pierdan en silencio.
+if settings.sentry_dsn:
+    import sentry_sdk
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment="production",
+        traces_sample_rate=0.1,
+        send_default_pii=False,
+    )
+    log.info("Sentry inicializado (DSN configurado)")
+
 app = FastAPI(
     title="LoL Tracker API",
     description="Backend del dashboard de rendimiento en ranked. Sustituye al monolito Streamlit.",
@@ -144,6 +157,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RateLimitMiddleware)
 
 
 @app.middleware("http")

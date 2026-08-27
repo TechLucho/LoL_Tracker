@@ -310,7 +310,7 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+            className={`rounded-md px-3 py-2 text-xs font-semibold transition-colors ${
               activeTab === tab.key
                 ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
                 : 'text-gray-500 hover:text-gray-300'
@@ -472,7 +472,7 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
                 <h4 className="text-xs font-bold uppercase tracking-wider text-purple-400">Post-Game Review</h4>
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="rounded-md border border-gray-700 px-3 py-1 text-[11px] font-semibold text-gray-300 transition-colors hover:border-purple-500/50 hover:text-purple-400"
+                  className="rounded-md border border-gray-700 px-3 py-1.5 text-[11px] font-semibold text-gray-300 transition-colors hover:border-purple-500/50 hover:text-purple-400"
                 >
                   Editar
                 </button>
@@ -525,7 +525,7 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
                 {hasReview && (
                   <button
                     onClick={() => setIsEditing(false)}
-                    className="rounded-md px-3 py-1 text-[11px] font-semibold text-gray-500 hover:text-gray-300"
+                    className="rounded-md px-3 py-1.5 text-[11px] font-semibold text-gray-500 hover:text-gray-300"
                   >
                     Cancelar
                   </button>
@@ -585,7 +585,7 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
                     <button
                       key={rating.value}
                       onClick={() => setImpactRating(impactRating === rating.value ? '' : rating.value)}
-                      className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all ${
+                      className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-all ${
                         impactRating === rating.value
                           ? `border-current ${rating.color} bg-current/10`
                           : 'border-gray-700 bg-[#0D0D12] text-gray-500 hover:border-gray-600'
@@ -616,12 +616,12 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setVodReview(!vodReview)}
-                  className={`relative h-5 w-9 rounded-full transition-colors ${
+                  className={`relative h-6 w-11 rounded-full transition-colors ${
                     vodReview ? 'bg-purple-500' : 'bg-gray-700'
                   }`}
                 >
-                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
-                    vodReview ? 'left-[18px]' : 'left-0.5'
+                  <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
+                    vodReview ? 'left-[22px]' : 'left-0.5'
                   }`} />
                 </button>
                 <span className="text-xs font-semibold text-gray-300">VOD Review</span>

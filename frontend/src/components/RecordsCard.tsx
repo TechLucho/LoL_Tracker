@@ -25,9 +25,12 @@ export default function RecordsCard({ matches }: Props) {
         🏆 Records
       </h3>
       {records.length === 0 ? (
-        <p className="text-[11px] text-gray-500">
-          Sincroniza partidas para empezar a registrar récords.
-        </p>
+        <div className="flex flex-col items-center gap-1.5 py-4">
+          <Trophy className="h-5 w-5 text-gray-600" />
+          <p className="text-[11px] text-gray-500">
+            Sincroniza partidas para empezar a registrar récords.
+          </p>
+        </div>
       ) : (
         <div className="flex flex-col gap-1.5">
           {records.map((r) => (

@@ -14,3 +14,9 @@ data/*.db
 
 # Backups de Supabase (contienen datos reales)
 backups/
+
+# Playwright
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+frontend/.playwright/

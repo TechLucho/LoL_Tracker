@@ -149,9 +149,9 @@ export default function SettingsPage() {
                 <span className="text-sm font-semibold text-text-primary">{name}</span>
                 <button
                   onClick={() => removeChampion(name)}
-                  className="ml-1 rounded-full p-0.5 text-text-muted transition-colors hover:bg-red-500/20 hover:text-red-400"
+                  className="ml-1 rounded-full p-1.5 text-text-muted transition-colors hover:bg-red-500/20 hover:text-red-400"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               </div>
             ))}
@@ -193,7 +193,7 @@ export default function SettingsPage() {
                   <button
                     key={c.id}
                     onClick={() => addChampion(c.name)}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-card-hover"
+                    className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors hover:bg-card-hover"
                   >
                     <img
                       src={c.image}
@@ -299,7 +299,7 @@ export default function SettingsPage() {
           <button
             onClick={handleSave}
             disabled={updateMutation.isPending || pool.length === 0}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-all active:scale-95 ${
+            className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold transition-all active:scale-95 ${
               updateMutation.isPending
                 ? 'cursor-not-allowed bg-gray-800 text-gray-500'
                 : 'bg-accent-purple text-white shadow-lg shadow-accent-purple/20 hover:bg-accent-purple-dim'

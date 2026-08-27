@@ -52,6 +52,7 @@ function participant(overrides: Partial<BackendParticipant> = {}): BackendPartic
     vision_score: 25,
     kill_participation: 0.72,
     rating: 66,
+    rating_version: 1,
     ...overrides,
   }
 }

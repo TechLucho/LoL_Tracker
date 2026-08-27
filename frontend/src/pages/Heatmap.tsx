@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Clock, AlertTriangle } from 'lucide-react'
 import { useHeatmapStats } from '../hooks/useHeatmapStats'
 
 const DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
@@ -88,8 +89,8 @@ export default function HeatmapPage() {
       {/* Error */}
       {isError && (
         <div className="flex flex-col items-center justify-center py-16">
-          <span className="text-2xl">⚠️</span>
-          <p className="mt-2 text-sm text-red-400">Error al cargar el heatmap</p>
+          <AlertTriangle className="h-8 w-8 text-red-500/50" />
+          <p className="mt-3 text-sm text-red-400">Error al cargar el heatmap</p>
           <p className="mt-1 text-xs text-gray-500">Asegúrate de que el backend esté corriendo.</p>
         </div>
       )}
@@ -97,7 +98,7 @@ export default function HeatmapPage() {
       {/* Empty */}
       {!isLoading && !isError && totalGames === 0 && (
         <div className="flex flex-col items-center justify-center py-16">
-          <span className="text-3xl">🕐</span>
+          <Clock className="h-8 w-8 text-gray-600" />
           <p className="mt-3 text-sm font-medium text-gray-300">No hay datos de horarios</p>
           <p className="mt-1 text-xs text-gray-500">Sincroniza partidas para generar el mapa de calor.</p>
         </div>
@@ -106,8 +107,9 @@ export default function HeatmapPage() {
       {/* Heatmap Grid */}
       {!isLoading && !isError && cells && totalGames > 0 && (
         <div className="rounded-xl border border-gray-800 bg-[#14141C] p-4">
+          <div className="overflow-x-auto">
           {/* Column Headers */}
-          <div className="mb-2 grid grid-cols-[100px_repeat(4,1fr)] gap-2">
+          <div className="mb-2 grid grid-cols-[72px_repeat(4,1fr)] min-w-[400px] gap-2">
             <div /> {/* empty corner */}
             {TIME_BLOCKS.map((tb) => (
               <div key={tb} className="text-center">
@@ -121,7 +123,7 @@ export default function HeatmapPage() {
           {/* Rows */}
           <div className="space-y-2">
             {DAYS.map((dayLabel, dayIdx) => (
-              <div key={dayIdx} className="grid grid-cols-[100px_repeat(4,1fr)] gap-2">
+              <div key={dayIdx} className="grid grid-cols-[72px_repeat(4,1fr)] min-w-[400px] gap-2">
                 {/* Day label */}
                 <div className="flex items-center">
                   <span className="text-xs font-bold text-gray-400">{dayLabel}</span>
@@ -183,6 +185,7 @@ export default function HeatmapPage() {
                 })}
               </div>
             ))}
+          </div>
           </div>
 
           {/* Legend */}

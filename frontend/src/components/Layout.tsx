@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { ErrorBoundary } from 'react-error-boundary'
+import * as Sentry from '@sentry/react'
 import {
   Crosshair,
   LayoutDashboard,
@@ -38,7 +39,7 @@ function SidebarContent({ onNavigate, onClose }: { onNavigate?: () => void; onCl
         end={item.to === '/'}
         onClick={onNavigate}
         className={({ isActive }) =>
-          `flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+          `flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-xs font-medium transition-colors ${
             isActive
               ? 'bg-accent-purple/15 text-accent-purple'
               : 'text-text-secondary hover:bg-card-hover hover:text-text-primary'
@@ -61,7 +62,7 @@ function SidebarContent({ onNavigate, onClose }: { onNavigate?: () => void; onCl
             type="button"
             onClick={onClose}
             aria-label="Cerrar menú"
-            className="ml-auto rounded-lg p-1 text-text-secondary transition-colors hover:bg-card-hover hover:text-text-primary"
+            className="ml-auto rounded-lg p-2 text-text-secondary transition-colors hover:bg-card-hover hover:text-text-primary"
           >
             <X className="h-4 w-4" />
           </button>
@@ -117,7 +118,7 @@ export default function Layout() {
           onClick={() => setDrawerOpen(true)}
           aria-label="Abrir menú de navegación"
           aria-expanded={drawerOpen}
-          className="rounded-lg p-1.5 text-text-secondary transition-colors hover:bg-card-hover hover:text-text-primary"
+          className="rounded-lg p-2.5 text-text-secondary transition-colors hover:bg-card-hover hover:text-text-primary"
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -159,7 +160,11 @@ export default function Layout() {
               nuevo con pestaña vieja) o una página revienta en render, se muestra PageError en vez
               de la pantalla blanca. resetKeys lo resetea al navegar a otra página. */}
           <div key={location.pathname} className="animate-page-enter">
-            <ErrorBoundary FallbackComponent={PageError} resetKeys={[location.pathname]}>
+            <ErrorBoundary
+              FallbackComponent={PageError}
+              resetKeys={[location.pathname]}
+              onError={(error) => Sentry.captureException(error)}
+            >
               <Suspense fallback={<PageLoader />}>
                 <Outlet />
               </Suspense>

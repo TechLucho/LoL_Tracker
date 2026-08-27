@@ -184,7 +184,7 @@ export default function ConstitutionPage() {
         <p className="mt-1 text-xs text-gray-600">
           Promete mejorar y vuelve cuando estés listo.
         </p>
-        <button className="mt-4 rounded-lg border border-purple-500/30 bg-purple-500/10 px-6 py-2.5 text-xs font-bold text-purple-400 transition-colors hover:bg-purple-500/20">
+        <button className="mt-4 rounded-lg border border-purple-500/30 bg-purple-500/10 px-6 py-3 text-xs font-bold text-purple-400 transition-colors hover:bg-purple-500/20">
           🛡️ Prometo Mejorar
         </button>
       </div>

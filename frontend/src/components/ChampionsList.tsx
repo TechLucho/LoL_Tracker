@@ -1,3 +1,4 @@
+import { Crosshair } from 'lucide-react'
 import type { ChampionPerf } from '../api/client'
 import { DDragon } from '../data/constants'
 import { useIcons } from '../hooks/useMetadata'
@@ -25,9 +26,12 @@ export default function ChampionsList({ champions, isLoading = false }: Props) {
       {isLoading && <div className="shimmer h-24 rounded-lg bg-gray-800/30" />}
 
       {!isLoading && visible.length === 0 && (
-        <p className="text-[11px] text-gray-500">
-          Sincroniza partidas para ver el rendimiento de tus campeones.
-        </p>
+        <div className="flex flex-col items-center gap-1.5 py-4">
+          <Crosshair className="h-5 w-5 text-gray-600" />
+          <p className="text-[11px] text-gray-500">
+            Sincroniza partidas para ver el rendimiento de tus campeones.
+          </p>
+        </div>
       )}
 
       {visible.length > 0 && (

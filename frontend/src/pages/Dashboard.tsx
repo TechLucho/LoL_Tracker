@@ -73,7 +73,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_280px]">
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_280px] 2xl:grid-cols-[1fr_320px]">
         {/* Main Column */}
         <div className="space-y-3">
           <FormCheckCard matches={matches} />

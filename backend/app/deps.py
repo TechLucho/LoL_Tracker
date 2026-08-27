@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import secrets
 from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, status
@@ -28,10 +29,13 @@ async def require_token(
     Si `APP_API_TOKEN` está vacío (uso local), no se exige nada. En cuanto se define —por ejemplo
     al desplegar en una VPS— pasa a ser obligatorio. La clave de Riot y las credenciales de DB
     nunca salen del backend en ninguno de los dos casos.
+
+    La comparación usa `secrets.compare_digest` para prevenir ataques de timing: un atacante
+    que mida el tiempo de respuesta no puede inferir cuántos bytes coinciden.
     """
     if not settings.app_api_token:
         return
-    if x_api_token != settings.app_api_token:
+    if x_api_token is None or not secrets.compare_digest(x_api_token, settings.app_api_token):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token inválido o ausente (header X-API-Token).",

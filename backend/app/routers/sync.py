@@ -17,6 +17,7 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from backend.app.deps import RiotServiceDep, SettingsDep
 from backend.app.repositories import lp as lp_repo
 from backend.app.repositories import matches as repo
+from backend.app.repositories import sync_runs
 from backend.app.schemas import LpCapture, SyncAccepted, SyncError, SyncResult, SyncStatus
 from backend.app.services.riot import RiotService, RiotServiceError
 
@@ -83,9 +84,17 @@ async def _capture_ranked_lp(riot: RiotService, riot_id: str) -> LpCapture | Non
     return None
 
 
-async def _run_sync(riot: RiotService, target: str, limit: int, queue_ids: list[int]) -> None:
+async def _run_sync(riot: RiotService, target: str, limit: int, queue_ids: list[int],
+                     *, run_id: int) -> None:
     """Cuerpo del sync. Corre como BackgroundTask: NUNCA debe lanzar una excepción sin
-    capturar, porque moriría en silencio y el frontend se quedaría sondeando 'processing'."""
+    capturar, porque moriría en silencio y el frontend se quedaría sondeando 'processing'.
+
+    Persiste el resultado final en sync_runs (tabla de auditoría, migración 006). El
+    _SyncState en memoria se sigue actualizando para el polling rápido del frontend.
+    """
+    inserted = 0
+    error_msg: str | None = None
+
     try:
         all_matches = []
         all_failures = []
@@ -124,14 +133,23 @@ async def _run_sync(riot: RiotService, target: str, limit: int, queue_ids: list[
         _state.status = "success"
     except RiotServiceError as exc:
         log.error("Sync falló: %s", exc)
-        _state.error = str(exc)
+        error_msg = str(exc)
+        _state.error = error_msg
         _state.status = "error"
     except Exception as exc:  # noqa: BLE001
         log.exception("Sync falló con excepción inesperada")
-        _state.error = f"Error inesperado: {exc}"
+        error_msg = f"Error inesperado: {exc}"
+        _state.error = error_msg
         _state.status = "error"
     finally:
         _state.finished_at = datetime.now(UTC)
+        await sync_runs.finish_run(
+            run_id,
+            status=_state.status,
+            finished_at=_state.finished_at,
+            matches_added=inserted,
+            error_message=error_msg,
+        )
 
 
 @router.post("", response_model=SyncAccepted, status_code=202)
@@ -171,7 +189,8 @@ async def sync(
     _state.finished_at = None
     _state.result = None
     _state.error = None
-    background_tasks.add_task(_run_sync, riot, target, limit, queue_ids)
+    run_id = await sync_runs.start_run(_state.started_at)
+    background_tasks.add_task(_run_sync, riot, target, limit, queue_ids, run_id=run_id)
 
     return SyncAccepted(
         status="processing",

@@ -1,5 +1,21 @@
 import axios from 'axios'
-import type { BackendMatch, SyncAccepted, SyncStatus, UserSettings, UserSettingsUpdate, MatchReviewUpdate } from '../data/types'
+import type { MatchReviewUpdate } from '../data/types'
+import type {
+  BackendMatch,
+  HealthStatus,
+  ChampionsIndex,
+  ItemsIndex,
+  SpellsIndex,
+  UserSettings,
+  UserSettingsUpdate,
+  ChampionStats,
+  HeatmapCell,
+  SyncStatus,
+  SyncAccepted,
+} from './generated'
+
+// Re-export generated types that are used by other modules.
+export type { BackendMatch, HealthStatus, ChampionStats, HeatmapCell, ChampionMeta } from './generated'
 
 // Producción: la URL deja de estar hardcodeada (VITE_API_URL en el build del hosting) y cae
 // al origen de desarrollo local si no está definida.
@@ -40,13 +56,6 @@ export async function getSyncStatus(): Promise<SyncStatus> {
   return data
 }
 
-export interface HealthStatus {
-  status: 'ok' | 'degraded'
-  database: boolean
-  riot_key_present: boolean
-  warnings: string[]
-}
-
 export async function getHealthStatus(): Promise<HealthStatus> {
   // El cliente añade /api al baseURL -> resuelve contra GET /api/health.
   const { data } = await api.get<HealthStatus>('/health')
@@ -54,45 +63,6 @@ export async function getHealthStatus(): Promise<HealthStatus> {
 }
 
 // ───────────────────────── metadatos (Data Dragon vía backend) ─────────────────────────
-
-export interface ChampionMeta {
-  /** Id de Data Dragon ('LeeSin'), clave del diccionario. */
-  id: string
-  /** Nombre visible ('Lee Sin') — el mismo que guardan matches.champion / participant.champion_name. */
-  name: string
-  title: string
-  description: string
-  image: string
-}
-
-export interface ItemMeta {
-  id: number
-  name: string
-  description: string
-  image: string
-}
-
-export interface SpellMeta {
-  id: number
-  name: string
-  description: string
-  image: string
-}
-
-export interface ChampionsIndex {
-  patch: string
-  champions: Record<string, ChampionMeta>
-}
-
-export interface ItemsIndex {
-  patch: string
-  items: Record<string, ItemMeta>
-}
-
-export interface SpellsIndex {
-  patch: string
-  spells: Record<string, SpellMeta>
-}
 
 export async function getChampionIndex(): Promise<ChampionsIndex> {
   const { data } = await api.get<ChampionsIndex>('/metadata/champions')
@@ -124,6 +94,10 @@ export async function updateMatchReview(gameId: string, review: MatchReviewUpdat
   return data
 }
 
+// ────────────────── ConstitutionStatus (shape diferente del backend) ──────────────────
+// El frontend transforma la respuesta del backend en una forma más rica con reglas
+// desglosadas y estadísticas. Este tipo NO viene del schema OpenAPI.
+
 export interface ConstitutionRule {
   rule: string
   status: 'PASS' | 'FAIL'
@@ -151,6 +125,8 @@ export async function getConstitutionStatus(): Promise<ConstitutionStatus> {
   return data
 }
 
+// ────────────────── LpTrendPoint (computado en el router, no es schema Pydantic) ──────
+
 export interface LpTrendPoint {
   game_id: string
   date: string
@@ -169,31 +145,13 @@ export async function getLpTrend(limit = 30, queue?: number): Promise<LpTrendPoi
   return data
 }
 
-export interface ChampionPerf {
-  champion: string
-  games_played: number
-  wins: number
-  winrate: number
-  avg_kills: number
-  avg_deaths: number
-  avg_assists: number
-  kda_ratio: number
-  avg_cs_min: number
-  avg_dpm: number
-}
+// ────────────────── ChampionPerf (alias del schema ChampionStats) ────────────────────
 
-export async function getChampionStats(): Promise<ChampionPerf[]> {
-  const { data } = await api.get<ChampionPerf[]>('/stats/champions')
+export type ChampionPerf = ChampionStats
+
+export async function getChampionStats(): Promise<ChampionStats[]> {
+  const { data } = await api.get<ChampionStats[]>('/stats/champions')
   return data
-}
-
-export interface HeatmapCell {
-  day_of_week: number
-  time_block: string
-  games_played: number
-  wins: number
-  losses: number
-  winrate: number
 }
 
 export async function getHeatmapStats(): Promise<HeatmapCell[]> {

@@ -10,7 +10,7 @@ function computeKDA(kills: number, deaths: number, assists: number): number {
   return +((kills + assists) / deaths).toFixed(2)
 }
 
-function formatDuration(minutes: number | null): string {
+function formatDuration(minutes: number | null | undefined): string {
   if (!minutes) return '--:--'
   const m = Math.floor(minutes)
   const s = Math.round((minutes - m) * 60)
@@ -58,7 +58,7 @@ function computeRating(win: boolean, kda: number, csMin: number, kp: number, dea
 }
 
 function findPlayerParticipant(
-  participants: BackendParticipant[] | null,
+  participants: BackendParticipant[] | null | undefined,
   champion: string,
 ): BackendParticipant | undefined {
   if (!participants) return undefined
@@ -75,7 +75,7 @@ export function mapBackendToUI(m: BackendMatch): UIMatch {
 
   // Use real spell IDs from participant data if available
   const spells: [number, number] = me
-    ? [me.summoner_spells[0] ?? 4, me.summoner_spells[1] ?? 4]
+    ? [me.summoner_spells?.[0] ?? 4, me.summoner_spells?.[1] ?? 4]
     : [12, 4]
 
   // Use real damage numbers if available from participant data
@@ -110,7 +110,7 @@ export function mapBackendToUI(m: BackendMatch): UIMatch {
     kill_participation,
     dpm,
     rating,
-    queue_id: m.queue_id,
+    queue_id: m.queue_id ?? null,
     participants: m.participants?.map((p) => ({
       champion_name: p.champion_name,
       puuid: p.puuid,
@@ -119,8 +119,8 @@ export function mapBackendToUI(m: BackendMatch): UIMatch {
       deaths: p.deaths,
       assists: p.assists,
       cs: p.cs,
-      items: p.items,
-      summoner_spells: p.summoner_spells,
+      items: p.items ?? [],
+      summoner_spells: p.summoner_spells ?? [],
       team_id: p.team_id,
       team_position: p.team_position,
       win: p.win,
@@ -131,11 +131,11 @@ export function mapBackendToUI(m: BackendMatch): UIMatch {
       kill_participation: p.kill_participation,
       rating: p.rating,
     })) ?? null,
-    lp_change: m.lp_change,
-    tilt_level: m.tilt_level,
-    impact_rating: m.impact_rating,
-    notes: m.notes,
-    vod_review: m.vod_review,
+    lp_change: m.lp_change ?? null,
+    tilt_level: m.tilt_level ?? null,
+    impact_rating: m.impact_rating ?? null,
+    notes: m.notes ?? null,
+    vod_review: m.vod_review ?? null,
   }
 }
 

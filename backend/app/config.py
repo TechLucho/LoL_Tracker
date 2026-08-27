@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     app_api_token: str = ""  # si está vacío, la API queda abierta (uso local)
     pool_min_size: int = 1
     pool_max_size: int = 5
+    sentry_dsn: str = ""  # si está vacío, Sentry no se inicializa
 
     @field_validator("riot_region")
     @classmethod

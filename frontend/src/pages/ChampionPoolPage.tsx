@@ -1,3 +1,4 @@
+import { Crosshair, AlertTriangle } from 'lucide-react'
 import { useChampionStats } from '../hooks/useChampionStats'
 import { DDragon } from '../data/constants'
 
@@ -28,8 +29,8 @@ export default function ChampionPoolPage() {
       {/* Error */}
       {isError && (
         <div className="flex flex-col items-center justify-center py-16">
-          <span className="text-2xl">⚠️</span>
-          <p className="mt-2 text-sm text-red-400">Error al cargar campeones</p>
+          <AlertTriangle className="h-8 w-8 text-red-500/50" />
+          <p className="mt-3 text-sm text-red-400">Error al cargar campeones</p>
           <p className="mt-1 text-xs text-gray-500">Asegúrate de que el backend esté corriendo.</p>
         </div>
       )}
@@ -37,7 +38,7 @@ export default function ChampionPoolPage() {
       {/* Empty */}
       {!isLoading && !isError && champions && champions.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16">
-          <span className="text-3xl">🎮</span>
+          <Crosshair className="h-8 w-8 text-gray-600" />
           <p className="mt-3 text-sm font-medium text-gray-300">No hay datos de campeones</p>
           <p className="mt-1 text-xs text-gray-500">Sincroniza partidas primero para ver estadísticas.</p>
         </div>
@@ -71,7 +72,7 @@ export default function ChampionPoolPage() {
                 className="flex items-center gap-4 rounded-xl border border-gray-800 bg-[#14141C] px-4 py-3 transition-colors hover:bg-[#1A1A24]"
               >
                 {/* Champion Icon + Name */}
-                <div className="flex min-w-[140px] items-center gap-3">
+                <div className="flex min-w-0 flex-1 items-center gap-3 sm:min-w-[140px]">
                   <img
                     src={DDragon.champion(c.champion)}
                     alt={c.champion}
@@ -89,7 +90,7 @@ export default function ChampionPoolPage() {
                 </div>
 
                 {/* Winrate Bar */}
-                <div className="min-w-[160px] flex-1">
+                <div className="min-w-0 flex-1 sm:min-w-[160px]">
                   <div className="mb-1 flex items-center justify-between">
                     <span className={`font-mono text-sm font-black ${wrTextColor}`}>
                       {wr.toFixed(1)}%

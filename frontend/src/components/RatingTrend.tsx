@@ -1,3 +1,4 @@
+import { TrendingUp } from 'lucide-react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { useLpTrend } from '../hooks/useLpTrend'
 
@@ -60,7 +61,8 @@ export default function RatingTrend() {
       )}
 
       {!isLoading && !isError && data && data.length === 0 && (
-        <div className="flex h-32 items-center justify-center">
+        <div className="flex h-32 flex-col items-center justify-center gap-1.5">
+          <TrendingUp className="h-5 w-5 text-gray-600" />
           <p className="text-[11px] text-gray-500">Registra tu primer LP para ver la tendencia</p>
         </div>
       )}

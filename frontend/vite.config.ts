@@ -8,8 +8,6 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      // autoUpdate: el SW se registra solo (inyección en index.html, sin tocar main.tsx)
-      // y la nueva versión se activa en cuanto está disponible.
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
@@ -24,10 +22,6 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            // ⚠️ PLACEHOLDERS generados (fondo oscuro + glifo ⚔). Sustituir por el arte
-            // real colocando las imágenes en frontend/public/ con estos mismos nombres
-            // (o actualizando las rutas aquí). El 512 se declara dos veces para cubrir
-            // los propósitos 'any' y 'maskable' que Android espera por separado.
             src: '/pwa-192.png',
             sizes: '192x192',
             type: 'image/png',
@@ -47,8 +41,6 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // SPA con HashRouter: cualquier navegación cae en index.html cacheado, así la app
-        // arranca incluso sin red (los datos siguen viniendo de Supabase cuando haya).
         navigateFallback: 'index.html',
         globPatterns: ['**/*.{js,css,html,svg,png}'],
       },
@@ -60,7 +52,8 @@ export default defineConfig({
     },
   },
   test: {
-    environment: 'node',
+    environment: 'jsdom',
     include: ['src/**/*.test.{ts,tsx}'],
+    setupFiles: ['./src/test-setup.ts'],
   },
 })

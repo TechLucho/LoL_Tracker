@@ -1,3 +1,4 @@
+import { LineChart } from 'lucide-react'
 import type { UIMatch } from '../data/types'
 import { computePerformanceNotes } from '../data/insights'
 
@@ -20,9 +21,12 @@ export default function PerformanceNotes({ matches }: Props) {
       </div>
 
       {notes.length === 0 ? (
-        <p className="py-4 text-center text-xs text-gray-500">
-          Sincroniza partidas para detectar patrones de rendimiento.
-        </p>
+        <div className="flex flex-col items-center gap-1.5 py-6">
+          <LineChart className="h-5 w-5 text-gray-600" />
+          <p className="text-xs text-gray-500">
+            Sincroniza partidas para detectar patrones de rendimiento.
+          </p>
+        </div>
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
           {notes.map((note) => {

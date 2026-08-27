@@ -1,4 +1,4 @@
-import { ArrowUp, ArrowDown, Minus } from 'lucide-react'
+import { ArrowUp, ArrowDown, Minus, BarChart3 } from 'lucide-react'
 import type { FormCheckMetric, UIMatch } from '../data/types'
 import { computeFormCheck, metricTrend } from '../data/insights'
 
@@ -58,9 +58,12 @@ export default function FormCheckCard({ matches }: FormCheckCardProps) {
       </div>
 
       {!groups ? (
-        <p className="py-6 text-center text-xs text-gray-500">
-          Necesitas al menos 8 partidas sincronizadas para comparar tu forma.
-        </p>
+        <div className="flex flex-col items-center gap-1.5 py-6">
+          <BarChart3 className="h-5 w-5 text-gray-600" />
+          <p className="text-xs text-gray-500">
+            Necesitas al menos 8 partidas sincronizadas para comparar tu forma.
+          </p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           {/* Improving */}

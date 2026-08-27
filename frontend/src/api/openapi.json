@@ -1,0 +1,2515 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "LoL Tracker API",
+    "description": "Backend del dashboard de rendimiento en ranked. Sustituye al monolito Streamlit.",
+    "version": "2.0.0-dev"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health",
+        "operationId": "health_api_health_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/matches": {
+      "get": {
+        "tags": [
+          "matches"
+        ],
+        "summary": "List Matches",
+        "operationId": "list_matches_api_matches_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 10,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          },
+          {
+            "name": "queue",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filtro: 'ranked' o 'normal'",
+              "title": "Queue"
+            },
+            "description": "Filtro: 'ranked' o 'normal'"
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Match"
+                  },
+                  "title": "Response List Matches Api Matches Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/matches/{game_id}": {
+      "get": {
+        "tags": [
+          "matches"
+        ],
+        "summary": "Get Match",
+        "operationId": "get_match_api_matches__game_id__get",
+        "parameters": [
+          {
+            "name": "game_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Game Id"
+            }
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Match"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "matches"
+        ],
+        "summary": "Update Match",
+        "description": "Actualiza s\u00f3lo los campos presentes en el body.\n\nEnviar `\"notes\": null` borra las notas; omitir `notes` las deja intactas. El monolito no pod\u00eda\ndistinguir estos dos casos.",
+        "operationId": "update_match_api_matches__game_id__patch",
+        "parameters": [
+          {
+            "name": "game_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Game Id"
+            }
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Match"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/summary": {
+      "get": {
+        "tags": [
+          "stats"
+        ],
+        "summary": "Summary",
+        "description": "Promedios como n\u00fameros. El monolito devolv\u00eda la KDA como el string \"5.0 / 2.0 / 10.0\",\nque la UI re-parseaba con `.split('/')` \u2014 origen del bug de `app.py:128`.",
+        "operationId": "summary_api_stats_summary_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsSummary"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/champions": {
+      "get": {
+        "tags": [
+          "stats"
+        ],
+        "summary": "Champions",
+        "description": "Incluye `winrate` y `kda_ratio` calculados en SQL: las dos columnas que la Tab 3 de\nStreamlit ped\u00eda y que la query nunca devolv\u00eda.",
+        "operationId": "champions_api_stats_champions_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChampionStats"
+                  },
+                  "title": "Response Champions Api Stats Champions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/heatmap": {
+      "get": {
+        "tags": [
+          "stats"
+        ],
+        "summary": "Heatmap",
+        "operationId": "heatmap_api_stats_heatmap_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/HeatmapCell"
+                  },
+                  "title": "Response Heatmap Api Stats Heatmap Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/lp-trend": {
+      "get": {
+        "tags": [
+          "stats"
+        ],
+        "summary": "Lp Trend",
+        "description": "LP acumulado en orden cronol\u00f3gico. `has_lp` distingue \"0 LP\" de \"a\u00fan sin registrar\".\n\n`queue` acota la cola (420 = Solo/Duo): las normales sin LP diluyen la curva si cuentan como 0.",
+        "operationId": "lp_trend_api_stats_lp_trend_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "queue",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Queue"
+            }
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response Lp Trend Api Stats Lp Trend Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/constitution": {
+      "get": {
+        "tags": [
+          "stats"
+        ],
+        "summary": "Constitution Status",
+        "operationId": "constitution_status_api_stats_constitution_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConstitutionStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scout/nemesis": {
+      "get": {
+        "tags": [
+          "scout"
+        ],
+        "summary": "Nemesis",
+        "operationId": "nemesis_api_scout_nemesis_get",
+        "parameters": [
+          {
+            "name": "min_games",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 2,
+              "title": "Min Games"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 20,
+              "minimum": 1,
+              "default": 5,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Nemesis"
+                  },
+                  "title": "Response Nemesis Api Scout Nemesis Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/scout/matchups": {
+      "get": {
+        "tags": [
+          "scout"
+        ],
+        "summary": "Matchups",
+        "description": "Busca por campe\u00f3n propio, enemigo o ambos.\n\nAmbos filtros usan `ILIKE`: en Streamlit la b\u00fasqueda con los dos campos era case-sensitive y\nla de s\u00f3lo-enemigo no, as\u00ed que \"jax\" funcionaba en un caso y no en el otro. Adem\u00e1s, buscar\ns\u00f3lo por campe\u00f3n propio aqu\u00ed s\u00ed devuelve resultados (antes el input no hac\u00eda nada).",
+        "operationId": "matchups_api_scout_matchups_get",
+        "parameters": [
+          {
+            "name": "champion",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Campe\u00f3n propio (subcadena, case-insensitive)",
+              "title": "Champion"
+            },
+            "description": "Campe\u00f3n propio (subcadena, case-insensitive)"
+          },
+          {
+            "name": "enemy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Campe\u00f3n enemigo (subcadena, case-insensitive)",
+              "title": "Enemy"
+            },
+            "description": "Campe\u00f3n enemigo (subcadena, case-insensitive)"
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Match"
+                  },
+                  "title": "Response Matchups Api Scout Matchups Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sync": {
+      "post": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Sync",
+        "description": "Encola la sincronizaci\u00f3n y responde al instante (202).\n\nLa validaci\u00f3n (Riot ID, colas) sigue siendo s\u00edncrona: los errores de petici\u00f3n se reportan\naqu\u00ed, no en el polling. Los fallos de Riot/DB viajan despu\u00e9s por `/status`.",
+        "operationId": "sync_api_sync_post",
+        "parameters": [
+          {
+            "name": "riot_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Por defecto, el RIOT_ID del .env",
+              "title": "Riot Id"
+            },
+            "description": "Por defecto, el RIOT_ID del .env"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 10,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "queues",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "IDs de cola separados por coma (420=Solo/Duo, 400=Normal Draft). Default: ambos.",
+              "default": "420,400",
+              "title": "Queues"
+            },
+            "description": "IDs de cola separados por coma (420=Solo/Duo, 400=Normal Draft). Default: ambos."
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncAccepted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sync/status": {
+      "get": {
+        "tags": [
+          "sync"
+        ],
+        "summary": "Sync Status",
+        "description": "Estado del sync para el polling del frontend (idle/processing/success/error).",
+        "operationId": "sync_status_api_sync_status_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/config": {
+      "get": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Get Config",
+        "description": "Config completa: can\u00f3nicos del sistema + configuraci\u00f3n persistida del usuario.\n\nEn Streamlit, `IMPACT_RATINGS` estaba hardcodeado en dos formularios distintos con riesgo\nde divergencia. Ahora vive en un solo sitio y se sirve desde la API.",
+        "operationId": "get_config_api_config_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSettings"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Update Config",
+        "description": "Reemplaza champion pool y OKRs (PUT semantics).\n\nEl pool se limpia en el servidor: quita blancos y duplicados, respeta el m\u00e1ximo de 3\n(regla de La Constituci\u00f3n).",
+        "operationId": "update_config_api_config_put",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserSettingsUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSettings"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/datadragon/version": {
+      "get": {
+        "tags": [
+          "config"
+        ],
+        "summary": "Get Datadragon Version",
+        "description": "Parche actual de Data Dragon. El frontend lo usa para URLs de iconos.\n\nResuelve din\u00e1micamente el hardcodeo de `current_patch = \"14.24.1\"` (app.py:530).\nCach\u00e9 de 1h en el backend.",
+        "operationId": "get_datadragon_version_api_datadragon_version_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response Get Datadragon Version Api Datadragon Version Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/constitution/status": {
+      "get": {
+        "tags": [
+          "constitution"
+        ],
+        "summary": "Constitution Status",
+        "operationId": "constitution_status_api_constitution_status_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Constitution Status Api Constitution Status Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/metadata/champions": {
+      "get": {
+        "tags": [
+          "metadata"
+        ],
+        "summary": "Champions",
+        "description": "Campeones del parche vigente. Clave = id de Data Dragon ('LeeSin'); `name` es el nombre\nvisible que la DB guarda en matches.champion/participants.champion_name.",
+        "operationId": "champions_api_metadata_champions_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChampionsIndex"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/metadata/items": {
+      "get": {
+        "tags": [
+          "metadata"
+        ],
+        "summary": "Items",
+        "description": "Objetos del parche vigente. Clave = id num\u00e9rico de Riot ('3078').",
+        "operationId": "items_api_metadata_items_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemsIndex"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/metadata/spells": {
+      "get": {
+        "tags": [
+          "metadata"
+        ],
+        "summary": "Spells",
+        "description": "Hechizos de invocador. Clave = id num\u00e9rico de partida ('4' = Flash).",
+        "operationId": "spells_api_metadata_spells_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpellsIndex"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/metrics": {
+      "get": {
+        "tags": [
+          "observability"
+        ],
+        "summary": "Metrics",
+        "operationId": "metrics_api_metrics_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsSnapshot"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ChampionMeta": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Id de Data Dragon ('LeeSin'), clave del dict"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Nombre visible ('Lee Sin') \u2014 as\u00ed se guarda en matches.champion"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "default": ""
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "image": {
+            "type": "string",
+            "title": "Image",
+            "description": "URL absoluta del cuadrado en Data Dragon"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "image"
+        ],
+        "title": "ChampionMeta"
+      },
+      "ChampionStats": {
+        "properties": {
+          "champion": {
+            "type": "string",
+            "title": "Champion"
+          },
+          "games_played": {
+            "type": "integer",
+            "title": "Games Played"
+          },
+          "wins": {
+            "type": "integer",
+            "title": "Wins"
+          },
+          "winrate": {
+            "type": "number",
+            "title": "Winrate"
+          },
+          "avg_kills": {
+            "type": "number",
+            "title": "Avg Kills"
+          },
+          "avg_deaths": {
+            "type": "number",
+            "title": "Avg Deaths"
+          },
+          "avg_assists": {
+            "type": "number",
+            "title": "Avg Assists"
+          },
+          "kda_ratio": {
+            "type": "number",
+            "title": "Kda Ratio"
+          },
+          "avg_cs_min": {
+            "type": "number",
+            "title": "Avg Cs Min"
+          },
+          "avg_dpm": {
+            "type": "number",
+            "title": "Avg Dpm",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "champion",
+          "games_played",
+          "wins",
+          "winrate",
+          "avg_kills",
+          "avg_deaths",
+          "avg_assists",
+          "kda_ratio",
+          "avg_cs_min"
+        ],
+        "title": "ChampionStats",
+        "description": "Incluye `winrate` y `kda_ratio`, que la query original nunca devolv\u00eda pese a que la\nTab 3 las ped\u00eda -> KeyError permanente. Ahora se calculan en SQL."
+      },
+      "ChampionsIndex": {
+        "properties": {
+          "patch": {
+            "type": "string",
+            "title": "Patch"
+          },
+          "champions": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ChampionMeta"
+            },
+            "type": "object",
+            "title": "Champions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "patch",
+          "champions"
+        ],
+        "title": "ChampionsIndex"
+      },
+      "ConstitutionStatus": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "STOP",
+              "ON_FIRE",
+              "NEUTRAL",
+              "NO_DATA"
+            ],
+            "title": "State"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "loss_streak": {
+            "type": "integer",
+            "title": "Loss Streak"
+          },
+          "last_results": {
+            "items": {
+              "type": "boolean"
+            },
+            "type": "array",
+            "title": "Last Results",
+            "description": "M\u00e1s reciente primero; True = victoria"
+          },
+          "last_champion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Champion",
+            "description": "Campe\u00f3n de la \u00faltima partida"
+          },
+          "off_pool": {
+            "type": "boolean",
+            "title": "Off Pool",
+            "description": "La \u00faltima partida fue fuera del champion pool",
+            "default": false
+          },
+          "champion_pool": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Champion Pool",
+            "description": "Pool declarado, para contexto"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state",
+          "message",
+          "loss_streak",
+          "last_results"
+        ],
+        "title": "ConstitutionStatus",
+        "description": "La regla anti-tilt, movida del sidebar de Streamlit al backend.\n\nIncluye la comprobaci\u00f3n de champion pool contra la configuraci\u00f3n **persistida**, de modo que\nla alerta de \"has jugado algo fuera de tus mains\" ya no depende de un `text_area` vol\u00e1til."
+      },
+      "EndpointMetric": {
+        "properties": {
+          "method": {
+            "type": "string",
+            "title": "Method"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path",
+            "description": "Plantilla de ruta ('/api/matches/{game_id}'), no el path literal"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          },
+          "errors": {
+            "type": "integer",
+            "title": "Errors",
+            "description": "Peticiones terminadas en 5xx o excepci\u00f3n"
+          },
+          "p50_ms": {
+            "type": "number",
+            "title": "P50 Ms"
+          },
+          "p95_ms": {
+            "type": "number",
+            "title": "P95 Ms"
+          },
+          "max_ms": {
+            "type": "number",
+            "title": "Max Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "method",
+          "path",
+          "count",
+          "errors",
+          "p50_ms",
+          "p95_ms",
+          "max_ms"
+        ],
+        "title": "EndpointMetric"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthStatus": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded"
+            ],
+            "title": "Status"
+          },
+          "database": {
+            "type": "boolean",
+            "title": "Database"
+          },
+          "riot_key_present": {
+            "type": "boolean",
+            "title": "Riot Key Present"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings",
+            "default": []
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "database",
+          "riot_key_present"
+        ],
+        "title": "HealthStatus"
+      },
+      "HeatmapCell": {
+        "properties": {
+          "day_of_week": {
+            "type": "integer",
+            "maximum": 6.0,
+            "minimum": 0.0,
+            "title": "Day Of Week",
+            "description": "0 = Domingo, 1 = Lunes ... 6 = S\u00e1bado"
+          },
+          "time_block": {
+            "type": "string",
+            "title": "Time Block",
+            "description": "Madrugada | Ma\u00f1ana | Tarde | Noche"
+          },
+          "games_played": {
+            "type": "integer",
+            "title": "Games Played"
+          },
+          "wins": {
+            "type": "integer",
+            "title": "Wins"
+          },
+          "losses": {
+            "type": "integer",
+            "title": "Losses"
+          },
+          "winrate": {
+            "type": "number",
+            "title": "Winrate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "day_of_week",
+          "time_block",
+          "games_played",
+          "wins",
+          "losses",
+          "winrate"
+        ],
+        "title": "HeatmapCell"
+      },
+      "ItemMeta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "description": "Descripci\u00f3n sin etiquetas HTML",
+            "default": ""
+          },
+          "image": {
+            "type": "string",
+            "title": "Image"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "image"
+        ],
+        "title": "ItemMeta"
+      },
+      "ItemsIndex": {
+        "properties": {
+          "patch": {
+            "type": "string",
+            "title": "Patch"
+          },
+          "items": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ItemMeta"
+            },
+            "type": "object",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "patch",
+          "items"
+        ],
+        "title": "ItemsIndex"
+      },
+      "LpCapture": {
+        "properties": {
+          "lp": {
+            "type": "integer",
+            "title": "Lp"
+          },
+          "tier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tier"
+          },
+          "division": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Division"
+          },
+          "delta_assigned": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Assigned"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lp"
+        ],
+        "title": "LpCapture",
+        "description": "LP de Solo/Duo capturado autom\u00e1ticamente al cerrar el sync (League-V4).\n\n`delta_assigned` es el LP neto escrito como `lp_change` en la partida m\u00e1s reciente sin\nreview manual; None cuando no hab\u00eda snapshot previo (l\u00ednea base), delta 0, o ninguna\npartida candidata. Nunca sobrescribe una review del usuario."
+      },
+      "Match": {
+        "properties": {
+          "game_id": {
+            "type": "string",
+            "title": "Game Id"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Date"
+          },
+          "champion": {
+            "type": "string",
+            "title": "Champion"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "kills": {
+            "type": "integer",
+            "title": "Kills"
+          },
+          "deaths": {
+            "type": "integer",
+            "title": "Deaths"
+          },
+          "assists": {
+            "type": "integer",
+            "title": "Assists"
+          },
+          "cs_total": {
+            "type": "integer",
+            "title": "Cs Total"
+          },
+          "cs_min": {
+            "type": "number",
+            "title": "Cs Min"
+          },
+          "control_wards": {
+            "type": "integer",
+            "title": "Control Wards"
+          },
+          "win": {
+            "type": "boolean",
+            "title": "Win"
+          },
+          "enemy_champion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enemy Champion"
+          },
+          "game_duration_minutes": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Game Duration Minutes"
+          },
+          "queue_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Queue Id"
+          },
+          "participants": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Participant"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Participants"
+          },
+          "lp_change": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lp Change"
+          },
+          "tilt_level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tilt Level"
+          },
+          "impact_rating": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Impact Rating"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "vod_review": {
+            "type": "boolean",
+            "title": "Vod Review",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "game_id",
+          "date",
+          "champion",
+          "role",
+          "kills",
+          "deaths",
+          "assists",
+          "cs_total",
+          "cs_min",
+          "control_wards",
+          "win"
+        ],
+        "title": "Match",
+        "description": "Una partida. Los campos objetivos vienen de Riot; los subjetivos los rellena el usuario."
+      },
+      "MatchUpdate": {
+        "properties": {
+          "lp_change": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lp Change"
+          },
+          "tilt_level": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 5.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tilt Level"
+          },
+          "impact_rating": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Impact Rating"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "vod_review": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vod Review"
+          }
+        },
+        "type": "object",
+        "title": "MatchUpdate",
+        "description": "Actualizaci\u00f3n parcial de los campos subjetivos.\n\nOjo: en el monolito, `update_match_details` se saltaba los `None`, as\u00ed que era imposible\ndevolver un campo a NULL. Aqu\u00ed se distingue \"no enviado\" (ausente del JSON) de \"enviado como\nnull\" usando `model_fields_set`, as\u00ed que s\u00ed se puede borrar un valor mal introducido."
+      },
+      "MetricsSnapshot": {
+        "properties": {
+          "uptime_seconds": {
+            "type": "integer",
+            "title": "Uptime Seconds"
+          },
+          "endpoints": {
+            "items": {
+              "$ref": "#/components/schemas/EndpointMetric"
+            },
+            "type": "array",
+            "title": "Endpoints"
+          }
+        },
+        "type": "object",
+        "required": [
+          "uptime_seconds",
+          "endpoints"
+        ],
+        "title": "MetricsSnapshot"
+      },
+      "Nemesis": {
+        "properties": {
+          "enemy_champion": {
+            "type": "string",
+            "title": "Enemy Champion"
+          },
+          "games": {
+            "type": "integer",
+            "title": "Games"
+          },
+          "wins": {
+            "type": "integer",
+            "title": "Wins"
+          },
+          "winrate": {
+            "type": "number",
+            "title": "Winrate"
+          },
+          "avg_deaths": {
+            "type": "number",
+            "title": "Avg Deaths"
+          },
+          "avg_cs_min": {
+            "type": "number",
+            "title": "Avg Cs Min"
+          }
+        },
+        "type": "object",
+        "required": [
+          "enemy_champion",
+          "games",
+          "wins",
+          "winrate",
+          "avg_deaths",
+          "avg_cs_min"
+        ],
+        "title": "Nemesis"
+      },
+      "Participant": {
+        "properties": {
+          "champion_name": {
+            "type": "string",
+            "title": "Champion Name"
+          },
+          "puuid": {
+            "type": "string",
+            "title": "Puuid",
+            "default": ""
+          },
+          "player_name": {
+            "type": "string",
+            "title": "Player Name",
+            "description": "Riot ID completo 'GameName#TAG'",
+            "default": ""
+          },
+          "kills": {
+            "type": "integer",
+            "title": "Kills"
+          },
+          "deaths": {
+            "type": "integer",
+            "title": "Deaths"
+          },
+          "assists": {
+            "type": "integer",
+            "title": "Assists"
+          },
+          "cs": {
+            "type": "integer",
+            "title": "Cs"
+          },
+          "items": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "7 IDs de items: item0-item5 + trinket en item6 (0 = slot vac\u00edo)"
+          },
+          "summoner_spells": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Summoner Spells",
+            "description": "2 IDs de hechizos"
+          },
+          "team_id": {
+            "type": "integer",
+            "title": "Team Id"
+          },
+          "team_position": {
+            "type": "string",
+            "title": "Team Position"
+          },
+          "win": {
+            "type": "boolean",
+            "title": "Win"
+          },
+          "total_damage": {
+            "type": "integer",
+            "title": "Total Damage",
+            "description": "totalDamageDealtToChampions de Riot",
+            "default": 0
+          },
+          "total_damage_taken": {
+            "type": "integer",
+            "title": "Total Damage Taken",
+            "default": 0
+          },
+          "gold_earned": {
+            "type": "integer",
+            "title": "Gold Earned",
+            "default": 0
+          },
+          "vision_score": {
+            "type": "integer",
+            "title": "Vision Score",
+            "default": 0
+          },
+          "kill_participation": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Kill Participation",
+            "default": 0.0
+          },
+          "rating": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Rating",
+            "description": "Rating universal 0-100",
+            "default": 0.0
+          },
+          "rating_version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Rating Version",
+            "description": "Versi\u00f3n de la f\u00f3rmula que gener\u00f3 `rating` (trazabilidad)",
+            "default": 1
+          }
+        },
+        "type": "object",
+        "required": [
+          "champion_name",
+          "kills",
+          "deaths",
+          "assists",
+          "cs",
+          "team_id",
+          "team_position",
+          "win"
+        ],
+        "title": "Participant",
+        "description": "Un jugador dentro de una partida (10 por match).\n\n`player_name` sustituye al viejo `summoner_name` (que Riot ya no rellena en Match-V5): ahora\nse guarda el Riot ID completo \"GameName#TAG\". Los campos con default toleran filas antiguas\ndel JSONB sincronizadas antes del nuevo esquema, para que /api/matches no reviente; tras un\nTRUNCATE + resync todos los participantes salen completos."
+      },
+      "SpellMeta": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id",
+            "description": "Id num\u00e9rico del hechizo en el API de partida (4 = Flash)"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description",
+            "default": ""
+          },
+          "image": {
+            "type": "string",
+            "title": "Image"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "image"
+        ],
+        "title": "SpellMeta"
+      },
+      "SpellsIndex": {
+        "properties": {
+          "patch": {
+            "type": "string",
+            "title": "Patch"
+          },
+          "spells": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SpellMeta"
+            },
+            "type": "object",
+            "title": "Spells"
+          }
+        },
+        "type": "object",
+        "required": [
+          "patch",
+          "spells"
+        ],
+        "title": "SpellsIndex"
+      },
+      "StatsSummary": {
+        "properties": {
+          "total_games": {
+            "type": "integer",
+            "title": "Total Games"
+          },
+          "total_wins": {
+            "type": "integer",
+            "title": "Total Wins"
+          },
+          "winrate": {
+            "type": "number",
+            "title": "Winrate"
+          },
+          "avg_kills": {
+            "type": "number",
+            "title": "Avg Kills"
+          },
+          "avg_deaths": {
+            "type": "number",
+            "title": "Avg Deaths"
+          },
+          "avg_assists": {
+            "type": "number",
+            "title": "Avg Assists"
+          },
+          "kda_ratio": {
+            "type": "number",
+            "title": "Kda Ratio"
+          },
+          "avg_cs_min": {
+            "type": "number",
+            "title": "Avg Cs Min"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_games",
+          "total_wins",
+          "winrate",
+          "avg_kills",
+          "avg_deaths",
+          "avg_assists",
+          "kda_ratio",
+          "avg_cs_min"
+        ],
+        "title": "StatsSummary"
+      },
+      "SyncAccepted": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "processing",
+            "title": "Status"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "message"
+        ],
+        "title": "SyncAccepted",
+        "description": "Respuesta inmediata del POST /api/sync: el trabajo pesado corre en BackgroundTasks."
+      },
+      "SyncError": {
+        "properties": {
+          "game_id": {
+            "type": "string",
+            "title": "Game Id"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "retryable": {
+            "type": "boolean",
+            "title": "Retryable"
+          }
+        },
+        "type": "object",
+        "required": [
+          "game_id",
+          "reason",
+          "retryable"
+        ],
+        "title": "SyncError"
+      },
+      "SyncResult": {
+        "properties": {
+          "fetched": {
+            "type": "integer",
+            "title": "Fetched"
+          },
+          "inserted": {
+            "type": "integer",
+            "title": "Inserted"
+          },
+          "skipped": {
+            "type": "integer",
+            "title": "Skipped"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/SyncError"
+            },
+            "type": "array",
+            "title": "Errors",
+            "default": []
+          },
+          "lp_captured": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LpCapture"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "fetched",
+          "inserted",
+          "skipped"
+        ],
+        "title": "SyncResult",
+        "description": "El sync ya no miente. El monolito dec\u00eda \"\u2728 Todo actualizado\" incluso cuando un 429 hab\u00eda\ndescartado partidas en silencio; ahora los fallos viajan en la respuesta."
+      },
+      "SyncStatus": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "idle",
+              "processing",
+              "success",
+              "error"
+            ],
+            "title": "Status"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SyncResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "SyncStatus",
+        "description": "Estado del sync en curso (o del \u00faltimo terminado), para el polling del frontend."
+      },
+      "UserSettings": {
+        "properties": {
+          "champion_pool": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Champion Pool"
+          },
+          "target_cs_min": {
+            "type": "number",
+            "title": "Target Cs Min"
+          },
+          "max_deaths": {
+            "type": "number",
+            "title": "Max Deaths"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "impact_ratings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Impact Ratings"
+          },
+          "regions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Regions"
+          },
+          "champion_pool_max": {
+            "type": "integer",
+            "title": "Champion Pool Max",
+            "default": 3
+          },
+          "display_timezone": {
+            "type": "string",
+            "title": "Display Timezone",
+            "default": "Europe/Madrid"
+          },
+          "riot_id": {
+            "type": "string",
+            "title": "Riot Id",
+            "default": ""
+          },
+          "riot_region": {
+            "type": "string",
+            "title": "Riot Region",
+            "default": "EUW1"
+          }
+        },
+        "type": "object",
+        "required": [
+          "champion_pool",
+          "target_cs_min",
+          "max_deaths"
+        ],
+        "title": "UserSettings",
+        "description": "Config completa del frontend: valores can\u00f3nicos + configuraci\u00f3n persistida del usuario.\n\nGET /api/config devuelve todo junto para que el frontend no necesite m\u00faltiples llamadas.\nLos campos can\u00f3nicos (impact_ratings, regions, etc.) son de solo lectura; los campos\neditables (champion_pool, target_cs_min, max_deaths) se actualizan con PUT."
+      },
+      "UserSettingsUpdate": {
+        "properties": {
+          "champion_pool": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Champion Pool",
+            "description": "M\u00e1ximo 3 campeones (regla de La Constituci\u00f3n)"
+          },
+          "target_cs_min": {
+            "type": "number",
+            "maximum": 20.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Target Cs Min",
+            "description": "Meta de CS por minuto"
+          },
+          "max_deaths": {
+            "type": "number",
+            "maximum": 20.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Max Deaths",
+            "description": "Tope de muertes por partida"
+          }
+        },
+        "type": "object",
+        "required": [
+          "champion_pool",
+          "target_cs_min",
+          "max_deaths"
+        ],
+        "title": "UserSettingsUpdate",
+        "description": "Reemplazo completo de la configuraci\u00f3n (sem\u00e1ntica de PUT)."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
