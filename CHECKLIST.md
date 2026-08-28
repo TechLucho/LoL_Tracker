@@ -6,6 +6,13 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ---
 
+> **Cierre v1.2 (2026-08-28):** la v1.2 introduce la capa de analítica avanzada. Implementada la
+> vista de Matchups (con notas persistentes en DB), agrupación por sesiones lógicas en el
+> Dashboard, KPIs de tendencia (CS/min, DPM, KDA), Reporte Semanal estático y notificaciones
+> pasivas por Discord.
+
+---
+
 > **Cierre v1.1 (2026-08-27):** la v1.1 esta completa. Backend solido (timing-safe auth,
 > rate limiting 100 req/min, Sentry condicional, tabla `sync_runs` de auditoria, migrations
 > idempotentes, codegen OpenAPI automatico), CI/CD (Postgres efimero + pytest + backups
@@ -149,6 +156,22 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ---
 
+## Completado (v1.2)
+
+### Analítica avanzada y nuevas vistas
+
+- [x] **Vista de Matchups (con notas persistentes en DB)**: stats históricas del cruce Tú vs. campeón enemigo (`GET /api/stats/matchups/{user}/{enemy}`) + notas persistentes por emparejamiento (`/api/matchup-notes`, tabla propia vía migración), página `/matchups`
+- [x] **Análisis de sesiones (agrupación visual por días)**: el Dashboard agrupa la lista plana de partidas en bloques diarios con su balance de victorias/derrotas ("5V - 2D") sobre el "Logical Gaming Day" (offset nocturno) e ignorando los remakes; cada bloque abre con un separador "Hoy"/"Ayer"/fecha amigable
+- [x] **KPIs de mejora (Trend lines)**: endpoint `GET /api/stats/trends` que devuelve la serie temporal (cs_min, dpm real, kda) de las últimas 50 partidas válidas, y página `/trends` con tres gráficas de línea apiladas (Recharts) en el tema oscuro con tooltip personalizado
+- [x] **Reporte Semanal**: endpoint `GET /api/stats/weekly` (7 días según fecha UTC: partidas, winrate, KDA medio con tolerancia a nulos, top campeón y mejor partida por rating) y página `/weekly` con tarjetas visuales grandes, avatares de Data Dragon y estado vacío amigable
+
+### Limpieza e integraciones
+
+- [x] Eliminado `backend/scripts/apply_migration_005.py` (deuda técnica; las migraciones ya las cubre el runner idempotente)
+- [x] **Webhook de Discord**: `DISCORD_WEBHOOK_URL` en config; al cerrar `_run_sync` (éxito o error) se envía un embed de resumen (estado final + partidas añadidas) vía httpx, silenciando cualquier error de red
+
+---
+
 ## Pendiente (Backlog / Features futuras)
 
 ### Despliegue
@@ -168,11 +191,11 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ### Deuda tecnica
 
-- [ ] Eliminar `apply_migration_005.py` (one-off cuya migracion ya esta aplicada)
+- [x] Eliminar `apply_migration_005.py` (one-off cuya migracion ya esta aplicada)
 
 ### Ideas de Brainstorming (Sin priorizar)
 
-Ideas para v1.2 / v2.0. Mantienen la esencia: herramienta analitica seria y minimalista
+Ideas para v2.0. Mantienen la esencia: herramienta analitica seria y minimalista
 para mejorar en League of Legends. Ninguna es social/gamificada por naturaleza.
 
 #### Analitica y Estadisticas Avanzadas
@@ -184,51 +207,15 @@ para mejorar en League of Legends. Ninguna es social/gamificada por naturaleza.
    `/api/stats/tempo` consume timeline por partida, cachea el gold_diff@15 en participants
    JSONB y alimenta un Recharts AreaChart con percentiles por rol.
 
-2. **Matriz de Matchups Personales** — Heatmap de tu winrate contra campeones especificos
-   de la pool enemiga. "Jinx 60% general, pero 30% cuando el enemigo juega Caitlyn" es la
-   clase de insight que cambia draft decisions. Datos ya estan en participants (enemy_champion
-   + win); falta una query pivot con GROUP BY champion vs. enemy_champion y un grid
-   coloreado tipo "champion select helper".
-
-3. **Delta de Vision** — Vision score actual es un numero crudo que no dice nada. Un delta
+2. **Delta de Vision** — Vision score actual es un numero crudo que no dice nada. Un delta
    (tu vision score menos el del support enemigo en tu linea) indica si de verdad controlas
    visibilidad o solo pones wards que se limpian. Requiere el participant data del enemigo
    (ya lo tenemos en JSONB) y un calculo simple de diferencia por partida. Un trend line
    de delta de vision vs. winrate mostraria la correlacion real.
 
-#### Vistas y Experiencia de Usuario
-
-4. **Reporte Semanal ("Resumen de Semana")** — Pagina estatica tipo "Spotify Wrapped" que
-   se genera cada lunes: partidas jugadas, winrate de la semana, delta de LP, campeones
-   top/bottom, score de disciplina (La Constitucion), y un "momento de la semana" (mejor
-   partida por rating). No es una notificacion: es una pagina que se abre y se consume en
-   30 segundos. El hook seria un endpoint `GET /api/stats/weekly?weeks_back=1` que agrupa
-   por rango de fechas.
-
-5. **KPIs de Mejora (Trend Lines)** — Metricas especificas trackeadas en el tiempo con
-   sparklines: "tu CS/min subio de 7.2 a 8.1 en las ultimas 30 partidas", "tu DPM bajo
-   de 620 a 580 desde el parche X". Cada KPI tiene un trend arrow y un mini-grafico.
-   Implementacion: una tabla `kpi_snapshots` que se actualiza al final de cada sync con
-   metricas clave (cs_min, dpm, kda, vision_delta, deaths_avg) y un endpoint que devuelva
-   la serie temporal. Esto responde a la pregunta "me estoy mejorando?" que ningun stat
-   site responde.
-
-6. **Analisis de Sesiones** — Agrupar partidas en "sesiones" (juego consecutivo con <30min
-   de descanso entre ellos). Patron de tilt visible: "cuando pierdes la primera de una
-   sesion, ganas solo el 25% de las siguientes". Implementacion: algoritmo de clustering
-   por timestamp en el backend, endpoint `GET /api/stats/sessions` que devuelva sesiones
-   con winrate, rating promedio y duracion. Un grafico de barras por sesion mostraria
-   el patron de tilt de forma objetiva.
-
 #### Backend, Seguridad e Integraciones
 
-7. **Webhook de Discord** — Simple y pasivo: al completar un sync, enviar un embed a un
-   canal de Discord con el resumen (partidas, W/L, LP delta, mejor rating). Configurable
-   via `DISCORD_WEBHOOK_URL` en .env. Implementacion: 3 lineas en `_run_sync` al final
-   del background task, httpx POST al webhook URL. No es notificacion push: es un log
-   externo que te da visibilidad sin abrir la app.
-
-8. **Alerta de Parche** — Cuando Data Dragon detecta un patch nuevo (el cache de 1h ya
+3. **Alerta de Parche** — Cuando Data Dragon detecta un patch nuevo (el cache de 1h ya
    lo resuelve), comparar las stats de tus campeones de pool pre/post parche. Si un
    campeon recibio nerf significativo (Data Dragon no tiene notas de parche, pero el
    matchup matrix mostraria drop de winrate post-parche), mostrar un banner informativo

@@ -12,6 +12,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Literal
 
+import httpx
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 
 from backend.app.deps import RiotServiceDep, SettingsDep
@@ -84,8 +85,32 @@ async def _capture_ranked_lp(riot: RiotService, riot_id: str) -> LpCapture | Non
     return None
 
 
+async def _notify_discord(webhook_url: str, status: str, matches_added: int) -> None:
+    """POST asíncrono de un embed de resumen al canal de Discord.
+
+    Es un "log externo" pasivo: cualquier error de red se silencia. Un webhook caído no debe
+    convertir un sync exitoso en error.
+    """
+    color = 0x9D4EDD if status == "success" else 0xE63946
+    payload = {
+        "embeds": [
+            {
+                "title": "Sync completado",
+                "description": f"Estado: **{status}**\nPartidas añadidas: **{matches_added}**",
+                "color": color,
+            }
+        ]
+    }
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            res = await client.post(webhook_url, json=payload)
+            res.raise_for_status()
+    except Exception:  # noqa: BLE001
+        log.warning("Notificación a Discord falló (se ignora)")
+
+
 async def _run_sync(riot: RiotService, target: str, limit: int, queue_ids: list[int],
-                     *, run_id: int) -> None:
+                     *, run_id: int, discord_webhook_url: str | None = None) -> None:
     """Cuerpo del sync. Corre como BackgroundTask: NUNCA debe lanzar una excepción sin
     capturar, porque moriría en silencio y el frontend se quedaría sondeando 'processing'.
 
@@ -150,6 +175,8 @@ async def _run_sync(riot: RiotService, target: str, limit: int, queue_ids: list[
             matches_added=inserted,
             error_message=error_msg,
         )
+        if discord_webhook_url:
+            await _notify_discord(discord_webhook_url, _state.status, inserted)
 
 
 @router.post("", response_model=SyncAccepted, status_code=202)
@@ -190,7 +217,8 @@ async def sync(
     _state.result = None
     _state.error = None
     run_id = await sync_runs.start_run(_state.started_at)
-    background_tasks.add_task(_run_sync, riot, target, limit, queue_ids, run_id=run_id)
+    background_tasks.add_task(_run_sync, riot, target, limit, queue_ids, run_id=run_id,
+                              discord_webhook_url=settings.discord_webhook_url)
 
     return SyncAccepted(
         status="processing",

@@ -533,6 +533,188 @@
         }
       }
     },
+    "/api/stats/trends": {
+      "get": {
+        "tags": [
+          "stats"
+        ],
+        "summary": "Kpi Trends",
+        "description": "Serie temporal de KPIs de mejora (CS/min, DPM, KDA) de las \u00faltimas partidas v\u00e1lidas.\n\nIgnora remakes (< 5 min); los DPM de filas legacy sin participants llegan como 0.",
+        "operationId": "kpi_trends_api_stats_trends_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TrendPoint"
+                  },
+                  "title": "Response Kpi Trends Api Stats Trends Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/weekly": {
+      "get": {
+        "tags": [
+          "stats"
+        ],
+        "summary": "Weekly Report",
+        "description": "Resumen de la \u00faltima semana (7 d\u00edas, fecha UTC): partidas, winrate, KDA, top campe\u00f3n\ny mejor partida por rating. `most_played`/`best_match` son null si no hay partidas en la ventana.",
+        "operationId": "weekly_report_api_stats_weekly_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/matchups/{user_champion}/{enemy_champion}": {
+      "get": {
+        "tags": [
+          "stats"
+        ],
+        "summary": "Matchup Stats",
+        "description": "Estad\u00edsticas hist\u00f3ricas del cruce de dos campeones.\n\nFiltra por campe\u00f3n del usuario contra el rival de l\u00ednea. Con cero partidas devuelve\ntodo a 0 (no 404), porque la vista Matchups sigue funcionando con notas aunque no\nhaya historial del cruce.",
+        "operationId": "matchup_stats_api_stats_matchups__user_champion___enemy_champion__get",
+        "parameters": [
+          {
+            "name": "user_champion",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Champion"
+            }
+          },
+          {
+            "name": "enemy_champion",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Enemy Champion"
+            }
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchupStats"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/stats/constitution": {
       "get": {
         "tags": [
@@ -565,6 +747,150 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ConstitutionStatus"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/matchup-notes/{user_champion}/{enemy_champion}": {
+      "get": {
+        "tags": [
+          "matchup-notes"
+        ],
+        "summary": "Get Notes",
+        "description": "Notas del cruce. Si nunca se guard\u00f3 nada, devuelve notas vac\u00edas (no 404).",
+        "operationId": "get_notes_api_matchup_notes__user_champion___enemy_champion__get",
+        "parameters": [
+          {
+            "name": "user_champion",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Champion"
+            }
+          },
+          {
+            "name": "enemy_champion",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Enemy Champion"
+            }
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchupNotes"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "matchup-notes"
+        ],
+        "summary": "Put Notes",
+        "description": "Guarda/reemplaza las notas del cruce (PUT semantics).",
+        "operationId": "put_notes_api_matchup_notes__user_champion___enemy_champion__put",
+        "parameters": [
+          {
+            "name": "user_champion",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "User Champion"
+            }
+          },
+          {
+            "name": "enemy_champion",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Enemy Champion"
+            }
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchupNotesUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MatchupNotes"
                 }
               }
             }
@@ -1943,6 +2269,113 @@
         "title": "MatchUpdate",
         "description": "Actualizaci\u00f3n parcial de los campos subjetivos.\n\nOjo: en el monolito, `update_match_details` se saltaba los `None`, as\u00ed que era imposible\ndevolver un campo a NULL. Aqu\u00ed se distingue \"no enviado\" (ausente del JSON) de \"enviado como\nnull\" usando `model_fields_set`, as\u00ed que s\u00ed se puede borrar un valor mal introducido."
       },
+      "MatchupNotes": {
+        "properties": {
+          "user_champion": {
+            "type": "string",
+            "title": "User Champion"
+          },
+          "enemy_champion": {
+            "type": "string",
+            "title": "Enemy Champion"
+          },
+          "notes": {
+            "type": "string",
+            "title": "Notes",
+            "default": ""
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_champion",
+          "enemy_champion"
+        ],
+        "title": "MatchupNotes",
+        "description": "Notas persistidas para un emparejamiento concreto."
+      },
+      "MatchupNotesUpdate": {
+        "properties": {
+          "notes": {
+            "type": "string",
+            "title": "Notes",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "MatchupNotesUpdate",
+        "description": "Payload del PUT: reemplazo completo de las notas del cruce."
+      },
+      "MatchupStats": {
+        "properties": {
+          "user_champion": {
+            "type": "string",
+            "title": "User Champion"
+          },
+          "enemy_champion": {
+            "type": "string",
+            "title": "Enemy Champion"
+          },
+          "games_played": {
+            "type": "integer",
+            "title": "Games Played",
+            "default": 0
+          },
+          "wins": {
+            "type": "integer",
+            "title": "Wins",
+            "default": 0
+          },
+          "losses": {
+            "type": "integer",
+            "title": "Losses",
+            "default": 0
+          },
+          "winrate": {
+            "type": "number",
+            "title": "Winrate",
+            "default": 0.0
+          },
+          "avg_kills": {
+            "type": "number",
+            "title": "Avg Kills",
+            "default": 0.0
+          },
+          "avg_deaths": {
+            "type": "number",
+            "title": "Avg Deaths",
+            "default": 0.0
+          },
+          "avg_assists": {
+            "type": "number",
+            "title": "Avg Assists",
+            "default": 0.0
+          },
+          "kda_ratio": {
+            "type": "number",
+            "title": "Kda Ratio",
+            "default": 0.0
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_champion",
+          "enemy_champion"
+        ],
+        "title": "MatchupStats",
+        "description": "Estad\u00edsticas hist\u00f3ricas del cruce de dos campeones (T\u00fa contra enemigo)."
+      },
       "MetricsSnapshot": {
         "properties": {
           "uptime_seconds": {
@@ -2369,6 +2802,41 @@
         "title": "SyncStatus",
         "description": "Estado del sync en curso (o del \u00faltimo terminado), para el polling del frontend."
       },
+      "TrendPoint": {
+        "properties": {
+          "game_id": {
+            "type": "string",
+            "title": "Game Id"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Timestamp"
+          },
+          "cs_min": {
+            "type": "number",
+            "title": "Cs Min"
+          },
+          "dpm": {
+            "type": "number",
+            "title": "Dpm"
+          },
+          "kda": {
+            "type": "number",
+            "title": "Kda"
+          }
+        },
+        "type": "object",
+        "required": [
+          "game_id",
+          "timestamp",
+          "cs_min",
+          "dpm",
+          "kda"
+        ],
+        "title": "TrendPoint",
+        "description": "Un punto de la serie temporal de KPIs de mejora (\u00faltimas N partidas v\u00e1lidas).\n\nOrden cronol\u00f3gico ascendente (partida m\u00e1s antigua primero) para que las gr\u00e1ficas de\nl\u00ednea recorran el tiempo de izquierda a derecha. `timestamp` es la hora de juego en UTC."
+      },
       "UserSettings": {
         "properties": {
           "champion_pool": {
@@ -2509,6 +2977,146 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WeeklyBestMatch": {
+        "properties": {
+          "game_id": {
+            "type": "string",
+            "title": "Game Id"
+          },
+          "date": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Date"
+          },
+          "champion": {
+            "type": "string",
+            "title": "Champion"
+          },
+          "kills": {
+            "type": "integer",
+            "title": "Kills"
+          },
+          "deaths": {
+            "type": "integer",
+            "title": "Deaths"
+          },
+          "assists": {
+            "type": "integer",
+            "title": "Assists"
+          },
+          "kda": {
+            "type": "number",
+            "title": "Kda"
+          },
+          "rating": {
+            "type": "number",
+            "title": "Rating"
+          }
+        },
+        "type": "object",
+        "required": [
+          "game_id",
+          "date",
+          "champion",
+          "kills",
+          "deaths",
+          "assists",
+          "kda",
+          "rating"
+        ],
+        "title": "WeeklyBestMatch",
+        "description": "La mejor partida de la semana, seg\u00fan el rating 0-100 del usuario."
+      },
+      "WeeklyReport": {
+        "properties": {
+          "period_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Period Start"
+          },
+          "period_end": {
+            "type": "string",
+            "format": "date",
+            "title": "Period End"
+          },
+          "total_games": {
+            "type": "integer",
+            "title": "Total Games"
+          },
+          "wins": {
+            "type": "integer",
+            "title": "Wins"
+          },
+          "losses": {
+            "type": "integer",
+            "title": "Losses"
+          },
+          "winrate": {
+            "type": "number",
+            "title": "Winrate",
+            "default": 0.0
+          },
+          "avg_kda": {
+            "type": "number",
+            "title": "Avg Kda",
+            "default": 0.0
+          },
+          "most_played": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeeklyTopChampion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "best_match": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeeklyBestMatch"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "period_start",
+          "period_end",
+          "total_games",
+          "wins",
+          "losses"
+        ],
+        "title": "WeeklyReport",
+        "description": "Resumen de los \u00faltimos 7 d\u00edas (ventana seg\u00fan fecha UTC) para el Reporte Semanal."
+      },
+      "WeeklyTopChampion": {
+        "properties": {
+          "champion": {
+            "type": "string",
+            "title": "Champion"
+          },
+          "games": {
+            "type": "integer",
+            "title": "Games"
+          },
+          "wins": {
+            "type": "integer",
+            "title": "Wins"
+          }
+        },
+        "type": "object",
+        "required": [
+          "champion",
+          "games",
+          "wins"
+        ],
+        "title": "WeeklyTopChampion",
+        "description": "Campe\u00f3n m\u00e1s jugado de la semana (nombre visible; el avatar lo resuelve el frontend v\u00eda Data Dragon)."
       }
     }
   }

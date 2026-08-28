@@ -13,6 +13,9 @@ const ChampionPoolPage = lazy(() => import('./pages/ChampionPoolPage'))
 const ConstitutionPage = lazy(() => import('./pages/Constitution'))
 const HeatmapPage = lazy(() => import('./pages/Heatmap'))
 const SettingsPage = lazy(() => import('./pages/Settings'))
+const MatchupsPage = lazy(() => import('./pages/Matchups'))
+const TrendsPage = lazy(() => import('./pages/Trends'))
+const WeeklyPage = lazy(() => import('./pages/Weekly'))
 
 function App() {
   return (
@@ -24,6 +27,9 @@ function App() {
           <Route path="pool" element={<ChampionPoolPage />} />
           <Route path="constitution" element={<ConstitutionPage />} />
           <Route path="heatmap" element={<HeatmapPage />} />
+          <Route path="matchups" element={<MatchupsPage />} />
+          <Route path="trends" element={<TrendsPage />} />
+          <Route path="weekly" element={<WeeklyPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Routes>

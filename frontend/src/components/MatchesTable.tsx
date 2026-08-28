@@ -17,6 +17,57 @@ const FILTER_OPTIONS: { key: QueueFilter; label: string }[] = [
 const ROW_GRID =
   'grid grid-cols-[auto_minmax(130px,1fr)_84px_88px_68px_56px_64px_72px_52px] items-center gap-x-3'
 
+// ───────────── agrupación por sesiones (días) ─────────────
+// Un remake no es una victoria/derrota real, así que se excluye del balance del día
+// (mismo criterio que el backend: duración < 5 min). El día se deriva de la fecha
+// local de la partida truncada a YYYY-MM-DD.
+
+interface DayGroup {
+  day: string
+  wins: number
+  losses: number
+  matches: UIMatch[]
+}
+
+function isRemake(m: UIMatch): boolean {
+  return m.game_duration_minutes != null && m.game_duration_minutes < 5
+}
+
+function localDayKey(dateStr: string): string {
+  // "Logical Gaming Day": una sesión nocturna no se parte a medianoche. Restamos 4h
+  // (4*60*60*1000 ms) antes de convertir a la fecha local, así una partida de las 03:00 AM
+  // del 15 cae bajo el 14. Sólo afecta la cabecera del grupo, no el timestamp de la partida.
+  const SESSION_OFFSET_MS = 4 * 60 * 60 * 1000
+  return new Date(new Date(dateStr).getTime() - SESSION_OFFSET_MS).toLocaleDateString('sv-SE')
+}
+
+function groupByDay(matches: UIMatch[]): DayGroup[] {
+  const groups = new Map<string, DayGroup>()
+  for (const m of matches) {
+    const day = localDayKey(m.date)
+    let group = groups.get(day)
+    if (!group) {
+      group = { day, wins: 0, losses: 0, matches: [] }
+      groups.set(day, group)
+    }
+    group.matches.push(m)
+    if (!isRemake(m)) {
+      if (m.win) group.wins += 1
+      else group.losses += 1
+    }
+  }
+  return [...groups.values()]
+}
+
+function formatDayLabel(day: string): string {
+  const today = localDayKey(new Date().toISOString())
+  const yesterday = localDayKey(new Date(Date.now() - 86_400_000).toISOString())
+  if (day === today) return 'Hoy'
+  if (day === yesterday) return 'Ayer'
+  const d = new Date(`${day}T12:00:00`)
+  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
 function SkeletonRow() {
   return (
     <div className={`${ROW_GRID} border-b border-gray-800/50 px-4 py-3`}>
@@ -161,7 +212,19 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
       {!isLoading && !isError && matches.length > 0 && (
         <div className="overflow-x-auto">
           <div className="flex flex-col">
-            {matches.map((m) => {
+            {groupByDay(matches).map((group) => (
+              <div key={group.day}>
+                {/* Separador de sesión: fecha a la izquierda, balance a la derecha. */}
+                <div className="flex items-center justify-between bg-white/5 px-4 py-2.5">
+                  <span className="text-xs font-bold uppercase tracking-wider text-gray-300">
+                    {formatDayLabel(group.day)}
+                  </span>
+                  <span className="font-mono text-xs font-bold text-gray-200">
+                    {group.wins}V - {group.losses}D
+                  </span>
+                </div>
+
+                {group.matches.map((m) => {
             const isExpanded = expandedId === m.game_id
             const champIcon = icons.champion(m.champion)
             const spell1 = icons.spell(m.spells[0])
@@ -303,10 +366,11 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
                     <MatchAccordion match={m} onReviewSave={onReviewSave} isSaving={isSaving} />
                   </div>
                 )}
+                </div>
+              )
+            })}
               </div>
-            )
-          })}
-
+            ))}
           </div>
         </div>
       )}

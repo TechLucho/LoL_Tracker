@@ -8,7 +8,10 @@ import {
   Menu,
   Shield,
   Clock,
+  Swords,
   SlidersHorizontal,
+  TrendingUp,
+  Calendar,
   X,
 } from 'lucide-react'
 import HealthBanner from './HealthBanner'
@@ -18,9 +21,12 @@ import { useSyncMatches } from '../hooks/useMatches'
 
 const navItems = [
   { to: '/', label: 'Centro de Mando', icon: LayoutDashboard },
+  { to: '/weekly', label: 'Reporte Semanal', icon: Calendar },
   { to: '/constitution', label: 'La Constitución', icon: Shield },
   { to: '/heatmap', label: 'Horarios / Heatmap', icon: Clock },
   { to: '/pool', label: 'Champion Pool', icon: Crosshair },
+  { to: '/matchups', label: 'Matchups', icon: Swords },
+  { to: '/trends', label: 'KPIs / Progreso', icon: TrendingUp },
 ]
 
 const bottomItems = [

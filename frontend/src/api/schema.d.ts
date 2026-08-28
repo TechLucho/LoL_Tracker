@@ -160,6 +160,73 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/stats/trends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kpi Trends
+         * @description Serie temporal de KPIs de mejora (CS/min, DPM, KDA) de las últimas partidas válidas.
+         *
+         *     Ignora remakes (< 5 min); los DPM de filas legacy sin participants llegan como 0.
+         */
+        get: operations["kpi_trends_api_stats_trends_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stats/weekly": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Weekly Report
+         * @description Resumen de la última semana (7 días, fecha UTC): partidas, winrate, KDA, top campeón
+         *     y mejor partida por rating. `most_played`/`best_match` son null si no hay partidas en la ventana.
+         */
+        get: operations["weekly_report_api_stats_weekly_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stats/matchups/{user_champion}/{enemy_champion}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Matchup Stats
+         * @description Estadísticas históricas del cruce de dos campeones.
+         *
+         *     Filtra por campeón del usuario contra el rival de línea. Con cero partidas devuelve
+         *     todo a 0 (no 404), porque la vista Matchups sigue funcionando con notas aunque no
+         *     haya historial del cruce.
+         */
+        get: operations["matchup_stats_api_stats_matchups__user_champion___enemy_champion__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/stats/constitution": {
         parameters: {
             query?: never;
@@ -170,6 +237,30 @@ export interface paths {
         /** Constitution Status */
         get: operations["constitution_status_api_stats_constitution_get"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/matchup-notes/{user_champion}/{enemy_champion}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Notes
+         * @description Notas del cruce. Si nunca se guardó nada, devuelve notas vacías (no 404).
+         */
+        get: operations["get_notes_api_matchup_notes__user_champion___enemy_champion__get"];
+        /**
+         * Put Notes
+         * @description Guarda/reemplaza las notas del cruce (PUT semantics).
+         */
+        put: operations["put_notes_api_matchup_notes__user_champion___enemy_champion__put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -699,6 +790,84 @@ export interface components {
             /** Vod Review */
             vod_review?: boolean | null;
         };
+        /**
+         * MatchupNotes
+         * @description Notas persistidas para un emparejamiento concreto.
+         */
+        MatchupNotes: {
+            /** User Champion */
+            user_champion: string;
+            /** Enemy Champion */
+            enemy_champion: string;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Updated At */
+            updated_at?: string | null;
+        };
+        /**
+         * MatchupNotesUpdate
+         * @description Payload del PUT: reemplazo completo de las notas del cruce.
+         */
+        MatchupNotesUpdate: {
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+        };
+        /**
+         * MatchupStats
+         * @description Estadísticas históricas del cruce de dos campeones (Tú contra enemigo).
+         */
+        MatchupStats: {
+            /** User Champion */
+            user_champion: string;
+            /** Enemy Champion */
+            enemy_champion: string;
+            /**
+             * Games Played
+             * @default 0
+             */
+            games_played: number;
+            /**
+             * Wins
+             * @default 0
+             */
+            wins: number;
+            /**
+             * Losses
+             * @default 0
+             */
+            losses: number;
+            /**
+             * Winrate
+             * @default 0
+             */
+            winrate: number;
+            /**
+             * Avg Kills
+             * @default 0
+             */
+            avg_kills: number;
+            /**
+             * Avg Deaths
+             * @default 0
+             */
+            avg_deaths: number;
+            /**
+             * Avg Assists
+             * @default 0
+             */
+            avg_assists: number;
+            /**
+             * Kda Ratio
+             * @default 0
+             */
+            kda_ratio: number;
+        };
         /** MetricsSnapshot */
         MetricsSnapshot: {
             /** Uptime Seconds */
@@ -912,6 +1081,28 @@ export interface components {
             error?: string | null;
         };
         /**
+         * TrendPoint
+         * @description Un punto de la serie temporal de KPIs de mejora (últimas N partidas válidas).
+         *
+         *     Orden cronológico ascendente (partida más antigua primero) para que las gráficas de
+         *     línea recorran el tiempo de izquierda a derecha. `timestamp` es la hora de juego en UTC.
+         */
+        TrendPoint: {
+            /** Game Id */
+            game_id: string;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp: string;
+            /** Cs Min */
+            cs_min: number;
+            /** Dpm */
+            dpm: number;
+            /** Kda */
+            kda: number;
+        };
+        /**
          * UserSettings
          * @description Config completa del frontend: valores canónicos + configuración persistida del usuario.
          *
@@ -982,6 +1173,77 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /**
+         * WeeklyBestMatch
+         * @description La mejor partida de la semana, según el rating 0-100 del usuario.
+         */
+        WeeklyBestMatch: {
+            /** Game Id */
+            game_id: string;
+            /**
+             * Date
+             * Format: date-time
+             */
+            date: string;
+            /** Champion */
+            champion: string;
+            /** Kills */
+            kills: number;
+            /** Deaths */
+            deaths: number;
+            /** Assists */
+            assists: number;
+            /** Kda */
+            kda: number;
+            /** Rating */
+            rating: number;
+        };
+        /**
+         * WeeklyReport
+         * @description Resumen de los últimos 7 días (ventana según fecha UTC) para el Reporte Semanal.
+         */
+        WeeklyReport: {
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /**
+             * Period End
+             * Format: date
+             */
+            period_end: string;
+            /** Total Games */
+            total_games: number;
+            /** Wins */
+            wins: number;
+            /** Losses */
+            losses: number;
+            /**
+             * Winrate
+             * @default 0
+             */
+            winrate: number;
+            /**
+             * Avg Kda
+             * @default 0
+             */
+            avg_kda: number;
+            most_played?: components["schemas"]["WeeklyTopChampion"] | null;
+            best_match?: components["schemas"]["WeeklyBestMatch"] | null;
+        };
+        /**
+         * WeeklyTopChampion
+         * @description Campeón más jugado de la semana (nombre visible; el avatar lo resuelve el frontend vía Data Dragon).
+         */
+        WeeklyTopChampion: {
+            /** Champion */
+            champion: string;
+            /** Games */
+            games: number;
+            /** Wins */
+            wins: number;
         };
     };
     responses: never;
@@ -1278,6 +1540,104 @@ export interface operations {
             };
         };
     };
+    kpi_trends_api_stats_trends_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: {
+                "x-api-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrendPoint"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    weekly_report_api_stats_weekly_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-api-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklyReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    matchup_stats_api_stats_matchups__user_champion___enemy_champion__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-api-token"?: string | null;
+            };
+            path: {
+                user_champion: string;
+                enemy_champion: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchupStats"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     constitution_status_api_stats_constitution_get: {
         parameters: {
             query?: never;
@@ -1296,6 +1656,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConstitutionStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_notes_api_matchup_notes__user_champion___enemy_champion__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-api-token"?: string | null;
+            };
+            path: {
+                user_champion: string;
+                enemy_champion: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchupNotes"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_notes_api_matchup_notes__user_champion___enemy_champion__put: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-api-token"?: string | null;
+            };
+            path: {
+                user_champion: string;
+                enemy_champion: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MatchupNotesUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MatchupNotes"];
                 };
             };
             /** @description Validation Error */

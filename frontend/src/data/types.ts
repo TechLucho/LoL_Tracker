@@ -6,6 +6,10 @@ export type {
   BackendParticipant,
   MatchUpdate as MatchReviewUpdate,
   UserSettingsUpdate,
+  TrendPoint,
+  WeeklyReport,
+  WeeklyTopChampion,
+  WeeklyBestMatch,
 } from '../api/generated'
 
 // ──────────────── Tipos exclusivos del frontend ────────────────

@@ -65,6 +65,7 @@ class Settings(BaseSettings):
     pool_min_size: int = 1
     pool_max_size: int = 5
     sentry_dsn: str = ""  # si está vacío, Sentry no se inicializa
+    discord_webhook_url: str | None = None  # si está vacío, no se notifica a Discord
 
     @field_validator("riot_region")
     @classmethod

@@ -36,6 +36,15 @@ export type SpellsIndex = components['schemas']['SpellsIndex']
 
 export type ChampionStats = components['schemas']['ChampionStats']
 export type HeatmapCell = components['schemas']['HeatmapCell']
+export type TrendPoint = components['schemas']['TrendPoint']
+
+export type WeeklyReport = components['schemas']['WeeklyReport']
+export type WeeklyTopChampion = components['schemas']['WeeklyTopChampion']
+export type WeeklyBestMatch = components['schemas']['WeeklyBestMatch']
+
+export type MatchupStats = components['schemas']['MatchupStats']
+export type MatchupNotes = components['schemas']['MatchupNotes']
+export type MatchupNotesUpdate = components['schemas']['MatchupNotesUpdate']
 
 export type UserSettings = components['schemas']['UserSettings']
 export type UserSettingsUpdate = components['schemas']['UserSettingsUpdate']

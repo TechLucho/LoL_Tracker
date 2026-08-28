@@ -20,6 +20,9 @@ import sys
 from pathlib import Path
 
 import psycopg
+from dotenv import load_dotenv
+
+load_dotenv()
 
 log = logging.getLogger("migrate")
 

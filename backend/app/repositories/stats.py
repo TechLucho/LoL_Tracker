@@ -89,6 +89,37 @@ async def champion_performance() -> list[dict[str, Any]]:
     )
 
 
+async def matchup(user_champion: str, enemy_champion: str) -> dict[str, Any]:
+    """Estadísticas del cruce de dos campeones, insensible a mayúsculas.
+
+    Filtra por el campeón del usuario (`matches.champion`) contra el rival de línea
+    (`matches.enemy_champion`). Con cero partidas devuelve una fila con todo a 0 para
+    que la UI pueda pintar "0 partidas" y seguir permitiendo editar notas.
+    """
+    row = await db.fetch_one(
+        f"""
+        SELECT
+            COUNT(*)                                AS games_played,
+            SUM(CASE WHEN win THEN 1 ELSE 0 END)    AS wins,
+            SUM(CASE WHEN win THEN 0 ELSE 1 END)    AS losses,
+            ROUND({_WINRATE}, 1)                    AS winrate,
+            ROUND(AVG(kills)::numeric, 2)           AS avg_kills,
+            ROUND(AVG(deaths)::numeric, 2)          AS avg_deaths,
+            ROUND(AVG(assists)::numeric, 2)         AS avg_assists,
+            ROUND({_KDA_RATIO}, 2)                  AS kda_ratio
+        FROM matches
+        WHERE LOWER(champion) = LOWER(%s)
+          AND LOWER(enemy_champion) = LOWER(%s)
+          AND {_NOT_A_REMAKE}
+        """,
+        (user_champion, enemy_champion),
+    )
+    return row or {
+        "games_played": 0, "wins": 0, "losses": 0, "winrate": 0.0,
+        "avg_kills": 0.0, "avg_deaths": 0.0, "avg_assists": 0.0, "kda_ratio": 0.0,
+    }
+
+
 async def activity_heatmap(timezone: str) -> list[dict[str, Any]]:
     """Agregado día-de-semana x bloque horario (4 bloques de 6h), en la zona horaria de visualización.
 
@@ -172,3 +203,146 @@ async def lp_trend(limit: int = 20, queue_id: int | None = None) -> list[dict[st
         """,
         params,
     )
+
+
+async def kpi_trend(limit: int = 50) -> list[dict[str, Any]]:
+    """Serie temporal de KPIs de mejora de las últimas N partidas válidas (orden cronológico asc).
+
+    Por partida devuelve CS/min y KDA desde las columnas de la fila, y el DPM REAL del propio
+    usuario desde su participante en el JSONB (misma heurística que `_DPM_REAL` agregada: empareja
+    por campeón). Si una fila legacy no tiene participants, su DPM es NULL y la gráfica lo salta.
+
+    Anti-remake sí en este endpoint: una rendición temprana distorsiona CS/min y muertes y no es
+    un dato de evolución real.
+    """
+    return await db.fetch_all(
+        f"""
+        WITH ultimas AS (
+            SELECT
+                game_id, date, cs_min, kills, deaths, assists, champion,
+                game_duration_minutes,
+                participants,
+                (
+                    SELECT (p->>'total_damage')::numeric
+                    FROM jsonb_array_elements(participants) AS p
+                    WHERE LOWER(p->>'champion_name') = LOWER(champion)
+                    LIMIT 1
+                ) AS my_damage
+            FROM matches
+            WHERE {_NOT_A_REMAKE}
+            ORDER BY date DESC
+            LIMIT %s
+        )
+        SELECT
+            game_id,
+            date                                            AS timestamp,
+            COALESCE(ROUND(cs_min::numeric, 2), 0)          AS cs_min,
+            COALESCE(ROUND(
+                (my_damage / GREATEST(game_duration_minutes, 1))::numeric
+            , 0), 0)                                         AS dpm,
+            ROUND((kills::numeric + assists::numeric) / GREATEST(deaths, 1), 2) AS kda
+        FROM ultimas
+        ORDER BY date ASC
+        """,
+        (limit,),
+    )
+
+
+# CTE compartida por las tres queries del reporte semanal: la ventana de los últimos 7
+# días (date >= now - 7d, según UTC porque `date` se guarda en UTC) SIN remakes.
+_WEEK_CTE = """
+    WITH week AS (
+        SELECT *
+        FROM matches
+        WHERE date >= (NOW() - INTERVAL '7 days')
+          AND {not_a_remake}
+    )
+"""
+
+# Rating 0-100 del propio usuario dentro del JSONB participants, emparejando por campeón.
+_RATING_REAL = """
+    (
+        SELECT (p->>'rating')::numeric
+        FROM jsonb_array_elements(participants) AS p
+        WHERE LOWER(p->>'champion_name') = LOWER(champion)
+        LIMIT 1
+    )
+"""
+
+
+async def weekly_report() -> dict[str, Any]:
+    """Resumen de la última semana (7 días según fecha UTC), para el "Reporte Semanal".
+
+    Devuelve la agregación (partidas, winrate, KDA medio), el campeón más jugado y la mejor
+    partida de la ventana (la de mayor rating del usuario). `rating` y el DPM se leen del
+    JSONB participants; las filas legacy sin participants dan mejor_partida = None.
+
+    El rating del usuario se localiza con la misma heurística que el resto del proyecto
+    (el campeón de la fila identifica a su participante, porque cada fila es una partida
+    del usuario).
+    """
+    cte = _WEEK_CTE.format(not_a_remake=_NOT_A_REMAKE)
+
+    summary = await db.fetch_one(
+        f"""
+        {cte}
+        SELECT
+            (NOW() - INTERVAL '7 days')::date AS period_start,
+            NOW()::date                        AS period_end,
+            COUNT(*)                           AS total_games,
+            COUNT(*) FILTER (WHERE win)        AS wins,
+            COUNT(*) FILTER (WHERE NOT win)    AS losses,
+            ROUND(
+                COUNT(*) FILTER (WHERE win)::numeric / GREATEST(COUNT(*), 1) * 100
+            , 1)                               AS winrate,
+            ROUND(
+                (SUM(kills)::numeric + SUM(assists)::numeric)
+                / GREATEST(SUM(deaths), 1)
+            , 2)                               AS avg_kda
+        FROM week
+        """
+    ) or {}
+
+    most_played = await db.fetch_one(
+        f"""
+        {cte}
+        SELECT champion, COUNT(*) AS games, COUNT(*) FILTER (WHERE win) AS wins
+        FROM week
+        GROUP BY champion
+        ORDER BY games DESC, wins DESC
+        LIMIT 1
+        """
+    )
+
+    best_match = await db.fetch_one(
+        f"""
+        {cte}
+        SELECT
+            game_id, date, champion, kills, deaths, assists,
+            {_RATING_REAL}                                   AS rating,
+            ROUND(
+                (kills::numeric + assists::numeric) / GREATEST(deaths, 1)
+            , 2)                                             AS kda
+        FROM week
+        WHERE {_RATING_REAL} IS NOT NULL
+        ORDER BY rating DESC
+        LIMIT 1
+        """
+    )
+
+    # Fallback seguro: sin partidas en la ventana, SUM(...) devuelve nulos (p.ej. avg_kda)
+    # y COUNT necesita partir de 0. Nunca dejar que lleguen None a Pydantic.
+    base = {
+        **summary,
+        "total_games": summary.get("total_games") or 0,
+        "wins": summary.get("wins") or 0,
+        "losses": summary.get("losses") or 0,
+        "winrate": summary.get("winrate") or 0.0,
+        "avg_kda": summary.get("avg_kda") or 0.0,
+    }
+
+    return {
+        **base,
+        "most_played": most_played,
+        "best_match": best_match,
+    }

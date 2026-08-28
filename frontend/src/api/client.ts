@@ -12,11 +12,25 @@ import type {
   HeatmapCell,
   SyncStatus,
   SyncAccepted,
+  MatchupStats,
+  MatchupNotes,
+  MatchupNotesUpdate,
+  TrendPoint,
+  WeeklyReport,
 } from './generated'
-
 // Re-export generated types that are used by other modules.
-export type { BackendMatch, HealthStatus, ChampionStats, HeatmapCell, ChampionMeta } from './generated'
-
+export type {
+  BackendMatch,
+  HealthStatus,
+  ChampionStats,
+  HeatmapCell,
+  ChampionMeta,
+  MatchupStats,
+  MatchupNotes,
+  MatchupNotesUpdate,
+  TrendPoint,
+  WeeklyReport,
+} from './generated'
 // Producción: la URL deja de estar hardcodeada (VITE_API_URL en el build del hosting) y cae
 // al origen de desarrollo local si no está definida.
 export const api = axios.create({
@@ -156,5 +170,49 @@ export async function getChampionStats(): Promise<ChampionStats[]> {
 
 export async function getHeatmapStats(): Promise<HeatmapCell[]> {
   const { data } = await api.get<HeatmapCell[]>('/stats/heatmap')
+  return data
+}
+
+export async function getKpiTrends(limit = 50): Promise<TrendPoint[]> {
+  const { data } = await api.get<TrendPoint[]>('/stats/trends', { params: { limit } })
+  return data
+}
+
+export async function getWeeklyReport(): Promise<WeeklyReport> {
+  const { data } = await api.get<WeeklyReport>('/stats/weekly')
+  return data
+}
+
+// ─────────────────────────────── Matchups ───────────────────────────────
+
+export async function getMatchupStats(
+  userChampion: string,
+  enemyChampion: string,
+): Promise<MatchupStats> {
+  const { data } = await api.get<MatchupStats>(
+    `/stats/matchups/${encodeURIComponent(userChampion)}/${encodeURIComponent(enemyChampion)}`,
+  )
+  return data
+}
+
+export async function getMatchupNotes(
+  userChampion: string,
+  enemyChampion: string,
+): Promise<MatchupNotes> {
+  const { data } = await api.get<MatchupNotes>(
+    `/matchup-notes/${encodeURIComponent(userChampion)}/${encodeURIComponent(enemyChampion)}`,
+  )
+  return data
+}
+
+export async function updateMatchupNotes(
+  userChampion: string,
+  enemyChampion: string,
+  payload: MatchupNotesUpdate,
+): Promise<MatchupNotes> {
+  const { data } = await api.put<MatchupNotes>(
+    `/matchup-notes/${encodeURIComponent(userChampion)}/${encodeURIComponent(enemyChampion)}`,
+    payload,
+  )
   return data
 }

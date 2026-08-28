@@ -35,6 +35,7 @@ from backend.app.routers import (
     constitution,
     health,
     matches,
+    matchup_notes,
     metadata,
     metrics,
     scout,
@@ -175,6 +176,7 @@ _protected = [Depends(require_token)]
 app.include_router(health.router, prefix="/api", dependencies=_protected)
 app.include_router(matches.router, dependencies=_protected)
 app.include_router(stats.router, dependencies=_protected)
+app.include_router(matchup_notes.router, dependencies=_protected)
 app.include_router(scout.router, dependencies=_protected)
 app.include_router(sync.router, dependencies=_protected)
 app.include_router(config.router, dependencies=_protected)

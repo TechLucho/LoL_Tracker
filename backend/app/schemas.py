@@ -7,7 +7,7 @@ devuelve **números**; formatear es responsabilidad del frontend.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -148,6 +148,55 @@ class HeatmapCell(BaseModel):
     winrate: float
 
 
+class TrendPoint(BaseModel):
+    """Un punto de la serie temporal de KPIs de mejora (últimas N partidas válidas).
+
+    Orden cronológico ascendente (partida más antigua primero) para que las gráficas de
+    línea recorran el tiempo de izquierda a derecha. `timestamp` es la hora de juego en UTC.
+    """
+
+    game_id: str
+    timestamp: datetime
+    cs_min: float
+    dpm: float
+    kda: float
+
+
+class WeeklyTopChampion(BaseModel):
+    """Campeón más jugado de la semana (nombre visible; el avatar lo resuelve el frontend vía Data Dragon)."""
+
+    champion: str
+    games: int
+    wins: int
+
+
+class WeeklyBestMatch(BaseModel):
+    """La mejor partida de la semana, según el rating 0-100 del usuario."""
+
+    game_id: str
+    date: datetime
+    champion: str
+    kills: int
+    deaths: int
+    assists: int
+    kda: float
+    rating: float
+
+
+class WeeklyReport(BaseModel):
+    """Resumen de los últimos 7 días (ventana según fecha UTC) para el Reporte Semanal."""
+
+    period_start: date
+    period_end: date
+    total_games: int
+    wins: int
+    losses: int
+    winrate: float = 0.0
+    avg_kda: float = 0.0
+    most_played: WeeklyTopChampion | None = None
+    best_match: WeeklyBestMatch | None = None
+
+
 class Nemesis(BaseModel):
     enemy_champion: str
     games: int
@@ -155,6 +204,36 @@ class Nemesis(BaseModel):
     winrate: float
     avg_deaths: float
     avg_cs_min: float
+
+
+class MatchupStats(BaseModel):
+    """Estadísticas históricas del cruce de dos campeones (Tú contra enemigo)."""
+
+    user_champion: str
+    enemy_champion: str
+    games_played: int = 0
+    wins: int = 0
+    losses: int = 0
+    winrate: float = 0.0
+    avg_kills: float = 0.0
+    avg_deaths: float = 0.0
+    avg_assists: float = 0.0
+    kda_ratio: float = 0.0
+
+
+class MatchupNotes(BaseModel):
+    """Notas persistidas para un emparejamiento concreto."""
+
+    user_champion: str
+    enemy_champion: str
+    notes: str = ""
+    updated_at: datetime | None = None
+
+
+class MatchupNotesUpdate(BaseModel):
+    """Payload del PUT: reemplazo completo de las notas del cruce."""
+
+    notes: str = ""
 
 
 class ConstitutionStatus(BaseModel):
