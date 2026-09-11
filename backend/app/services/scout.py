@@ -12,6 +12,7 @@ instantánea (caché) o tardó (golpe real a Riot). Los casos "sin datos" no son
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -116,11 +117,40 @@ async def _name_by_key() -> dict[str, str]:
     }
 
 
+# ──────────────────────────── sección crítica por rival─────────────────────────────
+#
+# `asyncio.Lock` por `puuid`: dos requests concurrentes para el mismo rival serializan (el
+# segundo re-leerá la caché recién llenada por el primero y no tocará Riot). Requests para
+# rivales distintos corren en paralelo sin interferirse.
+#
+# El dict vive solo durante la vida del proceso (single-process by design, ver CLAUDE.md);
+# el guard protege la creación de locks para no duplicar en una carrera de `setdefault`.
+
+_scout_locks: dict[str, asyncio.Lock] = {}
+_scout_locks_guard = asyncio.Lock()
+
+_SCOUT_ERROR_HINT = (
+    "Reintentaré en unos minutos (el fallo queda cacheado para no insistir"
+    " mientras Riot esté limitando)."
+)
+
+
+async def _lock_for(puuid: str) -> asyncio.Lock:
+    """Lock por rival: serializa llamadas a Riot del mismo puuid sin bloquear rivales distintos."""
+    async with _scout_locks_guard:
+        lock = _scout_locks.get(puuid)
+        if lock is None:
+            lock = asyncio.Lock()
+            _scout_locks[puuid] = lock
+        return lock
+
+
 async def scout_opponent_for_match(match_row: dict[str, Any]) -> ScoutOpponent:
     """Escoutea al rival de línea de una partida ya cargada en DB.
 
-    La llamada a Riot solo ocurre en `cache miss` (y se guarda el resultado); en `cache hit`
-    la respuesta sale sin tocar la API de Riot en absoluto.
+    Un `asyncio.Lock` por `puuid` evita la carrera de dos requests concurrentes para el
+    mismo rival (double-check pattern). La caché negativa (TTL 15 min) impide re-golpear a
+    Riot mientras la cuota no se reinicia.
     """
     game_id = str(match_row["game_id"])
     opponent = find_lane_opponent(match_row)
@@ -147,8 +177,34 @@ async def scout_opponent_for_match(match_row: dict[str, Any]) -> ScoutOpponent:
             note="El rival no tiene PUUID registrado (bot o fila legacy): sin maestrías disponibles.",
         )
 
+    async with await _lock_for(puuid):
+        return await _scout_locked(
+            game_id=game_id,
+            puuid=puuid,
+            opponent_name=opponent_name,
+            opponent_champion=opponent_champion,
+            opponent_role=opponent_role,
+        )
+
+
+async def _scout_locked(
+    *,
+    game_id: str,
+    puuid: str,
+    opponent_name: str,
+    opponent_champion: str,
+    opponent_role: str,
+) -> ScoutOpponent:
+    """Implementación del escout DENTRO del asyncio.Lock por puuid.
+
+    Lee la caché (positiva y negativa) → cache miss → Riot → escribe caché. El double-check
+    (re-leer la caché al entrar) garantiza que el segundo request concurrente no vuelve a
+    llamar a Riot si el primero ya la llenó.
+    """
     now = datetime.now(UTC)
-    payload, cached_at = await scout_repo.get_scout_cache(puuid)
+    payload, cached_at, error = await scout_repo.get_scout_cache(puuid)
+
+    # ── Éxito cacheado (TTL 24 h) ─────────────────────────────────────────────
     if payload is not None and scout_repo.cache_is_fresh(cached_at, now):
         log.info("Escout de %s servido desde caché (game %s)", opponent_name, game_id)
         return ScoutOpponent(
@@ -162,6 +218,12 @@ async def scout_opponent_for_match(match_row: dict[str, Any]) -> ScoutOpponent:
             cached_at=cached_at,
         )
 
+    # ── Caché negativa fresca (TTL 15 min): 503 sin Riot ──────────────────────
+    if error and scout_repo.cache_is_fresh(cached_at, now, ttl=scout_repo.SCOUT_ERROR_TTL):
+        log.info("Escout de %s servido de caché negativa (game %s)", opponent_name, game_id)
+        raise ScoutUnavailableError(f"{error} {_SCOUT_ERROR_HINT}".strip())
+
+    # ── Cache miss: la llamada real a Riot ─────────────────────────────────────
     try:
         entries = await RiotService(get_settings()).fetch_champion_mastery(puuid)
     except RiotServiceError as exc:
@@ -175,7 +237,15 @@ async def scout_opponent_for_match(match_row: dict[str, Any]) -> ScoutOpponent:
                 opponent_role=opponent_role,
                 note="Riot no tiene maestrías registradas para este rival (sin partidas o cuenta reciente).",
             )
-        log.warning("Escout de %s fallido: %s", opponent_name, exc)
+        if exc.retryable:
+            # Rate limit o fallo temporal de Riot: guardamos el estado fallido (caché negativa)
+            # para no multiplicar las llamadas mientras la cuota no se reinicia.
+            await scout_repo.set_scout_cache_error(puuid, str(exc))
+            log.warning("Escout de %s fallido (caché negativa): %s", opponent_name, exc)
+            raise ScoutUnavailableError(f"{exc} {_SCOUT_ERROR_HINT}".strip()) from exc
+        # Error no-retryable (p. ej. 403 key expirada): se informa sin cachear, ya que el
+        # problema persistirá y cachingelo ocultaría un error de configuración.
+        log.warning("Escout de %s fallido (no-retryable): %s", opponent_name, exc)
         raise ScoutUnavailableError(str(exc)) from exc
 
     if not entries:

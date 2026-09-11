@@ -31,7 +31,8 @@ def run_scenario(scenario: Callable[[], Awaitable[Any]]) -> Any:
         await db.open_pool()
         try:
             # RESTART IDENTITY también resetea lp_snapshots por si un futuro test lo usa.
-            await db.execute("TRUNCATE matches, lp_snapshots RESTART IDENTITY")
+            # scout_cache se trunca para que el roundtrip del escout parta siempre de vacío.
+            await db.execute("TRUNCATE matches, lp_snapshots, scout_cache RESTART IDENTITY")
             return await scenario()
         finally:
             await db.close_pool()
@@ -312,3 +313,32 @@ def test_nemesis_orden_exclusiones_y_antiremake():
     assert nombres == ["Darius", "Garen"]
     assert float(enemigos[0]["winrate"]) == 0.0
     assert float(enemigos[1]["winrate"]) == 50.0
+
+
+# ─────────────────────────── scout_cache (positiva + negativa) ───────────────────────────
+
+
+def test_scout_cache_roundtrip_positivo_y_negativo():
+    """La caché del escout persiste payload y error por separado, y el upsert por puuid es coherente."""
+
+    async def s():
+        payload = [{"champion": "Jax", "champion_key": "63", "mastery_level": 7, "points": 400_000}]
+
+        # Caché positiva: set -> get devuelve payload y sin error.
+        await scout.set_scout_cache("p-rival", payload)
+        out_payload, cached_at, error = await scout.get_scout_cache("p-rival")
+        assert out_payload == payload
+        assert error == ""
+        assert cached_at is not None
+
+        # Caché negativa: el mismo puuid se sobrescribe con el estado fallido.
+        await scout.set_scout_cache_error("p-rival", "Rate limit de Riot excedido.")
+        out_payload2, cached_at2, error2 = await scout.get_scout_cache("p-rival")
+        assert out_payload2 == []
+        assert error2 == "Rate limit de Riot excedido."
+        assert cached_at2 >= cached_at
+
+        # Un rival distinto no colisiona con el de arriba (miss limpio).
+        assert await scout.get_scout_cache("p-otro") == (None, None, "")
+
+    return run_scenario(s)
