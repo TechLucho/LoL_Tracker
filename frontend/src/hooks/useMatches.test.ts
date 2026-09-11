@@ -53,6 +53,7 @@ function participant(overrides: Partial<BackendParticipant> = {}): BackendPartic
     kill_participation: 0.72,
     rating: 66,
     rating_version: 1,
+    expected_stats: { cs_per_min: 7.5, dpm: 600, kill_participation: 0.6, vision_score: 19.5 },
     ...overrides,
   }
 }
@@ -121,6 +122,19 @@ describe('mapBackendToUI — fila moderna (con participants)', () => {
   it('usa los summoner spells reales y rellena huecos con Flash', () => {
     const ui = mapBackendToUI(backendMatch({ participants: [participant({ summoner_spells: [7] })] }))
     expect(ui.spells).toEqual([7, 4])
+  })
+
+  it('propaga expected_stats del backend al participante (y null si no llega)', () => {
+    const ui = mapBackendToUI(backendMatch({ participants: [participant()] }))
+    expect(ui.participants?.[0].expected_stats).toEqual({
+      cs_per_min: 7.5,
+      dpm: 600,
+      kill_participation: 0.6,
+      vision_score: 19.5,
+    })
+
+    const legacy = mapBackendToUI(backendMatch({ participants: [participant({ expected_stats: null })] }))
+    expect(legacy.participants?.[0].expected_stats).toBeNull()
   })
 
   it('propaga los campos subjetivos sin tocarlos (nullable)', () => {

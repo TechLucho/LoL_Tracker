@@ -34,6 +34,9 @@ export interface UIParticipant {
   vision_score: number
   kill_participation: number
   rating: number
+  /** Línea base del rol (servicio de baselines del backend): cs_per_min, dpm,
+   *  kill_participation (0-1) y vision_score total para la duración de la partida. */
+  expected_stats?: { cs_per_min: number; dpm: number; kill_participation: number; vision_score: number } | null
 }
 
 export interface UIMatch {

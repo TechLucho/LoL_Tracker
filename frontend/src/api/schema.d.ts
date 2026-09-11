@@ -375,6 +375,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/stats/baselines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Baselines
+         * @description Líneas base por rol: lo 'normal' de CS/min, DPM, KP% y visión para comparar en Full Stats.
+         *
+         *     Las mismas cifras que usa el rating (`_ROLE_PROFILES` en riot.py); incluye `"default"` para
+         *     roles desconocidos (ARAM, remakes).
+         */
+        get: operations["baselines_api_stats_baselines_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/matchup-notes/{user_champion}/{enemy_champion}": {
         parameters: {
             query?: never;
@@ -472,7 +495,7 @@ export interface paths {
         };
         /**
          * Sync Status
-         * @description Estado del sync para el polling del frontend (idle/processing/success/error).
+         * @description Estado del sync para el polling del frontend (idle/processing/success/partial/error).
          */
         get: operations["sync_status_api_sync_status_get"];
         put?: never;
@@ -635,6 +658,23 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * BaselineStats
+         * @description Línea base de un rol: lo 'normal' contra lo que se compara a cada participante.
+         */
+        BaselineStats: {
+            /** Cs Per Min */
+            cs_per_min: number;
+            /** Dpm */
+            dpm: number;
+            /**
+             * Kill Participation
+             * @description Ratio 0-1
+             */
+            kill_participation: number;
+            /** Vision Per Min */
+            vision_per_min: number;
+        };
         /** ChampionMeta */
         ChampionMeta: {
             /**
@@ -1209,6 +1249,28 @@ export interface components {
              * @description Diferencia de CS (minions+jungle) a los 15:00
              */
             csd15?: number | null;
+            /** @description Valores esperados de este rol para la duración de la partida */
+            expected_stats?: components["schemas"]["ParticipantExpectedStats"] | null;
+        };
+        /**
+         * ParticipantExpectedStats
+         * @description Valores esperados de un rol para una partida concreta (baselines, no persistidos).
+         */
+        ParticipantExpectedStats: {
+            /** Cs Per Min */
+            cs_per_min: number;
+            /** Dpm */
+            dpm: number;
+            /**
+             * Kill Participation
+             * @description Ratio 0-1
+             */
+            kill_participation: number;
+            /**
+             * Vision Score
+             * @description Visión total esperada = visión/min × duración real
+             */
+            vision_score: number;
         };
         /**
          * PatchAlert
@@ -2283,6 +2345,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MatchupStats"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    baselines_api_stats_baselines_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-api-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: components["schemas"]["BaselineStats"];
+                    };
                 };
             };
             /** @description Validation Error */

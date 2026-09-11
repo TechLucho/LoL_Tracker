@@ -1034,6 +1034,60 @@
         }
       }
     },
+    "/api/stats/baselines": {
+      "get": {
+        "tags": [
+          "stats"
+        ],
+        "summary": "Baselines",
+        "description": "L\u00edneas base por rol: lo 'normal' de CS/min, DPM, KP% y visi\u00f3n para comparar en Full Stats.\n\nLas mismas cifras que usa el rating (`_ROLE_PROFILES` en riot.py); incluye `\"default\"` para\nroles desconocidos (ARAM, remakes).",
+        "operationId": "baselines_api_stats_baselines_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/BaselineStats"
+                  },
+                  "title": "Response Baselines Api Stats Baselines Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/matchup-notes/{user_champion}/{enemy_champion}": {
       "get": {
         "tags": [
@@ -1442,7 +1496,7 @@
           "sync"
         ],
         "summary": "Sync Status",
-        "description": "Estado del sync para el polling del frontend (idle/processing/success/error).",
+        "description": "Estado del sync para el polling del frontend (idle/processing/success/partial/error).",
         "operationId": "sync_status_api_sync_status_get",
         "parameters": [
           {
@@ -1901,6 +1955,38 @@
   },
   "components": {
     "schemas": {
+      "BaselineStats": {
+        "properties": {
+          "cs_per_min": {
+            "type": "number",
+            "title": "Cs Per Min"
+          },
+          "dpm": {
+            "type": "number",
+            "title": "Dpm"
+          },
+          "kill_participation": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Kill Participation",
+            "description": "Ratio 0-1"
+          },
+          "vision_per_min": {
+            "type": "number",
+            "title": "Vision Per Min"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cs_per_min",
+          "dpm",
+          "kill_participation",
+          "vision_per_min"
+        ],
+        "title": "BaselineStats",
+        "description": "L\u00ednea base de un rol: lo 'normal' contra lo que se compara a cada participante."
+      },
       "ChampionMeta": {
         "properties": {
           "id": {
@@ -3023,6 +3109,17 @@
             ],
             "title": "Csd15",
             "description": "Diferencia de CS (minions+jungle) a los 15:00"
+          },
+          "expected_stats": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ParticipantExpectedStats"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Valores esperados de este rol para la duraci\u00f3n de la partida"
           }
         },
         "type": "object",
@@ -3038,6 +3135,39 @@
         ],
         "title": "Participant",
         "description": "Un jugador dentro de una partida (10 por match).\n\n`player_name` sustituye al viejo `summoner_name` (que Riot ya no rellena en Match-V5): ahora\nse guarda el Riot ID completo \"GameName#TAG\". Los campos con default toleran filas antiguas\ndel JSONB sincronizadas antes del nuevo esquema, para que /api/matches no reviente; tras un\nTRUNCATE + resync todos los participantes salen completos."
+      },
+      "ParticipantExpectedStats": {
+        "properties": {
+          "cs_per_min": {
+            "type": "number",
+            "title": "Cs Per Min"
+          },
+          "dpm": {
+            "type": "number",
+            "title": "Dpm"
+          },
+          "kill_participation": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Kill Participation",
+            "description": "Ratio 0-1"
+          },
+          "vision_score": {
+            "type": "number",
+            "title": "Vision Score",
+            "description": "Visi\u00f3n total esperada = visi\u00f3n/min \u00d7 duraci\u00f3n real"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cs_per_min",
+          "dpm",
+          "kill_participation",
+          "vision_score"
+        ],
+        "title": "ParticipantExpectedStats",
+        "description": "Valores esperados de un rol para una partida concreta (baselines, no persistidos)."
       },
       "PatchAlert": {
         "properties": {

@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, status
 from backend.app.deps import SettingsDep
 from backend.app.repositories import stats as repo
 from backend.app.schemas import (
+    BaselineStats,
     ChampionRoleSummary,
     ChampionStats,
     HeatmapCell,
@@ -22,6 +23,7 @@ from backend.app.schemas import (
     TrendPoint,
     WeeklyReport,
 )
+from backend.app.services.baselines import serialize_baselines
 from backend.app.services import datadragon
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
@@ -174,3 +176,13 @@ async def matchup_stats(user_champion: str, enemy_champion: str) -> MatchupStats
     """
     row = await repo.matchup(user_champion, enemy_champion)
     return MatchupStats(user_champion=user_champion, enemy_champion=enemy_champion, **row)
+
+
+@router.get("/baselines", response_model=dict[str, BaselineStats])
+async def baselines() -> dict[str, dict[str, float]]:
+    """Líneas base por rol: lo 'normal' de CS/min, DPM, KP% y visión para comparar en Full Stats.
+
+    Las mismas cifras que usa el rating (`_ROLE_PROFILES` en riot.py); incluye `"default"` para
+    roles desconocidos (ARAM, remakes).
+    """
+    return serialize_baselines()

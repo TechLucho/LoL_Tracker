@@ -6,9 +6,15 @@ from fastapi import APIRouter, HTTPException, Query, status
 
 from backend.app.repositories import matches as repo
 from backend.app.schemas import Match, MatchUpdate, ScoutOpponent
+from backend.app.services.baselines import enrich_match_row
 from backend.app.services.scout import ScoutUnavailableError, scout_opponent_for_match
 
 router = APIRouter(prefix="/api/matches", tags=["matches"])
+
+
+def _serialize(row: dict) -> Match:
+    """Fila de `matches` → Match, con `expected_stats` calculado por participante."""
+    return Match(**enrich_match_row(row))
 
 
 @router.get("", response_model=list[Match])
@@ -18,7 +24,7 @@ async def list_matches(
     queue: str | None = Query(None, description="Filtro: 'ranked' o 'normal'"),
 ) -> list[Match]:
     rows = await repo.list_recent(limit=limit, offset=offset, queue=queue)
-    return [Match(**row) for row in rows]
+    return [_serialize(row) for row in rows]
 
 
 @router.get("/{game_id}", response_model=Match)
@@ -26,7 +32,7 @@ async def get_match(game_id: str) -> Match:
     row = await repo.get_by_id(game_id)
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Partida {game_id} no encontrada")
-    return Match(**row)
+    return _serialize(row)
 
 
 @router.patch("/{game_id}", response_model=Match)
@@ -48,7 +54,7 @@ async def update_match(game_id: str, payload: MatchUpdate) -> Match:
 
     await repo.update_details(game_id, changes)
     row = await repo.get_by_id(game_id)
-    return Match(**row)  # type: ignore[arg-type]
+    return _serialize(row)  # type: ignore[arg-type]
 
 
 @router.get("/{game_id}/scout-opponent", response_model=ScoutOpponent)

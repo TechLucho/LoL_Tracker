@@ -68,6 +68,30 @@ class Participant(BaseModel):
     gd15: float | None = Field(default=None, description="Diferencia de oro a los 15:00 (a tu favor si >0)")
     xpd15: float | None = Field(default=None, description="Diferencia de XP a los 15:00")
     csd15: float | None = Field(default=None, description="Diferencia de CS (minions+jungle) a los 15:00")
+    # Línea base del rol calculada en LECTURA (services/baselines.py, nunca se persiste):
+    # lo "esperable" de CS/min, DPM, KP% y visión total para comparar en la UI de Full Stats.
+    expected_stats: ParticipantExpectedStats | None = Field(
+        default=None,
+        description="Valores esperados de este rol para la duración de la partida",
+    )
+
+
+class ParticipantExpectedStats(BaseModel):
+    """Valores esperados de un rol para una partida concreta (baselines, no persistidos)."""
+
+    cs_per_min: float
+    dpm: float
+    kill_participation: float = Field(ge=0.0, le=1.0, description="Ratio 0-1")
+    vision_score: float = Field(description="Visión total esperada = visión/min × duración real")
+
+
+class BaselineStats(BaseModel):
+    """Línea base de un rol: lo 'normal' contra lo que se compara a cada participante."""
+
+    cs_per_min: float
+    dpm: float
+    kill_participation: float = Field(ge=0.0, le=1.0, description="Ratio 0-1")
+    vision_per_min: float
 
 
 class Match(BaseModel):

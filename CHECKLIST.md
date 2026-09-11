@@ -222,7 +222,7 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 - [x] **Sync reanudable**: checkpoint por partida + detección de "Riot degradado" para abortar esperas de backoff largas — micro-lotes de 5 partidas persisten al vuelo (`on_match` en `fetch_recent_matches`), `RiotDegradedError` aborta limpio (429 con Retry-After > 60s o 5xx agotados), estado `partial` con `degraded_api: true` y toast naranja de aviso en la UI
 - [ ] Multi-usuario: auth con Supabase, dashboard compartido.
-- [ ] Comparación con estadísticas globales de la ladder (API challenger-v4).
+- [x] **Comparación con estadísticas globales de la ladder**: línea base por rol (CS/min, DPM, KP%, Visión) inyectada por participante en la serialización (`services/baselines.py`, espejo de `_ROLE_PROFILES` para no contradecir el rating) y renderizada en la vista Full Stats de cada partida — valor real destacado + `Exp: …` en gris con flecha verde ▲ si superas la base del rol; `GET /api/stats/baselines` expone el mapa completo
 - [ ] **Reporte semanal a Discord**: cruce de `weekly_report` (ya implementado) con el webhook ya existente
 
 ### Ideas Congeladas (Prioridad Nula)

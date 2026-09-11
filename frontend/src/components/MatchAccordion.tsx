@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { AlertTriangle, CheckCircle2, Database, Loader2, XCircle } from 'lucide-react'
+import { AlertTriangle, ArrowUp, CheckCircle2, Database, Loader2, XCircle } from 'lucide-react'
 import type { UIMatch, UIParticipant, MatchReviewUpdate } from '../data/types'
 import { IMPACT_RATINGS, TILT_LEVELS, DDragon } from '../data/constants'
 import { computeOkrResults } from '../data/okr'
@@ -435,25 +435,70 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
     onReviewSave(match.game_id, data)
   }
 
-  const stats = (() => {
-    return me ? [
+  // Línea base global del rol (viene del backend por participante): la comparativa de Full Stats.
+  // Las filas legacy sin participants no llevan `expected_stats`, y entonces se pintan igual.
+  const exp = me?.expected_stats ?? null
+  const beatBaseline = (real: number, target: number | undefined): boolean =>
+    target !== undefined && real >= target
+
+  const stats: {
+    label: string
+    value: string
+    sub: string
+    color: string
+    expected?: string
+    beat?: boolean
+  }[] = (() => {
+    if (!me) {
+      return [
+        { label: 'KDA', value: `${match.kills}/${match.deaths}/${match.assists}`, sub: `${match.kda_ratio.toFixed(2)} ratio`, color: 'text-white' },
+        { label: 'CS/min', value: match.cs_min.toFixed(1), sub: `${match.cs_total} total CS`, color: 'text-white' },
+        { label: 'KP%', value: `${(match.kill_participation * 100).toFixed(0)}%`, sub: 'Kill Participation', color: 'text-purple-400' },
+        { label: 'DPM', value: `${match.dpm}`, sub: 'Estimated DPM', color: 'text-white' },
+        { label: 'Control Wards', value: `${match.control_wards}`, sub: 'Placed', color: 'text-white' },
+        { label: 'Duration', value: match.duration_display, sub: 'Game length', color: 'text-white' },
+        { label: 'Role', value: match.role, sub: match.enemy_champion !== 'Unknown' ? `vs ${match.enemy_champion}` : '', color: 'text-white' },
+        { label: 'Queue', value: match.queue_id === 420 ? 'Ranked' : match.queue_id === 400 ? 'Normal' : 'Other', sub: `ID: ${match.queue_id ?? 'N/A'}`, color: 'text-white' },
+      ]
+    }
+    return [
       { label: 'KDA', value: `${me.kills}/${me.deaths}/${me.assists}`, sub: match.kda_ratio === 99 ? 'Perfect' : `${match.kda_ratio.toFixed(2)} ratio`, color: match.kda_ratio >= 5 ? 'text-emerald-400' : match.kda_ratio >= 3 ? 'text-white' : 'text-red-400' },
-      { label: 'CS/min', value: match.cs_min.toFixed(1), sub: `${match.cs_total} total CS`, color: match.cs_min >= 7.5 ? 'text-emerald-400' : match.cs_min >= 6 ? 'text-white' : 'text-orange-400' },
-      { label: 'KP%', value: `${(match.kill_participation * 100).toFixed(0)}%`, sub: 'Kill Participation', color: match.kill_participation >= 0.6 ? 'text-purple-400' : 'text-gray-300' },
-      { label: 'DPM', value: `${match.dpm}`, sub: 'Damage Per Minute', color: match.dpm >= 700 ? 'text-orange-400' : match.dpm >= 500 ? 'text-white' : 'text-gray-400' },
-      { label: 'Vision/min', value: (me.vision_score / duration).toFixed(1), sub: `Score: ${me.vision_score} · Wards: ${match.control_wards}`, color: me.vision_score / duration >= 1.5 ? 'text-emerald-400' : 'text-white' },
+      // Métricas contra la ladder: valor real destacado + línea base del rol en gris (Exp: …)
+      {
+        label: 'CS/min',
+        value: match.cs_min.toFixed(1),
+        sub: `${match.cs_total} total CS`,
+        color: match.cs_min >= 7.5 ? 'text-emerald-400' : match.cs_min >= 6 ? 'text-white' : 'text-orange-400',
+        expected: exp ? `Exp: ${exp.cs_per_min.toFixed(1)}` : undefined,
+        beat: beatBaseline(match.cs_min, exp?.cs_per_min),
+      },
+      {
+        label: 'KP%',
+        value: `${(match.kill_participation * 100).toFixed(0)}%`,
+        sub: 'Kill Participation',
+        color: match.kill_participation >= 0.6 ? 'text-purple-400' : 'text-gray-300',
+        expected: exp ? `Exp: ${(exp.kill_participation * 100).toFixed(0)}%` : undefined,
+        beat: beatBaseline(match.kill_participation, exp?.kill_participation),
+      },
+      {
+        label: 'DPM',
+        value: `${match.dpm}`,
+        sub: 'Damage Per Minute',
+        color: match.dpm >= 700 ? 'text-orange-400' : match.dpm >= 500 ? 'text-white' : 'text-gray-400',
+        expected: exp ? `Exp: ${exp.dpm}` : undefined,
+        beat: beatBaseline(match.dpm, exp?.dpm),
+      },
+      {
+        label: 'Vision/min',
+        value: (me.vision_score / duration).toFixed(1),
+        sub: `Score: ${me.vision_score} · Wards: ${match.control_wards}`,
+        color: me.vision_score / duration >= 1.5 ? 'text-emerald-400' : 'text-white',
+        expected: exp ? `Exp: ${(exp.vision_score / duration).toFixed(1)}` : undefined,
+        beat: beatBaseline(me.vision_score, exp?.vision_score),
+      },
       { label: 'Gold/min', value: Math.round(me.gold_earned / duration).toString(), sub: `${me.gold_earned.toLocaleString()} total gold`, color: 'text-yellow-400' },
       { label: 'Dmg Taken/min', value: Math.round(me.total_damage_taken / duration).toString(), sub: `${(me.total_damage_taken / 1000).toFixed(1)}k total taken`, color: 'text-white' },
       { label: 'Dmg Dealt', value: `${(me.total_damage / 1000).toFixed(1)}k`, sub: `${Math.round(me.total_damage / duration)} DPM to champs`, color: match.dpm >= 700 ? 'text-orange-400' : 'text-white' },
-    ] : [
-      { label: 'KDA', value: `${match.kills}/${match.deaths}/${match.assists}`, sub: `${match.kda_ratio.toFixed(2)} ratio`, color: 'text-white' },
-      { label: 'CS/min', value: match.cs_min.toFixed(1), sub: `${match.cs_total} total CS`, color: 'text-white' },
-      { label: 'KP%', value: `${(match.kill_participation * 100).toFixed(0)}%`, sub: 'Kill Participation', color: 'text-purple-400' },
-      { label: 'DPM', value: `${match.dpm}`, sub: 'Estimated DPM', color: 'text-white' },
-      { label: 'Control Wards', value: `${match.control_wards}`, sub: 'Placed', color: 'text-white' },
-      { label: 'Duration', value: match.duration_display, sub: 'Game length', color: 'text-white' },
-      { label: 'Role', value: match.role, sub: match.enemy_champion !== 'Unknown' ? `vs ${match.enemy_champion}` : '', color: 'text-white' },
-      { label: 'Queue', value: match.queue_id === 420 ? 'Ranked' : match.queue_id === 400 ? 'Normal' : 'Other', sub: `ID: ${match.queue_id ?? 'N/A'}`, color: 'text-white' },
     ]
   })()
 
@@ -552,8 +597,18 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
           {stats.map((s) => (
             <div key={s.label} className="rounded-lg border border-gray-800 bg-[#1A1A24] p-3">
               <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{s.label}</span>
-              <p className={`font-mono text-xl font-black ${s.color}`}>{s.value}</p>
+              <p className={`font-mono text-xl font-black ${s.color}`}>
+                {s.value}
+                {s.beat && (
+                  <ArrowUp className="ml-1 inline-block h-3.5 w-3.5 text-emerald-400" />
+                )}
+              </p>
               <span className="text-[10px] text-gray-600">{s.sub}</span>
+              {s.expected && (
+                <span className="mt-1 block border-t border-gray-800 pt-1 text-[10px] text-gray-500">
+                  {s.expected}
+                </span>
+              )}
             </div>
           ))}
         </div>

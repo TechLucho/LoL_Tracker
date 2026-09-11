@@ -130,6 +130,7 @@ export function mapBackendToUI(m: BackendMatch): UIMatch {
       vision_score: p.vision_score,
       kill_participation: p.kill_participation,
       rating: p.rating,
+      expected_stats: p.expected_stats ?? null,
     })) ?? null,
     lp_change: m.lp_change ?? null,
     tilt_level: m.tilt_level ?? null,
