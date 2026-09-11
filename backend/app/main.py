@@ -147,7 +147,7 @@ if settings.sentry_dsn:
 app = FastAPI(
     title="LoL Tracker API",
     description="Backend del dashboard de rendimiento en ranked. Sustituye al monolito Streamlit.",
-    version="2.0.0-dev",
+    version="1.3.1-dev",
     lifespan=lifespan,
 )
 

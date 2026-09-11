@@ -234,12 +234,14 @@ async def sync(
     if not queue_ids:
         queue_ids = list(DEFAULT_QUEUES)
 
-    _state.status = "processing"
     _state.started_at = datetime.now(UTC)
     _state.finished_at = None
     _state.result = None
     _state.error = None
+    # El estado sólo se marca "processing" tras persistir el arranque del run: si start_run
+    # falla (p.ej. la DB está caída), el sync queda en "idle" y no se queda pegado en 409.
     run_id = await sync_runs.start_run(_state.started_at)
+    _state.status = "processing"
     background_tasks.add_task(_run_sync, riot, target, limit, queue_ids, run_id=run_id,
                               discord_webhook_url=settings.discord_webhook_url)
 

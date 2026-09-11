@@ -5,11 +5,9 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, status
 
 from backend.app.deps import SettingsDep
-from backend.app.repositories import matches as matches_repo
 from backend.app.repositories import stats as repo
 from backend.app.schemas import (
     ChampionStats,
-    ConstitutionStatus,
     HeatmapCell,
     HeatmapResponse,
     LaningSummary,
@@ -20,7 +18,7 @@ from backend.app.schemas import (
     TrendPoint,
     WeeklyReport,
 )
-from backend.app.services import constitution, datadragon
+from backend.app.services import datadragon
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
 
@@ -123,9 +121,3 @@ async def matchup_stats(user_champion: str, enemy_champion: str) -> MatchupStats
     """
     row = await repo.matchup(user_champion, enemy_champion)
     return MatchupStats(user_champion=user_champion, enemy_champion=enemy_champion, **row)
-
-
-@router.get("/constitution", response_model=ConstitutionStatus)
-async def constitution_status() -> ConstitutionStatus:
-    recent = await matches_repo.last_results(limit=constitution.BLOCK_SIZE)
-    return ConstitutionStatus(**constitution.evaluate(recent))

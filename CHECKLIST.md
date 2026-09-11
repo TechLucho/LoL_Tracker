@@ -197,40 +197,33 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ## Pendiente (Backlog / Features futuras)
 
+### Deuda técnica de auditoría (v1.3.1)
+
+- [x] Reintentar errores de red puros (timeout/conexión) en `_call_with_retry` — hoy solo se captura `ApiError`; un `status=None` debería ser `retryable=True`
+- [x] No fijar `_state.status = "processing"` hasta obtener `run_id` (si `start_run` falla, el sync queda bloqueado en 409 hasta reiniciar)
+- [x] Eliminar el motor de La Constitución duplicado (`/api/stats/constitution` + `services/constitution.py`, muertos) y cubrir el rules-engine activo (`/api/constitution/status`) con tests herméticos
+- [x] `insert_many` en lote (executemany / VALUES multi-fila) en vez de 1 INSERT por partida
+- [ ] Aplicar migraciones 008 y 009 en Supabase (validadas en CI; sin 009 el PUT de config falla)
+- [x] Version string de `main.py` ("2.0.0-dev") y `backend/README.md` (documenta el endpoint de Constitution muerto) al día
+
 ### Despliegue
 
 - [ ] **Despliegue formalizado**: no hay Dockerfile/compose/fly.toml/render.yaml — hoy vive solo en la maquina local. Contenerizar backend+frontend y definir destino (VPS con `APP_API_TOKEN`, ya soportado) antes de usarlo fuera de casa
 
-### Features futuras (sin fecha)
+### Medio plazo
 
-- [ ] Comparación con estadísticas globales de la ladder (API challenger-v4).
+- [ ] **Resumen por rol / campeón de la semana**: winrate y KDA por (campeón, rol, cola) con mínimo de partidas para sacar conclusiones honestas ("solo rindes con Jax en toplane")
+- [ ] **Carga acumulada de sesión**: winrate de las últimas 5 partidas vs. las 5 anteriores, para detectar el punto donde entras en autopilot (apoya la agrupación por sesiones del Dashboard)
+- [ ] **Objetivos por partida vía OKRs**: marcar en la review si cumpliste DPM/KP%/Visión — conecta los OKRs de Settings con el resultado real de la partida
+- [ ] **Escout del pool rival**: winrate del champion pool del rival de línea por rol, integrado en la vista Matchups
+- [ ] **Veredicto de meta**: cruzar la matriz de matchups contra `game_version` para alertar cuándo tu pool pierde contra el meta del rango (extensión natural de la Alerta de Parche)
+
+### Largo plazo (v2.0)
+
+- [ ] **Sync reanudable**: checkpoint por partida + detección de "Riot degradado" para abortar esperas de backoff largas
 - [ ] Multi-usuario: auth con Supabase, dashboard compartido.
-
-### Deuda tecnica
-
-- [x] Eliminar `apply_migration_005.py` (one-off cuya migracion ya esta aplicada)
-
-### Ideas de Brainstorming (Sin priorizar)
-
-Ideas para v2.0. Mantienen la esencia: herramienta analitica seria y minimalista
-para mejorar en League of Legends. Ninguna es social/gamificada por naturaleza.
-
-#### Analitica y Estadisticas Avanzadas
-
-1. [x] **Triángulo del Laning (Evolución del Tempo)** — Consumir Timeline (match v5) para extraer y visualizar en un gráfico radial tu Oro, Experiencia y CS al minuto 15 (GD@15, XPD@15, CSD@15). Implementacion: el sync pide `/matches/{match_id}/timeline` por partida, toma el frame mas cercano a 900.000 ms y guarda (tus stats - las del rival con el mismo `teamPosition`) como `gd15`/`xpd15`/`csd15` en el JSONB del participante; partidas < 15 min se omiten. GET /api/stats/laning promedia las ultimas 50 validas y el Dashboard de Tendencias las pinta en un RadarChart normalizado (0.5 = duelo parejo).
-2. [x] **Delta de Visión** — Calcular la diferencia real (Delta) entre tu puntuación de visión y la de tu oponente directo de línea, mostrando un gráfico de tendencia.
-3. [x] **Indicador de Dependencia (KP% vs Winrate)** — Gráfico de dispersión cruzando tu Participación en Asesinatos con el porcentaje de victorias para definir tu estilo de juego óptimo (splitpush vs teamfight).
-
-#### Backend, Seguridad e Integraciones
-
-4. [x] **Alerta de Parche** — Cuando Data Dragon detecta un patch nuevo (el cache de 1h ya
-   lo resuelve), comparar las stats de tus campeones de pool pre/post parche. Si un
-   campeon recibio nerf significativo (Data Dragon no tiene notas de parche, pero el
-   matchup matrix mostraria drop de winrate post-parche), mostrar un banner informativo
-   en el Dashboard: "Patch 14.2 detectado: 2 campeones de tu pool afectados". Implementacion:
-   `game_version` por partida (Riot `info.gameVersion` via migracion 008); si cambia, re-evaluar
-   winrate de pool en el parche actual vs. historico (GET /api/stats/patch-alert, caida >4pp
-   con minimo 3 partidas en el parche actual → banner en Dashboard).
+- [ ] Comparación con estadísticas globales de la ladder (API challenger-v4).
+- [ ] **Reporte semanal a Discord**: cruce de `weekly_report` (ya implementado) con el webhook ya existente
 
 ### Ideas Congeladas (Prioridad Nula)
 

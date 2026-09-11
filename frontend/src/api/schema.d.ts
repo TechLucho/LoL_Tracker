@@ -275,23 +275,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/stats/constitution": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Constitution Status */
-        get: operations["constitution_status_api_stats_constitution_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/matchup-notes/{user_champion}/{enemy_champion}": {
         parameters: {
             query?: never;
@@ -618,45 +601,6 @@ export interface components {
             champions: {
                 [key: string]: components["schemas"]["ChampionMeta"];
             };
-        };
-        /**
-         * ConstitutionStatus
-         * @description La regla anti-tilt, movida del sidebar de Streamlit al backend.
-         *
-         *     Incluye la comprobación de champion pool contra la configuración **persistida**, de modo que
-         *     la alerta de "has jugado algo fuera de tus mains" ya no depende de un `text_area` volátil.
-         */
-        ConstitutionStatus: {
-            /**
-             * State
-             * @enum {string}
-             */
-            state: "STOP" | "ON_FIRE" | "NEUTRAL" | "NO_DATA";
-            /** Message */
-            message: string;
-            /** Loss Streak */
-            loss_streak: number;
-            /**
-             * Last Results
-             * @description Más reciente primero; True = victoria
-             */
-            last_results: boolean[];
-            /**
-             * Last Champion
-             * @description Campeón de la última partida
-             */
-            last_champion?: string | null;
-            /**
-             * Off Pool
-             * @description La última partida fue fuera del champion pool
-             * @default false
-             */
-            off_pool: boolean;
-            /**
-             * Champion Pool
-             * @description Pool declarado, para contexto
-             */
-            champion_pool?: string[];
         };
         /** EndpointMetric */
         EndpointMetric: {
@@ -1895,37 +1839,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MatchupStats"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    constitution_status_api_stats_constitution_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ConstitutionStatus"];
                 };
             };
             /** @description Validation Error */

@@ -27,6 +27,10 @@ UPDATABLE_COLUMNS = frozenset(
     {"lp_change", "tilt_level", "impact_rating", "notes", "vod_review"}
 )
 
+# Fila de VALUES multi-fila por statement: demasiado grande y un lote inválido podría degradar
+# la transacción completa; demasiado pequeño y se pierde la ventaja de batchear los round-trips.
+_INSERT_BATCH_SIZE = 20
+
 
 _QUEUE_MAP = {
     "ranked": (420, 440),
@@ -68,30 +72,41 @@ async def count() -> int:
 
 
 async def insert_many(matches: list[dict[str, Any]]) -> int:
-    """Inserta partidas nuevas de forma idempotente. Devuelve cuántas eran realmente nuevas."""
+    """Inserta partidas nuevas de forma idempotente. Devuelve cuántas eran realmente nuevas.
+
+    Un solo `INSERT ... VALUES (…),(…) ON CONFLICT DO NOTHING` por lote: antes era un INSERT por
+    partida (una ida y vuelta de red cada una, ~100 round-trips en un sync grande). Cada lote inválido
+    sigue siendo asincrónico por diseño (una partida corrupta no puede cargarse en silencio).
+    """
     if not matches:
         return 0
 
-    placeholders = ", ".join(
+    column_list = ", ".join(INSERT_COLUMNS)
+    row_placeholders = ", ".join(
         "%s::jsonb" if c == "participants" else "%s"
         for c in INSERT_COLUMNS
     )
-    query = (
-        f"INSERT INTO matches ({', '.join(INSERT_COLUMNS)}) VALUES ({placeholders}) "
-        "ON CONFLICT (game_id) DO NOTHING"
-    )
+
+    def _row_values(m: dict[str, Any]) -> list[Any]:
+        values = []
+        for c in INSERT_COLUMNS:
+            v = m.get(c)
+            if c == "participants" and isinstance(v, list):
+                v = json.dumps(v)
+            values.append(v)
+        return values
 
     inserted = 0
-    async with db.cursor() as cur:
-        for m in matches:
-            values = []
-            for c in INSERT_COLUMNS:
-                v = m.get(c)
-                if c == "participants" and isinstance(v, list):
-                    v = json.dumps(v)
-                values.append(v)
-            await cur.execute(query, tuple(values))
-            inserted += cur.rowcount
+    for start in range(0, len(matches), _INSERT_BATCH_SIZE):
+        chunk = matches[start:start + _INSERT_BATCH_SIZE]
+        rows = [_row_values(m) for m in chunk]
+        all_placeholders = ", ".join(f"({row_placeholders})" for _ in rows)
+        params = tuple(v for row in rows for v in row)
+        query = (
+            f"INSERT INTO matches ({column_list}) VALUES {all_placeholders} "
+            "ON CONFLICT (game_id) DO NOTHING"
+        )
+        inserted += await db.execute(query, params)
     return inserted
 
 

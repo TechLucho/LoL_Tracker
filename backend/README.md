@@ -55,7 +55,11 @@ del repo**, no desde `backend/` (los imports son `backend.app.*`).
 | `GET` | `/api/stats/champions` | Incluye `winrate` y `kda_ratio` calculados en SQL |
 | `GET` | `/api/stats/heatmap` | Agrupado en `DISPLAY_TIMEZONE`, no en UTC ni en la tz del servidor |
 | `GET` | `/api/stats/lp-trend` | LP acumulado; `has_lp` distingue "0" de "sin registrar" |
-| `GET` | `/api/stats/constitution` | Estado anti-tilt: `STOP` / `ON_FIRE` / `NEUTRAL` / `NO_DATA` |
+| `GET` | `/api/stats/trends` | Serie temporal de KPIs (CS/min, DPM, KDA, visión) |
+| `GET` | `/api/stats/laning` | Triángulo del Laning: GD@15 / XPD@15 / CSD@15 promediados |
+| `GET` | `/api/stats/patch-alert` | Caída de winrate del pool tras un parche de Data Dragon |
+| `GET` | `/api/stats/weekly` | Resumen de la última semana (partidas, winrate, top campeón) |
+| `GET` | `/api/constitution/status` | La Constitución: `STOP PLAYING` / `WARNING` / `SAFE TO PLAY` (motor en `services/constitution.py`) |
 | `GET` | `/api/scout/nemesis` | `?min_games=&limit=` |
 | `GET` | `/api/scout/matchups` | `?champion=&enemy=`, ambos `ILIKE` |
 
@@ -79,7 +83,6 @@ fuente de error más frecuente del proyecto.
 
 ## Pendiente
 
-- `GET/PUT /api/config` para persistir champion pool y OKRs (hoy hardcodeados en la UI)
-- Tests con `pytest` + `httpx.AsyncClient`
-- `POST /api/sync` como `BackgroundTask` con endpoint de progreso
-- Parche de Data Dragon resuelto dinámicamente
+Ver `CHECKLIST.md` en la raíz del repo: deuda técnica (v1.3.1), despliegue y features de medio y
+largo plazo. Los puntos que históricamente vivieron aquí (config persistida, tests, sync en
+background, parche dinámico) ya están implementados.

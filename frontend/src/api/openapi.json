@@ -3,7 +3,7 @@
   "info": {
     "title": "LoL Tracker API",
     "description": "Backend del dashboard de rendimiento en ranked. Sustituye al monolito Streamlit.",
-    "version": "2.0.0-dev"
+    "version": "1.3.1-dev"
   },
   "paths": {
     "/health": {
@@ -804,55 +804,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MatchupStats"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/stats/constitution": {
-      "get": {
-        "tags": [
-          "stats"
-        ],
-        "summary": "Constitution Status",
-        "operationId": "constitution_status_api_stats_constitution_get",
-        "parameters": [
-          {
-            "name": "x-api-token",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "X-Api-Token"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConstitutionStatus"
                 }
               }
             }
@@ -1852,71 +1803,6 @@
           "champions"
         ],
         "title": "ChampionsIndex"
-      },
-      "ConstitutionStatus": {
-        "properties": {
-          "state": {
-            "type": "string",
-            "enum": [
-              "STOP",
-              "ON_FIRE",
-              "NEUTRAL",
-              "NO_DATA"
-            ],
-            "title": "State"
-          },
-          "message": {
-            "type": "string",
-            "title": "Message"
-          },
-          "loss_streak": {
-            "type": "integer",
-            "title": "Loss Streak"
-          },
-          "last_results": {
-            "items": {
-              "type": "boolean"
-            },
-            "type": "array",
-            "title": "Last Results",
-            "description": "M\u00e1s reciente primero; True = victoria"
-          },
-          "last_champion": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Champion",
-            "description": "Campe\u00f3n de la \u00faltima partida"
-          },
-          "off_pool": {
-            "type": "boolean",
-            "title": "Off Pool",
-            "description": "La \u00faltima partida fue fuera del champion pool",
-            "default": false
-          },
-          "champion_pool": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Champion Pool",
-            "description": "Pool declarado, para contexto"
-          }
-        },
-        "type": "object",
-        "required": [
-          "state",
-          "message",
-          "loss_streak",
-          "last_results"
-        ],
-        "title": "ConstitutionStatus",
-        "description": "La regla anti-tilt, movida del sidebar de Streamlit al backend.\n\nIncluye la comprobaci\u00f3n de champion pool contra la configuraci\u00f3n **persistida**, de modo que\nla alerta de \"has jugado algo fuera de tus mains\" ya no depende de un `text_area` vol\u00e1til."
       },
       "EndpointMetric": {
         "properties": {

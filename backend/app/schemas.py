@@ -295,23 +295,6 @@ class MatchupNotesUpdate(BaseModel):
     notes: str = ""
 
 
-class ConstitutionStatus(BaseModel):
-    """La regla anti-tilt, movida del sidebar de Streamlit al backend.
-
-    Incluye la comprobación de champion pool contra la configuración **persistida**, de modo que
-    la alerta de "has jugado algo fuera de tus mains" ya no depende de un `text_area` volátil.
-    """
-
-    state: Literal["STOP", "ON_FIRE", "NEUTRAL", "NO_DATA"]
-    message: str
-    loss_streak: int
-    last_results: list[bool] = Field(description="Más reciente primero; True = victoria")
-
-    last_champion: str | None = Field(default=None, description="Campeón de la última partida")
-    off_pool: bool = Field(default=False, description="La última partida fue fuera del champion pool")
-    champion_pool: list[str] = Field(default_factory=list, description="Pool declarado, para contexto")
-
-
 class SyncError(BaseModel):
     game_id: str
     reason: str

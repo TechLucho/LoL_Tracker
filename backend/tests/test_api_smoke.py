@@ -49,7 +49,7 @@ def test_openapi_expone_todos_los_endpoints(client):
         "/api/stats/trends",
         "/api/stats/laning",
         "/api/stats/weekly",
-        "/api/stats/constitution",
+        "/api/constitution/status",
         "/api/scout/nemesis",
         "/api/scout/matchups",
         "/api/config",

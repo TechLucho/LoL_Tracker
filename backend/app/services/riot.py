@@ -71,8 +71,15 @@ class _CachedPuuid:
 _puuid_cache: dict[str, _CachedPuuid] = {}
 
 
-def _classify(err: ApiError) -> RiotServiceError:
-    """Traduce un error HTTP de Riot a algo que la API pueda comunicar con sentido."""
+def _classify(err: Exception) -> RiotServiceError:
+    """Traduce un fallo de Riot a algo que la API pueda comunicar con sentido."""
+    if not isinstance(err, ApiError):
+        # Error de red puro (timeout, conexión caída, DNS...): sin respuesta HTTP que
+        # clasificar. Es transitorio por definición -> reintentar vale la pena.
+        return RiotServiceError(
+            f"Error de red con Riot: {type(err).__name__}",
+            status=None, retryable=True,
+        )
     status = getattr(err.response, "status_code", None)
     if status == 403:
         return RiotServiceError(
@@ -92,7 +99,8 @@ def _classify(err: ApiError) -> RiotServiceError:
 def _retry_after(err: ApiError, attempt: int) -> float:
     """Segundos a esperar: la cabecera Retry-After de Riot si existe, si no backoff exponencial.
     Siempre acotada por MAX_RETRY_AFTER_SECONDS."""
-    headers = getattr(err.response, "headers", {}) or {}
+    response = getattr(err, "response", None)
+    headers = getattr(response, "headers", {}) or {}
     raw = headers.get("Retry-After")
     delay = BACKOFF_BASE_SECONDS * (2 ** attempt)
     if raw:
@@ -169,7 +177,7 @@ class RiotService:
         for attempt in range(MAX_RETRIES):
             try:
                 return await run_in_threadpool(fn, *args)
-            except ApiError as err:
+            except Exception as err:  # noqa: BLE001 - ApiError (HTTP) y errores de red puros
                 last = _classify(err)
                 if not last.retryable or attempt == MAX_RETRIES - 1:
                     raise last from err
