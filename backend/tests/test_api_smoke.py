@@ -40,9 +40,13 @@ def test_openapi_expone_todos_los_endpoints(client):
         "/api/health",
         "/api/matches",
         "/api/matches/{game_id}",
+        "/api/matches/{game_id}/scout-opponent",
         "/api/sync",
         "/api/stats/summary",
         "/api/stats/champions",
+        "/api/stats/champion-summary",
+        "/api/stats/session-fatigue",
+        "/api/stats/meta-verdict",
         "/api/stats/heatmap",
         "/api/stats/patch-alert",
         "/api/stats/lp-trend",
@@ -93,6 +97,24 @@ def test_okrs_expuestos_en_user_settings(client):
              ["properties"])
     for campo in ("target_dpm", "target_kp_percent", "target_vision_score"):
         assert campo in props, f"{campo} debería estar expuesto en UserSettings"
+
+
+def test_scout_opponent_en_contrato(client):
+    """El escout debe exponer las maestrías del rival y su origen (caché o llamada a Riot)."""
+    schema = client.get("/openapi.json").json()["components"]["schemas"]["ScoutOpponent"]
+    for campo in ("opponent_puuid", "opponent_champion", "top_champions", "cached", "note"):
+        assert campo in schema["properties"], f"ScoutOpponent debería tener {campo}"
+    champion = client.get("/openapi.json").json()["components"]["schemas"]["ScoutMasteryChampion"]
+    for campo in ("champion", "mastery_level", "points"):
+        assert campo in champion["properties"]
+
+
+def test_meta_verdict_en_contrato(client):
+    """El veredicto del meta debe traer el delta y la bandera de shift por emparejamiento."""
+    schema = client.get("/openapi.json").json()["components"]["schemas"]["MetaVerdict"]
+    for campo in ("user_champion", "enemy_champion", "winrate_current", "winrate_previous",
+                  "delta_pp", "meta_shift"):
+        assert campo in schema["properties"], f"MetaVerdict debería tener {campo}"
 
 
 def test_sync_result_incluye_tilt_alert(client):

@@ -117,6 +117,74 @@ class MatchUpdate(BaseModel):
         return {k: getattr(self, k) for k in self.model_fields_set}
 
 
+# ─────────────────────────────── Escout del rival ───────────────────────────────
+
+# Las maestrías vienen como `championId` numérico de Data Dragon ("103" = Ahri); el nombre
+# visible se resuelve contra el índice de campeones (`services/datadragon.py`, campo `key`).
+
+
+class ScoutMasteryChampion(BaseModel):
+    champion: str = Field(description="Nombre visible del campeón ('Lee Sin')")
+    champion_key: str = Field(description="Id numérico de Data Dragon ('103')")
+    mastery_level: int = Field(ge=0, le=7, description="Nivel de maestría (1-7)")
+    points: int = Field(ge=0, description="Puntos de maestría acumulados")
+
+
+class ScoutOpponent(BaseModel):
+    """Escout de un rival de línea concreto: sus 3 campeones más jugados vía Champion Mastery.
+
+    `opponent_champion` es lo que jugó contra ti en la partida escouteada; `top_champions`
+    son sus maestrías más altas (ordenadas por puntos). `cached` dice si la respuesta vino de
+    la caché en DB (`scout_cache`, TTL 24h) o de una llamada fresca a Riot — el front lo usa
+    para no alarmarse si la llamada tarda.
+
+    `note` explica por qué no hay datos cuando los hay (rival sin maestrías, puuid ausente,
+    rol sin asignar...), para que la UI muestre un mensaje útil en vez de un hueco.
+    """
+
+    game_id: str
+    opponent_puuid: str
+    opponent_name: str = ""
+    opponent_champion: str = ""
+    opponent_role: str = ""
+    top_champions: list[ScoutMasteryChampion] = Field(default_factory=list)
+    cached: bool = False
+    cached_at: datetime | None = None
+    note: str = ""
+
+
+# ─────────────────────────────── Veredicto del meta ───────────────────────────────
+
+# Regla de negocio: "históricamente favorable" es winrate previo >= 55 y "se volvió
+# negativo" es <50% en el parche actual (constantes reales en repositories/stats.py).
+
+
+class MetaVerdict(BaseModel):
+    """Winrate de un enfrentamiento (tu campeón vs enemigo) separado por parche.
+
+    `games_*_current` = partidas de la `game_version` del parche actual; `games_previous` =
+    todo el historial de parches anteriores (incluidas las filas legacy con versión NULL).
+    `meta_shift` marca exactamente el caso que alarma al usuario: un cruce que era favorable
+    y ahora está por debajo del 50% — la alerta de "el meta te ha pasado por encima".
+    """
+
+    user_champion: str
+    enemy_champion: str
+    games_current: int
+    wins_current: int
+    winrate_current: float | None = Field(default=None, description="NULL sin partidas en el parche actual")
+    games_previous: int
+    wins_previous: int
+    winrate_previous: float | None = Field(default=None, description="NULL sin historial previo")
+    delta_pp: float | None = Field(default=None, description="winrate (parche actual) - winrate (anterior), en puntos")
+    meta_shift: bool = Field(default=False, description="Favorable antes, negativo ahora, con muestra mínima")
+
+
+class MetaVerdictResponse(BaseModel):
+    current_patch: str = Field(description="Parche de Riot normalizado a 'X.Y' con el que se separaron los datos")
+    verdicts: list[MetaVerdict]
+
+
 class StatsSummary(BaseModel):
     total_games: int
     total_wins: int
@@ -142,6 +210,57 @@ class ChampionStats(BaseModel):
     kda_ratio: float
     avg_cs_min: float
     avg_dpm: float = 0
+
+
+class ChampionRoleSummary(BaseModel):
+    """Winrate/KDA del usuario por (campeón, rol, cola).
+
+    Con `HAVING COUNT(*) >= 3` en SQL: con menos partidas el winrate es puro ruido y la
+    tabla no puede separar "rindo bien" de "he tenido suerte dos veces". El rol es la
+    columna `matches.role` (el teamPosition que Riot reportó en la partida), no el
+    `team_position` del JSONB: aquí importa cómo llegó la fila, una fila = una partida.
+    """
+
+    champion: str
+    role: str
+    queue_id: int
+    games_played: int
+    wins: int
+    losses: int
+    winrate: float
+    kda_ratio: float
+
+
+class SessionBlock(BaseModel):
+    """Un bloque de partidas consecutivas (las 5 más recientes o las 5 anteriores)."""
+
+    games: int
+    wins: int
+    losses: int
+    winrate: float
+    avg_kda: float
+
+
+class SessionFatigue(BaseModel):
+    """Diagnóstico de fatiga de sesión comparando dos bloques de 5 partidas.
+
+    Las 10 partidas válidas más recientes se parten en dos bloques: `recent` (las 5 más
+    nuevas) vs `previous` (las 5 que las preceden). `sample_ok` exige ambas ventanas
+    completas — con menos de 6 partidas no hay bloque anterior y nada que comparar.
+
+    `fatigue_detected` (autopilot) se activa con una caída severa de winrate (>=20pp) o un
+    desplome de KDA (>=2.0) entre bloques; los umbrales viven en `repositories/stats.py`
+    porque son reglas de negocio, no de contrato. `message` da contexto en español con
+    números reales, no un veredicto seco.
+    """
+
+    previous: SessionBlock | None = None
+    recent: SessionBlock | None = None
+    sample_ok: bool = False
+    winrate_delta_pp: float | None = None
+    kda_delta: float | None = None
+    fatigue_detected: bool = False
+    message: str = ""
 
 
 class HeatmapCell(BaseModel):
@@ -444,6 +563,7 @@ class ConfigOptions(BaseModel):
 
 class ChampionMeta(BaseModel):
     id: str = Field(description="Id de Data Dragon ('LeeSin'), clave del dict")
+    key: str = Field(default="", description="Id numérico de Data Dragon ('103'), el de Champion Mastery-V4")
     name: str = Field(description="Nombre visible ('Lee Sin') — así se guarda en matches.champion")
     title: str = ""
     description: str = ""

@@ -9,6 +9,7 @@ import type {
   UserSettings,
   UserSettingsUpdate,
   ChampionStats,
+  ChampionRoleSummary,
   HeatmapResponse,
   LaningSummary,
   PatchAlert,
@@ -19,12 +20,16 @@ import type {
   MatchupNotesUpdate,
   TrendPoint,
   WeeklyReport,
+  SessionFatigue,
+  ScoutOpponent,
+  MetaVerdictResponse,
 } from './generated'
 // Re-export generated types that are used by other modules.
 export type {
   BackendMatch,
   HealthStatus,
   ChampionStats,
+  ChampionRoleSummary,
   HeatmapCell,
   HeatmapResponse,
   PatchAlert,
@@ -36,6 +41,11 @@ export type {
   MatchupNotesUpdate,
   TrendPoint,
   WeeklyReport,
+  SessionFatigue,
+  ScoutMasteryChampion,
+  ScoutOpponent,
+  MetaVerdict,
+  MetaVerdictResponse,
 } from './generated'
 // Producción: la URL deja de estar hardcodeada (VITE_API_URL en el build del hosting) y cae
 // al origen de desarrollo local si no está definida.
@@ -171,6 +181,26 @@ export type ChampionPerf = ChampionStats
 
 export async function getChampionStats(): Promise<ChampionStats[]> {
   const { data } = await api.get<ChampionStats[]>('/stats/champions')
+  return data
+}
+
+export async function getChampionRoleSummary(): Promise<ChampionRoleSummary[]> {
+  const { data } = await api.get<ChampionRoleSummary[]>('/stats/champion-summary')
+  return data
+}
+
+export async function getSessionFatigue(): Promise<SessionFatigue> {
+  const { data } = await api.get<SessionFatigue>('/stats/session-fatigue')
+  return data
+}
+
+export async function getScoutOpponent(gameId: string): Promise<ScoutOpponent> {
+  const { data } = await api.get<ScoutOpponent>(`/matches/${encodeURIComponent(gameId)}/scout-opponent`)
+  return data
+}
+
+export async function getMetaVerdict(): Promise<MetaVerdictResponse> {
+  const { data } = await api.get<MetaVerdictResponse>('/stats/meta-verdict')
   return data
 }
 

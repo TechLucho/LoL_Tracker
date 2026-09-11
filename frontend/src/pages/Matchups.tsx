@@ -1,7 +1,9 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
-import { Save, ScrollText, Swords, AlertTriangle, Loader2 } from 'lucide-react'
+import { Save, ScrollText, Swords, AlertTriangle, Loader2, TrendingUp } from 'lucide-react'
 import { useChampionList, useIcons } from '../hooks/useMetadata'
 import { useMatchupStats, useMatchupNotes, useUpdateMatchupNotes } from '../hooks/useMatchups'
+import { useMetaVerdict } from '../hooks/useMetaVerdict'
+import type { MetaVerdict } from '../api/client'
 import { DDragon } from '../data/constants'
 
 // Selector de campeón con buscador, icono y dropdown (reutiliza la caché de /api/metadata).
@@ -131,6 +133,7 @@ export default function MatchupsPage() {
   const [userChamp, setUserChamp] = useState<string | null>(null)
   const [enemyChamp, setEnemyChamp] = useState<string | null>(null)
   const [draftNotes, setDraftNotes] = useState('')
+  const [metaOnly, setMetaOnly] = useState(false)
 
   const icons = useIcons()
   const bothSelected = Boolean(userChamp && enemyChamp)
@@ -180,6 +183,12 @@ export default function MatchupsPage() {
           image={enemyChamp ? icons.champion(enemyChamp).url : ''}
         />
       </div>
+
+      {/* Meta del Parche */}
+      <MetaVerdictSection
+        metaOnly={metaOnly}
+        onToggle={setMetaOnly}
+      />
 
       {/* Estadísticas */}
       {bothSelected && (
@@ -292,6 +301,178 @@ function StatBox({
       <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{label}</span>
       <p className={`mt-1 font-mono text-xl font-black ${accent ?? 'text-text-primary'}`}>{value}</p>
       {sub && <p className="mt-0.5 text-[10px] text-text-muted">{sub}</p>}
+    </div>
+  )
+}
+
+function VerdictRow({ row, highlighted }: { row: MetaVerdict; highlighted: boolean }) {
+  const icons = useIcons()
+  const prev = row.winrate_previous
+  const curr = row.winrate_current
+  const delta = row.delta_pp
+
+  return (
+    <div
+      className={`flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between ${
+        highlighted
+          ? 'border-red-500/40 bg-red-500/[0.05]'
+          : 'border-border bg-background'
+      }`}
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <img
+          src={icons.champion(row.user_champion).url}
+          alt={row.user_champion}
+          className="h-9 w-9 rounded-lg border border-gray-700"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = DDragon.champion('Teemo')
+          }}
+        />
+        <span className="truncate text-sm font-bold text-text-primary">{row.user_champion}</span>
+        <span className="text-text-muted">vs</span>
+        <img
+          src={icons.champion(row.enemy_champion).url}
+          alt={row.enemy_champion}
+          className="h-9 w-9 rounded-lg border border-gray-700"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = DDragon.champion('Teemo')
+          }}
+        />
+        <span className="truncate text-sm font-bold text-text-primary">{row.enemy_champion}</span>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-3 text-right">
+        <div className="text-[11px] text-text-muted sm:text-right">
+          <p>
+            global:{' '}
+            <b className={prev != null && prev >= 55 ? 'text-emerald-400' : 'text-text-primary'}>
+              {prev != null ? `${prev}%` : '–'}
+            </b>
+            <span className="px-1 text-text-muted">→</span>
+            <b
+              className={
+                curr != null ? (curr >= 50 ? 'text-emerald-400' : 'text-red-400') : 'text-text-muted'
+              }
+            >
+              {curr != null ? `${curr}%` : 'sin datos'}
+            </b>
+          </p>
+          {delta != null && (
+            <p className={delta < 0 ? 'text-red-400' : 'text-emerald-400'}>
+              {delta > 0 ? '+' : ''}
+              {delta.toFixed(1)} pp · {row.games_current} en {row.games_previous} previas
+            </p>
+          )}
+        </div>
+        {highlighted && (
+          <span className="rounded bg-red-500/15 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-red-400">
+            ⚠ Meta shift
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function MetaVerdictSection({
+  metaOnly,
+  onToggle,
+}: {
+  metaOnly: boolean
+  onToggle: (value: boolean) => void
+}) {
+  const { data: meta, isLoading, isError } = useMetaVerdict()
+
+  if (isLoading) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="mb-3 flex items-center gap-2 text-base font-bold text-text-primary">
+          <TrendingUp className="h-4 w-4 text-accent-purple" />
+          Meta del Parche
+        </div>
+        <div className="shimmer h-24 rounded-lg bg-background" />
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="rounded-xl border border-red-500/30 bg-red-500/[0.04] p-5 text-center">
+        <p className="text-xs text-gray-400">
+          No se pudo calcular el veredicto del meta. ¿Está disponible Data Dragon?
+        </p>
+      </div>
+    )
+  }
+
+  if (!meta || meta.verdicts.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="flex items-center gap-2 text-base font-bold text-text-primary">
+          <TrendingUp className="h-4 w-4 text-accent-purple" />
+          Meta del Parche
+        </div>
+        <p className="mt-3 text-center text-xs text-text-muted">
+          Aún no hay cruces con datos suficientes en el parche {meta?.current_patch ?? 'actual'}.
+          Los matchups aparecen aquí cuando acumulas partidas.
+        </p>
+      </div>
+    )
+  }
+
+  const shifts = meta.verdicts.filter((v) => v.meta_shift)
+  const shown = metaOnly ? shifts : meta.verdicts
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+        <h3 className="flex items-center gap-2 text-base font-bold text-text-primary">
+          <TrendingUp className="h-4 w-4 text-accent-purple" />
+          Meta del Parche
+          <span className="rounded bg-background px-2 py-0.5 font-mono text-[11px] text-text-muted">
+            {meta.current_patch}
+          </span>
+        </h3>
+
+        <label
+          className={`flex cursor-pointer select-none items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${
+            metaOnly
+              ? 'border-red-500/40 bg-red-500/10 text-red-400'
+              : 'border-border bg-background text-text-secondary hover:border-red-500/40 hover:text-red-400'
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={metaOnly}
+            onChange={(e) => onToggle(e.target.checked)}
+            className="h-3.5 w-3.5 accent-red-500"
+          />
+          Filtro de Meta Actual
+          {shifts.length > 0 && (
+            <span className="rounded-full bg-red-500 px-1.5 text-[10px] font-black text-white">
+              {shifts.length}
+            </span>
+          )}
+        </label>
+      </div>
+
+      <p className="mb-3 text-[11px] leading-relaxed text-text-muted">
+        Compara tu winrate en cada cruce dentro del parche actual frente al histórico previo. Un
+        emparejamiento se marca como <b className="text-red-400">meta shift</b> cuando era favorable
+        (≥55% previo) y ahora cae por debajo del 50% con muestra propia del parche.
+      </p>
+
+      {shown.length === 0 ? (
+        <p className="py-4 text-center text-xs text-text-muted">
+          Sin meta-shifts detectados en el parche actual — tus matchups favorables siguen siéndolo.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {shown.map((row) => (
+            <VerdictRow key={`${row.user_champion}|${row.enemy_champion}`} row={row} highlighted={row.meta_shift} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

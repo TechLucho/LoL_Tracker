@@ -117,6 +117,9 @@ def _transform_champions(raw: dict[str, Any], patch: str) -> dict[str, Any]:
     champions = {
         champ["id"]: {
             "id": champ["id"],
+            # "key" es el id numérico ("103" = Ahri) que usa Champion Mastery-V4 en
+            # `championId`: sin él el Escout no puede traducir maestrías a nombres.
+            "key": champ.get("key", ""),
             "name": champ.get("name", ""),
             "title": champ.get("title", ""),
             "description": _clean_html(champ.get("blurb", "")),

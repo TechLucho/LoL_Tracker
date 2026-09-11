@@ -256,6 +256,22 @@ class RiotService:
         log.info("%s sin clasificación en Solo/Duo", riot_id)
         return None
 
+    # ------------------------------------------------------------------ maestrías (Champion Mastery-V4)
+
+    async def fetch_champion_mastery(self, puuid: str) -> list[dict[str, Any]]:
+        """Maestrías de un invocador, ordenadas como las devuelve Riot (por puntos desc).
+
+        El Escout la usa para ver los campeones más dominados del rival; la respuesta cruda
+        trae `championId` numérico (la "key" de Data Dragon), que el servicio de scout traduce
+        a nombre visible. El rate limit lo protege la caché en DB (`scout_cache`, TTL 24h),
+        NO esta llamada en sí.
+        """
+        return await self._call_with_retry(
+            f"maestrías de {puuid[:8]}…",
+            self._lol.champion_mastery.by_puuid,
+            self._platform, puuid,
+        )
+
     # ------------------------------------------------------------------ partidas
 
     async def fetch_recent_matches(

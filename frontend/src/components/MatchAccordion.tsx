@@ -1,8 +1,11 @@
 import { useState } from 'react'
-import { Database } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Database, Loader2, XCircle } from 'lucide-react'
 import type { UIMatch, UIParticipant, MatchReviewUpdate } from '../data/types'
 import { IMPACT_RATINGS, TILT_LEVELS, DDragon } from '../data/constants'
+import { computeOkrResults } from '../data/okr'
 import { useIcons } from '../hooks/useMetadata'
+import { useSettings } from '../hooks/useSettings'
+import { useScoutOpponent } from '../hooks/useScoutOpponent'
 
 function SpellIcon({ id }: { id: number }) {
   const icons = useIcons()
@@ -161,6 +164,34 @@ function PlayerRow({
   )
 }
 
+function OkrStrip({ match, me }: { match: UIMatch; me: UIParticipant }) {
+  const { data: settings } = useSettings()
+  if (!settings) return null
+
+  const results = computeOkrResults(me, match, {
+    target_dpm: settings.target_dpm,
+    target_kp_percent: settings.target_kp_percent,
+    target_vision_score: settings.target_vision_score,
+  })
+
+  return (
+    <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-gray-800 bg-[#14141C] px-3 py-2">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">🎯 OKR</span>
+      {results.map((item) => (
+        <span
+          key={item.label}
+          className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
+            item.met ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+          }`}
+        >
+          {item.met ? <CheckCircle2 className="h-2.5 w-2.5" /> : <XCircle className="h-2.5 w-2.5" />}
+          {item.label} {item.current}/{item.target}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 function computeEloFactors(me: UIParticipant, match: UIMatch) {
   const duration = Math.max(match.game_duration_minutes, 1)
   const positive: { factor: string; value: string; detail: string }[] = []
@@ -224,6 +255,135 @@ function computeEloFactors(me: UIParticipant, match: UIMatch) {
   return { positive, negative }
 }
 
+function ScoutView({ match }: { match: UIMatch }) {
+  // El tab ya está abierto, así que la query corre (enabled=true aquí; el resto del accordion
+  // no llama a este hook, no hay llamadas a Riot por match de la tabla).
+  const { data, isLoading, isError, error } = useScoutOpponent(match.game_id, true)
+  const icons = useIcons()
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center gap-2 rounded-lg border border-gray-800 bg-[#14141C] px-4 py-10 text-center">
+        <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
+        <p className="text-xs text-gray-500">Consultando maestrías del rival en Riot...</p>
+      </div>
+    )
+  }
+
+  if (isError || !data) {
+    const detail = error && typeof error === 'object' && 'response' in error
+      ? (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
+      : undefined
+    return (
+      <div className="flex flex-col items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/[0.04] px-4 py-10 text-center">
+        <AlertTriangle className="h-5 w-5 text-red-400" />
+        <p className="text-xs text-gray-400">
+          {detail ?? 'No se pudo escoutear al rival. ¿La API key de Riot sigue válida?'}
+        </p>
+      </div>
+    )
+  }
+
+  const top = data.top_champions ?? []
+  const otp = data.opponent_champion && top[0]?.champion === data.opponent_champion
+  const firstTime = top.length > 0 && data.opponent_champion
+    && !top.some((c) => c.champion === data.opponent_champion)
+
+  return (
+    <div className="space-y-3">
+      {/* Cabecera del rival */}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-800 bg-[#14141C] px-3 py-2.5">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-bold text-white">
+            {data.opponent_name || 'Rival de línea'}
+            {data.opponent_champion && (
+              <span className="ml-2 font-mono text-xs font-semibold text-purple-300">
+                jugó {data.opponent_champion}
+              </span>
+            )}
+          </div>
+          {data.opponent_role && (
+            <span className="text-[11px] text-gray-500">Rol: {data.opponent_role}</span>
+          )}
+        </div>
+        <span
+          className={`shrink-0 rounded px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+            data.cached
+              ? 'bg-gray-800 text-gray-400'
+              : 'bg-emerald-500/10 text-emerald-400'
+          }`}
+          title={data.cached ? 'Servido desde la caché de DB (sin golpear a Riot)' : 'Llamada fresca a Riot'}
+        >
+          {data.cached ? '🕓 Con caché' : '⚡ Datos frescos'}
+        </span>
+      </div>
+
+      {/* Contenido */}
+      {data.note ? (
+        <div className="rounded-lg border border-blue-500/20 bg-blue-500/[0.04] px-4 py-6 text-center">
+          <p className="text-xs text-gray-400">{data.note}</p>
+        </div>
+      ) : top.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-gray-800 bg-[#14141C] px-4 py-8 text-center">
+          <p className="text-xs text-gray-500">Sin maestrías para este rival.</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {top.map((c, i) => (
+              <div
+                key={c.champion_key}
+                className={`rounded-lg border p-3 text-center ${
+                  i === 0
+                    ? 'border-purple-500/40 bg-purple-500/[0.06]'
+                    : 'border-gray-800 bg-[#1A1A24]'
+                }`}
+              >
+                <img
+                  src={icons.champion(c.champion).url}
+                  alt={c.champion}
+                  title={icons.champion(c.champion).name}
+                  className="mx-auto mb-1.5 h-12 w-12 rounded-lg border border-gray-700"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = DDragon.champion('Teemo')
+                  }}
+                />
+                <p className="truncate text-sm font-bold text-white">
+                  {i === 0 && <span className="mr-1">👑</span>}
+                  {c.champion}
+                </p>
+                <p className="font-mono text-[11px] text-gray-400">
+                  M{c.mastery_level} · {c.points.toLocaleString()} pts
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Veredicto: ¿OTP o first time? */}
+          <div className="rounded-lg border border-gray-800 bg-[#14141C] px-3 py-2.5 text-[11px] leading-relaxed text-gray-400">
+            {otp ? (
+              <span>
+                ⚠️ <b className="text-orange-400">{data.opponent_name || 'El rival'}</b> se jugó{' '}
+                <b className="text-white">{data.opponent_champion}</b>, su campeón con más maestrías:{' '}
+                <b className="text-orange-400">OTP confirmado</b>.
+              </span>
+            ) : firstTime ? (
+              <span>
+                📝 {data.opponent_champion} <b className="text-white">no está entre sus 3 campeones dominados</b>:
+                es un posible first time (o un counter específico).
+              </span>
+            ) : (
+              <span>
+                🎯 {data.opponent_champion} sí está entre sus campeones jugados — el dato empieza a ser fiable.
+              </span>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 interface Props {
   match: UIMatch
   onReviewSave: (gameId: string, data: MatchReviewUpdate) => void
@@ -231,7 +391,7 @@ interface Props {
 }
 
 export default function MatchAccordion({ match, onReviewSave, isSaving }: Props) {
-  const [activeTab, setActiveTab] = useState<'match' | 'stats' | 'elo' | 'review'>('match')
+  const [activeTab, setActiveTab] = useState<'match' | 'stats' | 'elo' | 'review' | 'scout'>('match')
   const [isEditing, setIsEditing] = useState(false)
 
   // Form state
@@ -260,6 +420,7 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
     { key: 'match' as const, label: '⚔️ Match' },
     { key: 'stats' as const, label: '📊 Full Stats' },
     { key: 'elo' as const, label: '📈 ELO / Notes' },
+    { key: 'scout' as const, label: '🔎 Escout' },
     { key: 'review' as const, label: hasReview ? '✅ Review' : '📝 Review' },
   ]
 
@@ -320,6 +481,9 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
           </button>
         ))}
       </div>
+
+      {/* OKR strip: validación instantánea contra objetivos en cada partida */}
+      {me && <OkrStrip match={match} me={me} />}
 
       {/* Match View */}
       {activeTab === 'match' && (
@@ -394,6 +558,9 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
           ))}
         </div>
       )}
+
+      {/* Scout del Rival View */}
+      {activeTab === 'scout' && <ScoutView match={match} />}
 
       {/* ELO / Notes View */}
       {activeTab === 'elo' && (

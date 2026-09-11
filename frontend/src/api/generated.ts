@@ -52,3 +52,12 @@ export type MatchupNotesUpdate = components['schemas']['MatchupNotesUpdate']
 
 export type UserSettings = components['schemas']['UserSettings']
 export type UserSettingsUpdate = components['schemas']['UserSettingsUpdate']
+
+export type ChampionRoleSummary = components['schemas']['ChampionRoleSummary']
+export type SessionBlock = components['schemas']['SessionBlock']
+export type SessionFatigue = components['schemas']['SessionFatigue']
+
+export type ScoutMasteryChampion = components['schemas']['ScoutMasteryChampion']
+export type ScoutOpponent = components['schemas']['ScoutOpponent']
+export type MetaVerdict = components['schemas']['MetaVerdict']
+export type MetaVerdictResponse = components['schemas']['MetaVerdictResponse']

@@ -53,12 +53,16 @@ del repo**, no desde `backend/` (los imports son `backend.app.*`).
 | `POST` | `/api/sync` | Devuelve `{fetched, inserted, skipped, errors[]}` |
 | `GET` | `/api/stats/summary` | Promedios **numéricos**, no strings formateados |
 | `GET` | `/api/stats/champions` | Incluye `winrate` y `kda_ratio` calculados en SQL |
+| `GET` | `/api/stats/champion-summary` | Winrate/KDA por (campeón, rol, cola) con `HAVING` ≥ 3 partidas |
+| `GET` | `/api/stats/session-fatigue` | Últimas 5 vs. anteriores 5: detecta autopilot (caída ≥20pp WR / −2 KDA) |
 | `GET` | `/api/stats/heatmap` | Agrupado en `DISPLAY_TIMEZONE`, no en UTC ni en la tz del servidor |
 | `GET` | `/api/stats/lp-trend` | LP acumulado; `has_lp` distingue "0" de "sin registrar" |
 | `GET` | `/api/stats/trends` | Serie temporal de KPIs (CS/min, DPM, KDA, visión) |
 | `GET` | `/api/stats/laning` | Triángulo del Laning: GD@15 / XPD@15 / CSD@15 promediados |
 | `GET` | `/api/stats/patch-alert` | Caída de winrate del pool tras un parche de Data Dragon |
 | `GET` | `/api/stats/weekly` | Resumen de la última semana (partidas, winrate, top campeón) |
+| `GET` | `/api/stats/meta-verdict` | Winrate por (tú vs enemigo) del parche actual contra el histórico: marca `meta_shift` (favorable ≥55% antes, <50% ahora, mín. 3 partidas del parche) |
+| `GET` | `/api/matches/{game_id}/scout-opponent` | 3 campeones más jugados del rival de línea (Champion Mastery de Riot), con caché 24h en `scout_cache` |
 | `GET` | `/api/constitution/status` | La Constitución: `STOP PLAYING` / `WARNING` / `SAFE TO PLAY` (motor en `services/constitution.py`) |
 | `GET` | `/api/scout/nemesis` | `?min_games=&limit=` |
 | `GET` | `/api/scout/matchups` | `?champion=&enemy=`, ambos `ILIKE` |

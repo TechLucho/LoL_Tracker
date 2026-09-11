@@ -295,6 +295,65 @@
         }
       }
     },
+    "/api/matches/{game_id}/scout-opponent": {
+      "get": {
+        "tags": [
+          "matches"
+        ],
+        "summary": "Scout Opponent",
+        "description": "Escout del rival de l\u00ednea de una partida: sus 3 campeones m\u00e1s jugados (Champion Mastery).\n\nLa llamada a Riot se hace UNA vez por rival y se cachea en `scout_cache` (TTL 24h) para\nno quemar la cuota escouteando partidas repetidas del mismo jugador. `cached` distingue\ncach\u00e9 caliente de llamada fresca. Cuando no hay datos no se devuelve error: la respuesta\ntrae una `note` explicando por qu\u00e9 (rival sin maestr\u00edas, rol sin asignar...).",
+        "operationId": "scout_opponent_api_matches__game_id__scout_opponent_get",
+        "parameters": [
+          {
+            "name": "game_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Game Id"
+            }
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScoutOpponent"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/stats/summary": {
       "get": {
         "tags": [
@@ -382,6 +441,110 @@
                     "$ref": "#/components/schemas/ChampionStats"
                   },
                   "title": "Response Champions Api Stats Champions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/champion-summary": {
+      "get": {
+        "tags": [
+          "stats"
+        ],
+        "summary": "Champion Role Summary",
+        "description": "D\u00f3nde rindes mejor: winrate/KDA por (campe\u00f3n, rol, cola) con m\u00ednimo de 3 partidas.\n\nEs el desglose que los stats globales no ven: una ca\u00edda en el winrate general puede\nvenir solo de jugar en una cola de normales o de un rol fuera del pool. `HAVING` en SQL\ndescarta las combinaciones con menos de 3 partidas, donde el winrate es ruido.",
+        "operationId": "champion_role_summary_api_stats_champion_summary_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChampionRoleSummary"
+                  },
+                  "title": "Response Champion Role Summary Api Stats Champion Summary Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/session-fatigue": {
+      "get": {
+        "tags": [
+          "stats"
+        ],
+        "summary": "Session Fatigue",
+        "description": "Estado de sesi\u00f3n: compara las \u00faltimas 5 partidas con las 5 anteriores.\n\nDetecta autopilot (ca\u00edda severa de winrate/KDA entre bloques) para el banner \"Estado de\nSesi\u00f3n\" del Dashboard. `sample_ok` es False cuando no hay 10 partidas v\u00e1lidas a\u00fan; el\nfrontend muestra el `message` informativo igualmente.",
+        "operationId": "session_fatigue_api_stats_session_fatigue_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionFatigue"
                 }
               }
             }
@@ -736,6 +899,56 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/WeeklyReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/meta-verdict": {
+      "get": {
+        "tags": [
+          "stats"
+        ],
+        "summary": "Meta Verdict",
+        "description": "Veredicto del meta: winrate por emparejamiento (t\u00fa vs enemigo) en el parche actual\ncontra el hist\u00f3rico de todos los parches anteriores.\n\nEs la extensi\u00f3n de la Alerta de Parche a la matriz de matchups: cruza `champion` vs\n`enemy_champion` y separa las partidas de la `game_version` actual del historial previo.\n`meta_shift` marca los emparejamientos que eran favorables (winrate previo >= 55% con\nmuestra previa) y ahora caen por debajo del 50% \u2014 la alerta de \"el meta se te ha dado la\nvuelta\" que el frontend resalta en la vista Matchups.",
+        "operationId": "meta_verdict_api_stats_meta_verdict_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetaVerdictResponse"
                 }
               }
             }
@@ -1695,6 +1908,12 @@
             "title": "Id",
             "description": "Id de Data Dragon ('LeeSin'), clave del dict"
           },
+          "key": {
+            "type": "string",
+            "title": "Key",
+            "description": "Id num\u00e9rico de Data Dragon ('103'), el de Champion Mastery-V4",
+            "default": ""
+          },
           "name": {
             "type": "string",
             "title": "Name",
@@ -1723,6 +1942,55 @@
           "image"
         ],
         "title": "ChampionMeta"
+      },
+      "ChampionRoleSummary": {
+        "properties": {
+          "champion": {
+            "type": "string",
+            "title": "Champion"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "queue_id": {
+            "type": "integer",
+            "title": "Queue Id"
+          },
+          "games_played": {
+            "type": "integer",
+            "title": "Games Played"
+          },
+          "wins": {
+            "type": "integer",
+            "title": "Wins"
+          },
+          "losses": {
+            "type": "integer",
+            "title": "Losses"
+          },
+          "winrate": {
+            "type": "number",
+            "title": "Winrate"
+          },
+          "kda_ratio": {
+            "type": "number",
+            "title": "Kda Ratio"
+          }
+        },
+        "type": "object",
+        "required": [
+          "champion",
+          "role",
+          "queue_id",
+          "games_played",
+          "wins",
+          "losses",
+          "winrate",
+          "kda_ratio"
+        ],
+        "title": "ChampionRoleSummary",
+        "description": "Winrate/KDA del usuario por (campe\u00f3n, rol, cola).\n\nCon `HAVING COUNT(*) >= 3` en SQL: con menos partidas el winrate es puro ruido y la\ntabla no puede separar \"rindo bien\" de \"he tenido suerte dos veces\". El rol es la\ncolumna `matches.role` (el teamPosition que Riot report\u00f3 en la partida), no el\n`team_position` del JSONB: aqu\u00ed importa c\u00f3mo lleg\u00f3 la fila, una fila = una partida."
       },
       "ChampionStats": {
         "properties": {
@@ -2454,6 +2722,109 @@
         "title": "MatchupStats",
         "description": "Estad\u00edsticas hist\u00f3ricas del cruce de dos campeones (T\u00fa contra enemigo)."
       },
+      "MetaVerdict": {
+        "properties": {
+          "user_champion": {
+            "type": "string",
+            "title": "User Champion"
+          },
+          "enemy_champion": {
+            "type": "string",
+            "title": "Enemy Champion"
+          },
+          "games_current": {
+            "type": "integer",
+            "title": "Games Current"
+          },
+          "wins_current": {
+            "type": "integer",
+            "title": "Wins Current"
+          },
+          "winrate_current": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Winrate Current",
+            "description": "NULL sin partidas en el parche actual"
+          },
+          "games_previous": {
+            "type": "integer",
+            "title": "Games Previous"
+          },
+          "wins_previous": {
+            "type": "integer",
+            "title": "Wins Previous"
+          },
+          "winrate_previous": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Winrate Previous",
+            "description": "NULL sin historial previo"
+          },
+          "delta_pp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Pp",
+            "description": "winrate (parche actual) - winrate (anterior), en puntos"
+          },
+          "meta_shift": {
+            "type": "boolean",
+            "title": "Meta Shift",
+            "description": "Favorable antes, negativo ahora, con muestra m\u00ednima",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "user_champion",
+          "enemy_champion",
+          "games_current",
+          "wins_current",
+          "games_previous",
+          "wins_previous"
+        ],
+        "title": "MetaVerdict",
+        "description": "Winrate de un enfrentamiento (tu campe\u00f3n vs enemigo) separado por parche.\n\n`games_*_current` = partidas de la `game_version` del parche actual; `games_previous` =\ntodo el historial de parches anteriores (incluidas las filas legacy con versi\u00f3n NULL).\n`meta_shift` marca exactamente el caso que alarma al usuario: un cruce que era favorable\ny ahora est\u00e1 por debajo del 50% \u2014 la alerta de \"el meta te ha pasado por encima\"."
+      },
+      "MetaVerdictResponse": {
+        "properties": {
+          "current_patch": {
+            "type": "string",
+            "title": "Current Patch",
+            "description": "Parche de Riot normalizado a 'X.Y' con el que se separaron los datos"
+          },
+          "verdicts": {
+            "items": {
+              "$ref": "#/components/schemas/MetaVerdict"
+            },
+            "type": "array",
+            "title": "Verdicts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "current_patch",
+          "verdicts"
+        ],
+        "title": "MetaVerdictResponse"
+      },
       "MetricsSnapshot": {
         "properties": {
           "uptime_seconds": {
@@ -2777,6 +3148,202 @@
         ],
         "title": "PatchChampionInfo",
         "description": "Rendimiento de un campe\u00f3n del pool en el parche actual vs. los anteriores."
+      },
+      "ScoutMasteryChampion": {
+        "properties": {
+          "champion": {
+            "type": "string",
+            "title": "Champion",
+            "description": "Nombre visible del campe\u00f3n ('Lee Sin')"
+          },
+          "champion_key": {
+            "type": "string",
+            "title": "Champion Key",
+            "description": "Id num\u00e9rico de Data Dragon ('103')"
+          },
+          "mastery_level": {
+            "type": "integer",
+            "maximum": 7.0,
+            "minimum": 0.0,
+            "title": "Mastery Level",
+            "description": "Nivel de maestr\u00eda (1-7)"
+          },
+          "points": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Points",
+            "description": "Puntos de maestr\u00eda acumulados"
+          }
+        },
+        "type": "object",
+        "required": [
+          "champion",
+          "champion_key",
+          "mastery_level",
+          "points"
+        ],
+        "title": "ScoutMasteryChampion"
+      },
+      "ScoutOpponent": {
+        "properties": {
+          "game_id": {
+            "type": "string",
+            "title": "Game Id"
+          },
+          "opponent_puuid": {
+            "type": "string",
+            "title": "Opponent Puuid"
+          },
+          "opponent_name": {
+            "type": "string",
+            "title": "Opponent Name",
+            "default": ""
+          },
+          "opponent_champion": {
+            "type": "string",
+            "title": "Opponent Champion",
+            "default": ""
+          },
+          "opponent_role": {
+            "type": "string",
+            "title": "Opponent Role",
+            "default": ""
+          },
+          "top_champions": {
+            "items": {
+              "$ref": "#/components/schemas/ScoutMasteryChampion"
+            },
+            "type": "array",
+            "title": "Top Champions"
+          },
+          "cached": {
+            "type": "boolean",
+            "title": "Cached",
+            "default": false
+          },
+          "cached_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cached At"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "game_id",
+          "opponent_puuid"
+        ],
+        "title": "ScoutOpponent",
+        "description": "Escout de un rival de l\u00ednea concreto: sus 3 campeones m\u00e1s jugados v\u00eda Champion Mastery.\n\n`opponent_champion` es lo que jug\u00f3 contra ti en la partida escouteada; `top_champions`\nson sus maestr\u00edas m\u00e1s altas (ordenadas por puntos). `cached` dice si la respuesta vino de\nla cach\u00e9 en DB (`scout_cache`, TTL 24h) o de una llamada fresca a Riot \u2014 el front lo usa\npara no alarmarse si la llamada tarda.\n\n`note` explica por qu\u00e9 no hay datos cuando los hay (rival sin maestr\u00edas, puuid ausente,\nrol sin asignar...), para que la UI muestre un mensaje \u00fatil en vez de un hueco."
+      },
+      "SessionBlock": {
+        "properties": {
+          "games": {
+            "type": "integer",
+            "title": "Games"
+          },
+          "wins": {
+            "type": "integer",
+            "title": "Wins"
+          },
+          "losses": {
+            "type": "integer",
+            "title": "Losses"
+          },
+          "winrate": {
+            "type": "number",
+            "title": "Winrate"
+          },
+          "avg_kda": {
+            "type": "number",
+            "title": "Avg Kda"
+          }
+        },
+        "type": "object",
+        "required": [
+          "games",
+          "wins",
+          "losses",
+          "winrate",
+          "avg_kda"
+        ],
+        "title": "SessionBlock",
+        "description": "Un bloque de partidas consecutivas (las 5 m\u00e1s recientes o las 5 anteriores)."
+      },
+      "SessionFatigue": {
+        "properties": {
+          "previous": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionBlock"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionBlock"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sample_ok": {
+            "type": "boolean",
+            "title": "Sample Ok",
+            "default": false
+          },
+          "winrate_delta_pp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Winrate Delta Pp"
+          },
+          "kda_delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kda Delta"
+          },
+          "fatigue_detected": {
+            "type": "boolean",
+            "title": "Fatigue Detected",
+            "default": false
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "title": "SessionFatigue",
+        "description": "Diagn\u00f3stico de fatiga de sesi\u00f3n comparando dos bloques de 5 partidas.\n\nLas 10 partidas v\u00e1lidas m\u00e1s recientes se parten en dos bloques: `recent` (las 5 m\u00e1s\nnuevas) vs `previous` (las 5 que las preceden). `sample_ok` exige ambas ventanas\ncompletas \u2014 con menos de 6 partidas no hay bloque anterior y nada que comparar.\n\n`fatigue_detected` (autopilot) se activa con una ca\u00edda severa de winrate (>=20pp) o un\ndesplome de KDA (>=2.0) entre bloques; los umbrales viven en `repositories/stats.py`\nporque son reglas de negocio, no de contrato. `message` da contexto en espa\u00f1ol con\nn\u00fameros reales, no un veredicto seco."
       },
       "SpellMeta": {
         "properties": {

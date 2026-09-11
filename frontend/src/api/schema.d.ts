@@ -79,6 +79,31 @@ export interface paths {
         patch: operations["update_match_api_matches__game_id__patch"];
         trace?: never;
     };
+    "/api/matches/{game_id}/scout-opponent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Scout Opponent
+         * @description Escout del rival de línea de una partida: sus 3 campeones más jugados (Champion Mastery).
+         *
+         *     La llamada a Riot se hace UNA vez por rival y se cachea en `scout_cache` (TTL 24h) para
+         *     no quemar la cuota escouteando partidas repetidas del mismo jugador. `cached` distingue
+         *     caché caliente de llamada fresca. Cuando no hay datos no se devuelve error: la respuesta
+         *     trae una `note` explicando por qué (rival sin maestrías, rol sin asignar...).
+         */
+        get: operations["scout_opponent_api_matches__game_id__scout_opponent_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/stats/summary": {
         parameters: {
             query?: never;
@@ -113,6 +138,54 @@ export interface paths {
          *     Streamlit pedía y que la query nunca devolvía.
          */
         get: operations["champions_api_stats_champions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stats/champion-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Champion Role Summary
+         * @description Dónde rindes mejor: winrate/KDA por (campeón, rol, cola) con mínimo de 3 partidas.
+         *
+         *     Es el desglose que los stats globales no ven: una caída en el winrate general puede
+         *     venir solo de jugar en una cola de normales o de un rol fuera del pool. `HAVING` en SQL
+         *     descarta las combinaciones con menos de 3 partidas, donde el winrate es ruido.
+         */
+        get: operations["champion_role_summary_api_stats_champion_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stats/session-fatigue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Session Fatigue
+         * @description Estado de sesión: compara las últimas 5 partidas con las 5 anteriores.
+         *
+         *     Detecta autopilot (caída severa de winrate/KDA entre bloques) para el banner "Estado de
+         *     Sesión" del Dashboard. `sample_ok` es False cuando no hay 10 partidas válidas aún; el
+         *     frontend muestra el `message` informativo igualmente.
+         */
+        get: operations["session_fatigue_api_stats_session_fatigue_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -243,6 +316,33 @@ export interface paths {
          *     y mejor partida por rating. `most_played`/`best_match` son null si no hay partidas en la ventana.
          */
         get: operations["weekly_report_api_stats_weekly_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stats/meta-verdict": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Meta Verdict
+         * @description Veredicto del meta: winrate por emparejamiento (tú vs enemigo) en el parche actual
+         *     contra el histórico de todos los parches anteriores.
+         *
+         *     Es la extensión de la Alerta de Parche a la matriz de matchups: cruza `champion` vs
+         *     `enemy_champion` y separa las partidas de la `game_version` actual del historial previo.
+         *     `meta_shift` marca los emparejamientos que eran favorables (winrate previo >= 55% con
+         *     muestra previa) y ahora caen por debajo del 50% — la alerta de "el meta se te ha dado la
+         *     vuelta" que el frontend resalta en la vista Matchups.
+         */
+        get: operations["meta_verdict_api_stats_meta_verdict_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -543,6 +643,12 @@ export interface components {
              */
             id: string;
             /**
+             * Key
+             * @description Id numérico de Data Dragon ('103'), el de Champion Mastery-V4
+             * @default
+             */
+            key: string;
+            /**
              * Name
              * @description Nombre visible ('Lee Sin') — así se guarda en matches.champion
              */
@@ -562,6 +668,33 @@ export interface components {
              * @description URL absoluta del cuadrado en Data Dragon
              */
             image: string;
+        };
+        /**
+         * ChampionRoleSummary
+         * @description Winrate/KDA del usuario por (campeón, rol, cola).
+         *
+         *     Con `HAVING COUNT(*) >= 3` en SQL: con menos partidas el winrate es puro ruido y la
+         *     tabla no puede separar "rindo bien" de "he tenido suerte dos veces". El rol es la
+         *     columna `matches.role` (el teamPosition que Riot reportó en la partida), no el
+         *     `team_position` del JSONB: aquí importa cómo llegó la fila, una fila = una partida.
+         */
+        ChampionRoleSummary: {
+            /** Champion */
+            champion: string;
+            /** Role */
+            role: string;
+            /** Queue Id */
+            queue_id: number;
+            /** Games Played */
+            games_played: number;
+            /** Wins */
+            wins: number;
+            /** Losses */
+            losses: number;
+            /** Winrate */
+            winrate: number;
+            /** Kda Ratio */
+            kda_ratio: number;
         };
         /**
          * ChampionStats
@@ -900,6 +1033,60 @@ export interface components {
              */
             kda_ratio: number;
         };
+        /**
+         * MetaVerdict
+         * @description Winrate de un enfrentamiento (tu campeón vs enemigo) separado por parche.
+         *
+         *     `games_*_current` = partidas de la `game_version` del parche actual; `games_previous` =
+         *     todo el historial de parches anteriores (incluidas las filas legacy con versión NULL).
+         *     `meta_shift` marca exactamente el caso que alarma al usuario: un cruce que era favorable
+         *     y ahora está por debajo del 50% — la alerta de "el meta te ha pasado por encima".
+         */
+        MetaVerdict: {
+            /** User Champion */
+            user_champion: string;
+            /** Enemy Champion */
+            enemy_champion: string;
+            /** Games Current */
+            games_current: number;
+            /** Wins Current */
+            wins_current: number;
+            /**
+             * Winrate Current
+             * @description NULL sin partidas en el parche actual
+             */
+            winrate_current?: number | null;
+            /** Games Previous */
+            games_previous: number;
+            /** Wins Previous */
+            wins_previous: number;
+            /**
+             * Winrate Previous
+             * @description NULL sin historial previo
+             */
+            winrate_previous?: number | null;
+            /**
+             * Delta Pp
+             * @description winrate (parche actual) - winrate (anterior), en puntos
+             */
+            delta_pp?: number | null;
+            /**
+             * Meta Shift
+             * @description Favorable antes, negativo ahora, con muestra mínima
+             * @default false
+             */
+            meta_shift: boolean;
+        };
+        /** MetaVerdictResponse */
+        MetaVerdictResponse: {
+            /**
+             * Current Patch
+             * @description Parche de Riot normalizado a 'X.Y' con el que se separaron los datos
+             */
+            current_patch: string;
+            /** Verdicts */
+            verdicts: components["schemas"]["MetaVerdict"][];
+        };
         /** MetricsSnapshot */
         MetricsSnapshot: {
             /** Uptime Seconds */
@@ -1074,6 +1261,128 @@ export interface components {
              * @default false
              */
             dropped: boolean;
+        };
+        /** ScoutMasteryChampion */
+        ScoutMasteryChampion: {
+            /**
+             * Champion
+             * @description Nombre visible del campeón ('Lee Sin')
+             */
+            champion: string;
+            /**
+             * Champion Key
+             * @description Id numérico de Data Dragon ('103')
+             */
+            champion_key: string;
+            /**
+             * Mastery Level
+             * @description Nivel de maestría (1-7)
+             */
+            mastery_level: number;
+            /**
+             * Points
+             * @description Puntos de maestría acumulados
+             */
+            points: number;
+        };
+        /**
+         * ScoutOpponent
+         * @description Escout de un rival de línea concreto: sus 3 campeones más jugados vía Champion Mastery.
+         *
+         *     `opponent_champion` es lo que jugó contra ti en la partida escouteada; `top_champions`
+         *     son sus maestrías más altas (ordenadas por puntos). `cached` dice si la respuesta vino de
+         *     la caché en DB (`scout_cache`, TTL 24h) o de una llamada fresca a Riot — el front lo usa
+         *     para no alarmarse si la llamada tarda.
+         *
+         *     `note` explica por qué no hay datos cuando los hay (rival sin maestrías, puuid ausente,
+         *     rol sin asignar...), para que la UI muestre un mensaje útil en vez de un hueco.
+         */
+        ScoutOpponent: {
+            /** Game Id */
+            game_id: string;
+            /** Opponent Puuid */
+            opponent_puuid: string;
+            /**
+             * Opponent Name
+             * @default
+             */
+            opponent_name: string;
+            /**
+             * Opponent Champion
+             * @default
+             */
+            opponent_champion: string;
+            /**
+             * Opponent Role
+             * @default
+             */
+            opponent_role: string;
+            /** Top Champions */
+            top_champions?: components["schemas"]["ScoutMasteryChampion"][];
+            /**
+             * Cached
+             * @default false
+             */
+            cached: boolean;
+            /** Cached At */
+            cached_at?: string | null;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+        };
+        /**
+         * SessionBlock
+         * @description Un bloque de partidas consecutivas (las 5 más recientes o las 5 anteriores).
+         */
+        SessionBlock: {
+            /** Games */
+            games: number;
+            /** Wins */
+            wins: number;
+            /** Losses */
+            losses: number;
+            /** Winrate */
+            winrate: number;
+            /** Avg Kda */
+            avg_kda: number;
+        };
+        /**
+         * SessionFatigue
+         * @description Diagnóstico de fatiga de sesión comparando dos bloques de 5 partidas.
+         *
+         *     Las 10 partidas válidas más recientes se parten en dos bloques: `recent` (las 5 más
+         *     nuevas) vs `previous` (las 5 que las preceden). `sample_ok` exige ambas ventanas
+         *     completas — con menos de 6 partidas no hay bloque anterior y nada que comparar.
+         *
+         *     `fatigue_detected` (autopilot) se activa con una caída severa de winrate (>=20pp) o un
+         *     desplome de KDA (>=2.0) entre bloques; los umbrales viven en `repositories/stats.py`
+         *     porque son reglas de negocio, no de contrato. `message` da contexto en español con
+         *     números reales, no un veredicto seco.
+         */
+        SessionFatigue: {
+            previous?: components["schemas"]["SessionBlock"] | null;
+            recent?: components["schemas"]["SessionBlock"] | null;
+            /**
+             * Sample Ok
+             * @default false
+             */
+            sample_ok: boolean;
+            /** Winrate Delta Pp */
+            winrate_delta_pp?: number | null;
+            /** Kda Delta */
+            kda_delta?: number | null;
+            /**
+             * Fatigue Detected
+             * @default false
+             */
+            fatigue_detected: boolean;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
         };
         /** SpellMeta */
         SpellMeta: {
@@ -1561,6 +1870,39 @@ export interface operations {
             };
         };
     };
+    scout_opponent_api_matches__game_id__scout_opponent_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-api-token"?: string | null;
+            };
+            path: {
+                game_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScoutOpponent"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     summary_api_stats_summary_get: {
         parameters: {
             query?: never;
@@ -1610,6 +1952,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChampionStats"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    champion_role_summary_api_stats_champion_summary_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-api-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ChampionRoleSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    session_fatigue_api_stats_session_fatigue_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-api-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionFatigue"];
                 };
             };
             /** @description Validation Error */
@@ -1805,6 +2209,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WeeklyReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    meta_verdict_api_stats_meta_verdict_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-api-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetaVerdictResponse"];
                 };
             };
             /** @description Validation Error */

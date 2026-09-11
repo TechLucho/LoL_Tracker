@@ -7,13 +7,17 @@ from fastapi import APIRouter, HTTPException, status
 from backend.app.deps import SettingsDep
 from backend.app.repositories import stats as repo
 from backend.app.schemas import (
+    ChampionRoleSummary,
     ChampionStats,
     HeatmapCell,
     HeatmapResponse,
     LaningSummary,
     MatchupStats,
+    MetaVerdict,
+    MetaVerdictResponse,
     PatchAlert,
     PatchChampionInfo,
+    SessionFatigue,
     StatsSummary,
     TrendPoint,
     WeeklyReport,
@@ -35,6 +39,28 @@ async def champions() -> list[ChampionStats]:
     """Incluye `winrate` y `kda_ratio` calculados en SQL: las dos columnas que la Tab 3 de
     Streamlit pedía y que la query nunca devolvía."""
     return [ChampionStats(**row) for row in await repo.champion_performance()]
+
+
+@router.get("/champion-summary", response_model=list[ChampionRoleSummary])
+async def champion_role_summary() -> list[ChampionRoleSummary]:
+    """Dónde rindes mejor: winrate/KDA por (campeón, rol, cola) con mínimo de 3 partidas.
+
+    Es el desglose que los stats globales no ven: una caída en el winrate general puede
+    venir solo de jugar en una cola de normales o de un rol fuera del pool. `HAVING` en SQL
+    descarta las combinaciones con menos de 3 partidas, donde el winrate es ruido.
+    """
+    return [ChampionRoleSummary(**row) for row in await repo.champion_role_summary()]
+
+
+@router.get("/session-fatigue", response_model=SessionFatigue)
+async def session_fatigue() -> SessionFatigue:
+    """Estado de sesión: compara las últimas 5 partidas con las 5 anteriores.
+
+    Detecta autopilot (caída severa de winrate/KDA entre bloques) para el banner "Estado de
+    Sesión" del Dashboard. `sample_ok` es False cuando no hay 10 partidas válidas aún; el
+    frontend muestra el `message` informativo igualmente.
+    """
+    return SessionFatigue(**await repo.session_fatigue())
 
 
 @router.get("/heatmap", response_model=HeatmapResponse)
@@ -109,6 +135,33 @@ async def weekly_report() -> WeeklyReport:
     y mejor partida por rating. `most_played`/`best_match` son null si no hay partidas en la ventana."""
     report = await repo.weekly_report()
     return WeeklyReport(**report)
+
+
+@router.get("/meta-verdict", response_model=MetaVerdictResponse)
+async def meta_verdict() -> MetaVerdictResponse:
+    """Veredicto del meta: winrate por emparejamiento (tú vs enemigo) en el parche actual
+    contra el histórico de todos los parches anteriores.
+
+    Es la extensión de la Alerta de Parche a la matriz de matchups: cruza `champion` vs
+    `enemy_champion` y separa las partidas de la `game_version` actual del historial previo.
+    `meta_shift` marca los emparejamientos que eran favorables (winrate previo >= 55% con
+    muestra previa) y ahora caen por debajo del 50% — la alerta de "el meta se te ha dado la
+    vuelta" que el frontend resalta en la vista Matchups.
+    """
+    try:
+        full_patch = await datadragon.get_current_patch()
+    except RuntimeError as exc:
+        raise HTTPException(
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            "No hay parche de Data Dragon disponible para el análisis.",
+        ) from exc
+
+    current_patch = ".".join(full_patch.split(".")[:2])
+    rows = await repo.meta_verdict(current_patch)
+    return MetaVerdictResponse(
+        current_patch=current_patch,
+        verdicts=[MetaVerdict(**assess_patch_row) for assess_patch_row in rows],
+    )
 
 
 @router.get("/matchups/{user_champion}/{enemy_champion}", response_model=MatchupStats)

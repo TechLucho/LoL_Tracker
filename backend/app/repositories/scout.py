@@ -8,6 +8,7 @@ texto y no hacía nada, sí está implementada.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from backend.app import db
@@ -67,4 +68,55 @@ async def search_matchups(
     return await db.fetch_all(
         f"SELECT * FROM matches WHERE {' AND '.join(conditions)} ORDER BY date DESC",
         tuple(params),
+    )
+
+
+# ─────────────────────────────── caché del Escout (Riot) ───────────────────────────────
+#
+# La cuota de Riot es el recurso caro: Champion Mastery-V4 es una llamada por rival, y el mismo
+# rival se repite en muchas partidas tuyas. El resultado se guarda aquí (tabla `scout_cache`) y
+# se reutiliza durante el TTL, de modo que escoutear 20 partidas del mismo jugador cuesta 1 sola
+# llamada a Riot en vez de 20.
+
+SCOUT_CACHE_TTL = timedelta(hours=24)
+
+
+def cache_is_fresh(cached_at: datetime, now: datetime, ttl: timedelta = SCOUT_CACHE_TTL) -> bool:
+    """True si la entrada de la caché aún se puede usar (no ha pasado el TTL).
+
+    Función pura a propósito (sin DB): testeable hermético. Si `cached_at` viene sin zona
+    horaria (Postgres devuelve tz-aware, pero por seguridad) se asume UTC igual que `now`.
+    """
+    if cached_at.tzinfo is None:
+        cached_at = cached_at.replace(tzinfo=UTC)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=UTC)
+    return now - cached_at <= ttl
+
+
+async def get_scout_cache(
+    puuid: str,
+) -> tuple[list[dict[str, Any]] | None, datetime | None]:
+    """(payload, cached_at) de la caché del Escout, o (None, None) si no hay entrada."""
+    row = await db.fetch_one(
+        "SELECT payload, cached_at FROM scout_cache WHERE puuid = %s",
+        (puuid,),
+    )
+    if row is None:
+        return None, None
+    return row["payload"], row["cached_at"]
+
+
+async def set_scout_cache(puuid: str, payload: list[dict[str, Any]]) -> None:
+    """Sobrescribe la entrada existente (misma persona = mismos datos frescos, TTL se resetea)."""
+    import json
+
+    await db.execute(
+        """
+        INSERT INTO scout_cache (puuid, payload, cached_at)
+        VALUES (%s, %s::jsonb, now())
+        ON CONFLICT (puuid) DO UPDATE
+            SET payload = EXCLUDED.payload, cached_at = now()
+        """,
+        (puuid, json.dumps(payload)),
     )

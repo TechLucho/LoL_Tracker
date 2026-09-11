@@ -89,6 +89,158 @@ async def champion_performance() -> list[dict[str, Any]]:
     )
 
 
+# Un campeón con menos partidas no demuestra "dónde rindes": el winrate con 1-2 partidas es
+# suerte, no tendencia. Este es el mínimo que separa ruido de señal en la vista de resumen.
+_MIN_GAMES_FOR_ROLE_SUMMARY = 3
+
+
+async def champion_role_summary() -> list[dict[str, Any]]:
+    """Winrate/KDA por (campeón, rol, cola) con mínimo de 3 partidas.
+
+    `matches.role` es el teamPosition del usuario en esa partida (equivalente al
+    `team_position` del JSONB, pero a nivel de fila — una fila = una partida). Agrupar por
+    las tres dimensiones deja ver dónde y en qué cola rindes, en vez de sumar ARAM con
+    Solo/Duo o Top con mid.
+
+    `delta_minutes` existe en la tabla desde la migración 002; las filas legacy con duración
+    NULL se conservan (igual que en el resto de analítica) pero sin duración desconocida no
+    hay "aprox." viable, así que `_NOT_A_REMAKE` aplica como en todos los paneles.
+    """
+    return await db.fetch_all(
+        f"""
+        SELECT
+            champion,
+            role,
+            queue_id,
+            COUNT(*)                                AS games_played,
+            SUM(CASE WHEN win THEN 1 ELSE 0 END)    AS wins,
+            SUM(CASE WHEN win THEN 0 ELSE 1 END)    AS losses,
+            ROUND({_WINRATE}, 1)                    AS winrate,
+            ROUND({_KDA_RATIO}, 2)                  AS kda_ratio
+        FROM matches
+        WHERE {_NOT_A_REMAKE}
+          AND role IS NOT NULL AND role <> ''
+          AND queue_id IS NOT NULL
+        GROUP BY champion, role, queue_id
+        HAVING COUNT(*) >= %s
+        ORDER BY winrate DESC, games_played DESC
+        """,
+        (_MIN_GAMES_FOR_ROLE_SUMMARY,),
+    )
+
+
+# ─────────────────────────────── Fatiga de sesión ───────────────────────────────
+
+# Los umbrales de "autopilot": 20 puntos de winrate o -2.0 de KDA entre dos bloques de 5
+# partidas. Conservadores a propósito — con una muestra tan corta un umbral laxo dispararía
+# falsos positivos y el banner perdería crédito (grita "descansa" que no descansarás).
+SESSION_RECENT_WINDOW = 5
+SESSION_TOTAL_WINDOW = 10
+FATIGUE_WINRATE_DROP_PP = 20.0
+FATIGUE_KDA_DROP = 2.0
+
+
+async def session_fatigue() -> dict[str, Any]:
+    """Compara las últimas 5 partidas válidas contra las 5 anteriores para detectar autopilot.
+
+    Las 10 partidas más recientes (sin remakes, con fecha) se parten por la mitad:
+    `recent` = rn 1-5 (las más nuevas, en orden cronológico descendente), `previous` = rn 6-10.
+    Con menos de 6 partidas almacenadas no hay bloque anterior y el diagnóstico solo dice
+    "hacen falta más partidas".
+
+    Ambos bloques se calculan en una sola pasada por SQL; el veredicto (fatiga sí/no y el
+    mensaje) es lógica de negocio y vive en Python, no en la query.
+    """
+    rows = await db.fetch_all(
+        f"""
+        WITH ordenadas AS (
+            SELECT
+                win, kills, deaths, assists,
+                ROW_NUMBER() OVER (ORDER BY date DESC) AS rn
+            FROM matches
+            WHERE {_NOT_A_REMAKE}
+              AND date IS NOT NULL
+            LIMIT %s
+        ),
+        bloques AS (
+            SELECT
+                CASE WHEN rn <= %s THEN 'recent' ELSE 'previous' END AS block,
+                win, kills, deaths, assists
+            FROM ordenadas
+        )
+        SELECT
+            block,
+            COUNT(*)                                AS games,
+            SUM(CASE WHEN win THEN 1 ELSE 0 END)    AS wins,
+            SUM(CASE WHEN win THEN 0 ELSE 1 END)    AS losses,
+            ROUND({_WINRATE}, 1)                    AS winrate,
+            ROUND({_KDA_RATIO}, 2)                  AS avg_kda
+        FROM bloques
+        GROUP BY block
+        """,
+        (SESSION_TOTAL_WINDOW, SESSION_RECENT_WINDOW),
+    )
+
+    blocks = {row["block"]: row for row in rows}
+    recent = blocks.get("recent")
+    previous = blocks.get("previous")
+
+    result: dict[str, Any] = {
+        "recent": recent,
+        "previous": previous,
+        "sample_ok": False,
+        "winrate_delta_pp": None,
+        "kda_delta": None,
+        "fatigue_detected": False,
+        "message": "",
+    }
+
+    if not recent:
+        result["message"] = "Sin partidas válidas todavía: sincroniza y el análisis de sesión se activa solo."
+        return result
+    if not previous:
+        result["message"] = (
+            f"Necesitas más partidas: hay {recent['games']}/10 para el diagnóstico de fatiga de sesión."
+        )
+        return result
+
+    winrate_delta_pp = round(float(recent["winrate"]) - float(previous["winrate"]), 1)
+    kda_delta = round(float(recent["avg_kda"]) - float(previous["avg_kda"]), 2)
+    result["winrate_delta_pp"] = winrate_delta_pp
+    result["kda_delta"] = kda_delta
+
+    total = recent["games"] + previous["games"]
+    if total < SESSION_TOTAL_WINDOW:
+        result["message"] = (
+            f"Muestra parcial ({total}/10 partidas): con 10 el diagnóstico de autopilot es fiable."
+        )
+        return result
+
+    result["sample_ok"] = True
+    fatigue = (
+        winrate_delta_pp <= -FATIGUE_WINRATE_DROP_PP
+        or kda_delta <= -FATIGUE_KDA_DROP
+    )
+    result["fatigue_detected"] = fatigue
+
+    if fatigue:
+        causes = []
+        if winrate_delta_pp <= -FATIGUE_WINRATE_DROP_PP:
+            causes.append(f"winrate -{abs(winrate_delta_pp):.0f}pp")
+        if kda_delta <= -FATIGUE_KDA_DROP:
+            causes.append(f"KDA -{abs(kda_delta):.1f}")
+        result["message"] = (
+            f"Posible autopilot: el bloque reciente está en picado ({', '.join(causes)}). "
+            "Considera cerrar la sesión o hacer una pausa de 15 minutos."
+        )
+    else:
+        result["message"] = (
+            f"Sin signos de fatiga: winrate {recent['winrate']}% vs {previous['winrate']}% "
+            f"anterior, KDA {recent['avg_kda']} vs {previous['avg_kda']}."
+        )
+    return result
+
+
 async def matchup(user_champion: str, enemy_champion: str) -> dict[str, Any]:
     """Estadísticas del cruce de dos campeones, insensible a mayúsculas.
 
@@ -395,6 +547,94 @@ async def patch_alert(current_patch: str) -> dict[str, Any]:
         "has_current_games": has_current_games,
         "champions": champions,
     }
+
+
+# ─────────────────────────── Veredicto del meta ──────────────────────────────
+
+# Regla de meta-shift: un emparejamiento "históricamente favorable" (winrate previo >= 55) que
+# en el parche actual cae por debajo del 50%. Exigir MIN_META_CURRENT_GAMES evita declarar una
+# mala racha de 1-2 partidas como "el meta cambió" — con una muestra así no hay parche que valga.
+MIN_META_CURRENT_GAMES = 3
+META_FAVORABLE_WR = 55.0
+META_VERDICT_CUTOFF_WR = 50.0
+
+
+def assess_meta_verdict_row(row: dict[str, Any]) -> dict[str, Any]:
+    """Convierte una fila del agregado SQL en un dict listo para `MetaVerdict`.
+
+    Función pura (sin DB) para poder testear la regla de negocio de forma hermética: calcula
+    los winrates de cada lado, el delta en puntos porcentuales y `meta_shift` con los umbrales
+    definidos arriba. El SQL sólo agrupa y cuenta — el juicio vive aquí.
+    """
+    games_current = int(row["games_current"])
+    games_previous = int(row["games_previous"])
+    wins_current = int(row["wins_current"])
+    wins_previous = int(row["wins_previous"])
+
+    winrate_current: float | None = None
+    if games_current > 0:
+        winrate_current = round(wins_current / games_current * 100, 1)
+    winrate_previous: float | None = None
+    if games_previous > 0:
+        winrate_previous = round(wins_previous / games_previous * 100, 1)
+
+    delta_pp: float | None = None
+    if winrate_current is not None and winrate_previous is not None:
+        delta_pp = round(winrate_current - winrate_previous, 1)
+
+    meta_shift = bool(
+        games_current >= MIN_META_CURRENT_GAMES
+        and winrate_previous is not None and winrate_previous >= META_FAVORABLE_WR
+        and winrate_current is not None and winrate_current < META_VERDICT_CUTOFF_WR
+    )
+    return {
+        **row,
+        "winrate_current": winrate_current,
+        "winrate_previous": winrate_previous,
+        "delta_pp": delta_pp,
+        "meta_shift": meta_shift,
+    }
+
+
+async def meta_verdict(current_patch: str) -> list[dict[str, Any]]:
+    """Winrate por (tu campeón, campeón enemigo) separado por parche.
+
+    El bucket se calcula igual que `patch_alert`: la `game_version` se normaliza a "X.Y" y se
+    compara con el parche actual; las filas legacy con versión NULL cuentan como historial
+    previo (nunca como parche actual). Los 'Unknown' de `enemy_champion` se descartan — no hay
+    cruce que juzgar sin rival de línea.
+    """
+    rows = await db.fetch_all(
+        f"""
+        SELECT
+            champion                         AS user_champion,
+            enemy_champion,
+            COUNT(*) FILTER (WHERE bucket = 'current')          AS games_current,
+            COUNT(*) FILTER (WHERE bucket = 'current' AND win)  AS wins_current,
+            COUNT(*) FILTER (WHERE bucket = 'previous')         AS games_previous,
+            COUNT(*) FILTER (WHERE bucket = 'previous' AND win) AS wins_previous
+        FROM (
+            SELECT
+                m.win,
+                m.champion,
+                m.enemy_champion,
+                CASE
+                    WHEN m.game_version IS NOT NULL
+                         AND SPLIT_PART(m.game_version, '.', 1) || '.'
+                             || SPLIT_PART(m.game_version, '.', 2) = %s
+                    THEN 'current'
+                    ELSE 'previous'
+                END AS bucket
+            FROM matches m
+            WHERE {_NOT_A_REMAKE}
+              AND enemy_champion IS NOT NULL AND enemy_champion <> 'Unknown'
+        ) enfrentamientos
+        GROUP BY champion, enemy_champion
+        ORDER BY games_previous + games_current DESC
+        """,
+        (current_patch,),
+    )
+    return [assess_meta_verdict_row(row) for row in rows]
 
 
 # ─────────────────────────── Triángulo del Laning (Timeline) ──────────────────────

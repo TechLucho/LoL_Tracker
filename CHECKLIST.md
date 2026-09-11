@@ -212,11 +212,11 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ### Medio plazo
 
-- [ ] **Resumen por rol / campeón de la semana**: winrate y KDA por (campeón, rol, cola) con mínimo de partidas para sacar conclusiones honestas ("solo rindes con Jax en toplane")
-- [ ] **Carga acumulada de sesión**: winrate de las últimas 5 partidas vs. las 5 anteriores, para detectar el punto donde entras en autopilot (apoya la agrupación por sesiones del Dashboard)
-- [ ] **Objetivos por partida vía OKRs**: marcar en la review si cumpliste DPM/KP%/Visión — conecta los OKRs de Settings con el resultado real de la partida
-- [ ] **Escout del pool rival**: winrate del champion pool del rival de línea por rol, integrado en la vista Matchups
-- [ ] **Veredicto de meta**: cruzar la matriz de matchups contra `game_version` para alertar cuándo tu pool pierde contra el meta del rango (extensión natural de la Alerta de Parche)
+- [x] **Resumen por rol / campeón de la semana**: winrate y KDA por (campeón, rol, cola) con mínimo de partidas para sacar conclusiones honestas ("solo rindes con Jax en toplane") — `GET /api/stats/champion-summary` (HAVING ≥ 3) + tarjeta `ChampionRoleSummary` en Dashboard
+- [x] **Carga acumulada de sesión**: winrate de las últimas 5 partidas vs. las 5 anteriores, para detectar el punto donde entras en autopilot (apoya la agrupación por sesiones del Dashboard) — `GET /api/stats/session-fatigue` + banner `SessionFatigueCard` (caída ≥20pp de winrate o −2.0 KDA)
+- [x] **Objetivos por partida vía OKRs**: marcar en la review si cumpliste DPM/KP%/Visión — conecta los OKRs de Settings con el resultado real de la partida — strip `🎯 OKR` en el accordion de cada partida (check/cruz contra `target_dpm`, `target_kp_percent`, `target_vision_score`)
+- [x] **Escout del pool rival**: winrate del champion pool del rival de línea por rol, integrado en la vista Matchups — v1 implementada como **Champion Mastery**: `GET /api/matches/{game_id}/scout-opponent` devuelve los 3 campeones más jugados del rival de línea (OTP vs first time), cacheada 24h en `scout_cache` para no quemar la cuota de Riot, con tab 🔎 Escout en el accordion
+- [x] **Veredicto de meta**: cruzar la matriz de matchups contra `game_version` para alertar cuándo tu pool pierde contra el meta del rango (extensión natural de la Alerta de Parche) — `GET /api/stats/meta-verdict` compara winrate por (tú vs enemigo) del parche actual contra el histórico y marca `meta_shift` (favorable ≥55% antes, <50% ahora) con toggle "Filtro de Meta Actual" en Matchups
 
 ### Largo plazo (v2.0)
 

@@ -4,10 +4,14 @@ import FormCheckCard from '../components/FormCheckCard'
 import PerformanceNotes from '../components/PerformanceNotes'
 import RecordsCard from '../components/RecordsCard'
 import ChampionsList from '../components/ChampionsList'
+import ChampionRoleSummary from '../components/ChampionRoleSummary'
+import SessionFatigueCard from '../components/SessionFatigueCard'
 import RatingTrend from '../components/RatingTrend'
 import MatchesTable from '../components/MatchesTable'
 import { useMatches, useSyncMatches, useUpdateMatchReview } from '../hooks/useMatches'
 import { useChampionStats } from '../hooks/useChampionStats'
+import { useChampionRoleSummary } from '../hooks/useChampionRoleSummary'
+import { useSessionFatigue } from '../hooks/useSessionFatigue'
 import PatchAlertBanner from '../components/PatchAlertBanner'
 import type { QueueFilter } from '../data/types'
 
@@ -49,6 +53,8 @@ export default function Dashboard() {
   // resultante se alimentan también FormCheck, Performance Notes y Records.
   const matches = useMemo(() => data?.pages.flat() ?? [], [data])
   const { data: championStats = [], isLoading: championsLoading } = useChampionStats()
+  const { data: championRoleSummary = [], isLoading: roleSummaryLoading } = useChampionRoleSummary()
+  const { data: sessionFatigue, isLoading: fatigueLoading } = useSessionFatigue()
   const syncMutation = useSyncMatches()
   const reviewMutation = useUpdateMatchReview()
 
@@ -78,9 +84,16 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_280px] 2xl:grid-cols-[1fr_320px]">
         {/* Main Column */}
         <div className="space-y-3">
+          <SessionFatigueCard data={sessionFatigue} isLoading={fatigueLoading} />
+
           <FormCheckCard matches={matches} />
 
           <PerformanceNotes matches={matches} />
+
+          <ChampionRoleSummary
+            rows={championRoleSummary}
+            isLoading={roleSummaryLoading}
+          />
 
           <MatchesTable
             matches={matches}
