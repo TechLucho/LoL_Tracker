@@ -277,10 +277,16 @@ async def sync(
     _state.finished_at = None
     _state.result = None
     _state.error = None
-    # El estado sólo se marca "processing" tras persistir el arranque del run: si start_run
-    # falla (p.ej. la DB está caída), el sync queda en "idle" y no se queda pegado en 409.
-    run_id = await sync_runs.start_run(_state.started_at)
+    # Guard cerrado: el estado se marca "processing" ANTES de esperar nada (no hay await entre
+    # el guard del 409 y esta línea), así dos POST simultáneos nunca atraviesan el guard a la
+    # vez (race auditado en v1.6: el viejo orden permitía lanzar dos _run_sync). Si start_run
+    # falla (p.ej. la DB está caída), se restaura "idle" y el sync no queda pegado en 409.
     _state.status = "processing"
+    try:
+        run_id = await sync_runs.start_run(_state.started_at)
+    except Exception:
+        _state.status = "idle"
+        raise
     background_tasks.add_task(_run_sync, riot, target, limit, queue_ids, run_id=run_id,
                               discord_webhook_url=settings.discord_webhook_url)
 
