@@ -85,19 +85,32 @@ async def _capture_ranked_lp(riot: RiotService, riot_id: str) -> LpCapture | Non
     return None
 
 
-async def _notify_discord(webhook_url: str, status: str, matches_added: int) -> None:
+async def _notify_discord(
+    webhook_url: str, status: str, matches_added: int, losing_streak: bool = False
+) -> None:
     """POST asíncrono de un embed de resumen al canal de Discord.
 
     Es un "log externo" pasivo: cualquier error de red se silencia. Un webhook caído no debe
-    convertir un sync exitoso en error.
+    convertir un sync exitoso en error. Con `losing_streak` el embed se fuerza en rojo (color
+    de error) e incluye el aviso de La Constitución.
     """
-    color = 0x9D4EDD if status == "success" else 0xE63946
+    color = 0xE63946 if (status != "success" or losing_streak) else 0x9D4EDD
+    fields = []
+    if losing_streak:
+        fields.append(
+            {
+                "name": "🚨 Racha de derrotas detectada",
+                "value": "3+ derrotas consecutivas. Considera aplicar la Constitución y para de jugar.",
+                "inline": False,
+            }
+        )
     payload = {
         "embeds": [
             {
-                "title": "Sync completado",
+                "title": "Sync completado" + (" ⚠️" if losing_streak else ""),
                 "description": f"Estado: **{status}**\nPartidas añadidas: **{matches_added}**",
                 "color": color,
+                "fields": fields,
             }
         ]
     }
@@ -119,6 +132,7 @@ async def _run_sync(riot: RiotService, target: str, limit: int, queue_ids: list[
     """
     inserted = 0
     error_msg: str | None = None
+    losing_streak = False
 
     try:
         all_matches = []
@@ -147,6 +161,14 @@ async def _run_sync(riot: RiotService, target: str, limit: int, queue_ids: list[
         if inserted > 0 and 420 in queue_ids:
             lp_captured = await _capture_ranked_lp(riot, target)
 
+        # Tilt Alert: si las últimas 3 partidas válidas (Ranked, anti-remake) son derrotas
+        # consecutivas, el sync avisa. Se evalúa SIEMPRE (no sólo con insertadas): así un
+        # resync manual durante una racha en curso vuelve a recordar que hay que parar.
+        recent = await repo.last_results(limit=3)
+        losing_streak = len(recent) >= 3 and all(not r["win"] for r in recent)
+        if losing_streak:
+            log.warning("Tilt Alert: %s lleva 3+ derrotas consecutivas", target)
+
         _state.result = SyncResult(
             fetched=len(unique_matches),
             inserted=inserted,
@@ -154,6 +176,7 @@ async def _run_sync(riot: RiotService, target: str, limit: int, queue_ids: list[
             errors=[SyncError(game_id=f.game_id, reason=f.reason, retryable=f.retryable)
                     for f in all_failures],
             lp_captured=lp_captured,
+            losing_streak_warning=losing_streak,
         )
         _state.status = "success"
     except RiotServiceError as exc:
@@ -176,7 +199,7 @@ async def _run_sync(riot: RiotService, target: str, limit: int, queue_ids: list[
             error_message=error_msg,
         )
         if discord_webhook_url:
-            await _notify_discord(discord_webhook_url, _state.status, inserted)
+            await _notify_discord(discord_webhook_url, _state.status, inserted, losing_streak)
 
 
 @router.post("", response_model=SyncAccepted, status_code=202)

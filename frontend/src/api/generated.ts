@@ -36,6 +36,10 @@ export type SpellsIndex = components['schemas']['SpellsIndex']
 
 export type ChampionStats = components['schemas']['ChampionStats']
 export type HeatmapCell = components['schemas']['HeatmapCell']
+export type HeatmapResponse = components['schemas']['HeatmapResponse']
+export type PatchAlert = components['schemas']['PatchAlert']
+export type PatchChampionInfo = components['schemas']['PatchChampionInfo']
+export type LaningSummary = components['schemas']['LaningSummary']
 export type TrendPoint = components['schemas']['TrendPoint']
 
 export type WeeklyReport = components['schemas']['WeeklyReport']

@@ -236,6 +236,56 @@ def test_lp_trend_acumulado_y_filtro_por_cola():
     assert [r["lp_cumulative"] for r in completa] == [-16, -16, -1]
 
 
+# ─────────────────────────── stats.laning_summary ───────────────────────────
+
+
+def test_laning_summary_promedia_jsonb_y_ignora_sin_datos():
+    """El triángulo del laning se lee del JSONB del propio usuario y sólo cuenta partidas
+    con datos de Timeline (remakes y filas antiguas fuera)."""
+    g1 = row(
+        date="2026-08-01 18:00:00",
+        participants=[{**participant("Jax", 60000), "gd15": 300, "xpd15": 200, "csd15": 3}],
+    )
+    g2 = row(
+        champion="Yasuo", enemy="Irelia",
+        date="2026-08-02 18:00:00",
+        participants=[{**participant("Yasuo", 30000), "gd15": -100, "xpd15": 50, "csd15": -2}],
+    )
+    sin_datos = row(
+        champion="Garen", enemy="Darius",
+        date="2026-08-03 18:00:00",
+        participants=[participant("Garen", 20000)],  # sin gd15/xpd15/csd15
+    )
+    remake = row(
+        duration=2.0,
+        date="2026-08-04 18:00:00",
+        participants=[{**participant("Jax", 0), "gd15": 999, "xpd15": 999, "csd15": 9}],
+    )
+
+    async def s():
+        await matches_repo.insert_many([g1, g2, sin_datos, remake])
+        return await stats.laning_summary(limit=50)
+
+    result = run_scenario(s)
+
+    # Sólo g1 y g2 entran: (300 + (-100))/2 = 100, (200+50)/2 = 125, (3 + -2)/2 = 0.5
+    assert float(result["avg_gd15"]) == 100.0
+    assert float(result["avg_xpd15"]) == 125.0
+    assert float(result["avg_csd15"]) == 0.5
+    assert result["games_analyzed"] == 2
+
+
+def test_laning_summary_sin_partidas_con_datos_reporta_cero():
+    remakes = [row(duration=2.0, date=f"2026-08-0{i} 18:00:00") for i in range(1, 4)]
+
+    async def s():
+        await matches_repo.insert_many(remakes)
+        return await stats.laning_summary(limit=50)
+
+    result = run_scenario(s)
+    assert result == {"avg_gd15": None, "avg_xpd15": None, "avg_csd15": None, "games_analyzed": 0}
+
+
 # ─────────────────────────── scout.nemesis ───────────────────────────
 
 

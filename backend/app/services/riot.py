@@ -40,6 +40,10 @@ BACKOFF_BASE_SECONDS = 2.0
 # Techo al Retry-After que dicta Riot: una cabecera exótica no debe colgar el sync minutos.
 MAX_RETRY_AFTER_SECONDS = 120.0
 PUUID_CACHE_TTL_SECONDS = 24 * 60 * 60
+# Timeline (Match-V5): marcamos exactamente el minuto 15, el corte canónico del early game.
+# Las partidas que no llegan a 15:00 no tienen un "marco de 15 minutos" honesto -> sin laning.
+TIMELINE_MARK_MS = 900_000
+TIMELINE_MARK_SECONDS = TIMELINE_MARK_MS // 1000
 
 
 class RiotServiceError(Exception):
@@ -277,6 +281,7 @@ class RiotService:
                 # El jugador no aparece entre los participantes: dato inconsistente de Riot.
                 failures.append(FailedMatch(match_id, "El jugador no figura en la partida", False))
                 continue
+            parsed = await self._attach_laning(raw, puuid, parsed)
             matches.append(parsed)
 
         return matches, failures
@@ -306,6 +311,10 @@ class RiotService:
             "game_id": raw["metadata"]["matchId"],
             # UTC explícito: la interpretación a hora local se hace al consultar el heatmap.
             "date": datetime.fromtimestamp(info["gameEndTimestamp"] / 1000, tz=UTC),
+            # Versión de Riot del parche (ej. "14.18.586.6903"): la Alerta de Parche la usa
+            # para separar partidas del parche actual vs. anteriores. NULL en partidas
+            # antiguas previas a esta columna.
+            "game_version": info.get("gameVersion"),
             "champion": me["championName"],
             "role": role,
             "kills": me["kills"],
@@ -320,6 +329,116 @@ class RiotService:
             "queue_id": info.get("queueId"),
             "participants": participants,
         }
+
+    @staticmethod
+    def _extract_laning_deltas(
+        info: dict[str, Any], me: dict[str, Any], timeline: dict[str, Any]
+    ) -> dict[str, float] | None:
+        """GD@15 / XPD@15 / CSD@15 del usuario contra su rival directo de línea.
+
+        Toma el frame del timeline más cercano al minuto 15 (900.000 ms) y calcula
+        (stats tuyas) - (stats del rival con el mismo `teamPosition` en el otro equipo):
+
+          * `totalGold`                  -> gd15
+          * `xp`                         -> xpd15
+          * minionsKilled+jungleMinions  -> csd15
+
+        Devuelve None (y el sync guarda la partida sin datos de laning) cuando la
+        partida duró menos de 15 minutos, no hay rival directo, o el timeline no trae
+        el frame necesario.
+        """
+        duration_s = info.get("gameDuration") or 0
+        if duration_s < TIMELINE_MARK_SECONDS:
+            return None
+
+        role = me.get("teamPosition") or ""
+        if role in ("", "Invalid"):
+            role = me.get("individualPosition") or "Unknown"
+        if not role or role == "Unknown" or not me.get("participantId"):
+            return None
+
+        enemy = next(
+            (
+                p for p in info["participants"]
+                if p["teamId"] != me["teamId"] and p.get("teamPosition") == role
+            ),
+            None,
+        )
+        if enemy is None:
+            return None
+
+        me_id = str(me["participantId"])
+        enemy_id = str(enemy["participantId"])
+        frames = (timeline.get("info") or {}).get("frames") or []
+        if not frames:
+            return None
+
+        best = min(
+            frames,
+            key=lambda f: abs(int(f.get("timestamp") or 0) - TIMELINE_MARK_MS),
+        )
+        participant_frames = best.get("participantFrames") or {}
+        mine = participant_frames.get(me_id)
+        theirs = participant_frames.get(enemy_id)
+        if not mine or not theirs:
+            return None
+
+        def _cs(frame: dict[str, Any]) -> int:
+            return int(frame.get("minionsKilled") or 0) + int(
+                frame.get("jungleMinionsKilled") or 0
+            )
+
+        return {
+            "gd15": float(mine.get("totalGold") or 0) - float(theirs.get("totalGold") or 0),
+            "xpd15": float(mine.get("xp") or 0) - float(theirs.get("xp") or 0),
+            "csd15": _cs(mine) - _cs(theirs),
+        }
+
+    async def _attach_laning(
+        self, raw: dict[str, Any], puuid: str, parsed: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Enriquece `parsed` con GD@15/XPD@15/CSD@15 leyendo el Timeline de Riot.
+
+        Es un enriquecimiento OPCIONAL: un fallo del timeline (429/404, frame incompleto,
+        partida < 15 min) deja la partida tal cual y nunca tumba el sync — los datos de
+        laning simplemente no se escriben.
+        """
+        info = raw["info"]
+        me = next((p for p in info["participants"] if p["puuid"] == puuid), None)
+        if me is None:
+            return parsed
+
+        role = me.get("teamPosition") or ""
+        if role in ("", "Invalid"):
+            role = me.get("individualPosition") or "Unknown"
+        duration_s = info.get("gameDuration") or 0
+        if not role or role == "Unknown" or duration_s < TIMELINE_MARK_SECONDS:
+            return parsed
+
+        try:
+            timeline = await self._call_with_retry(
+                f"timeline {parsed['game_id']}",
+                self._lol.match.timeline_by_match,
+                self._route, parsed["game_id"],
+            )
+        except RiotServiceError as exc:
+            log.warning("Sin datos de laning para %s: %s", parsed["game_id"], exc)
+            return parsed
+
+        try:
+            deltas = self._extract_laning_deltas(info, me, timeline)
+        except Exception:  # noqa: BLE001
+            log.exception("Timeline de %s con forma inesperada; sin datos de laning",
+                          parsed["game_id"])
+            return parsed
+
+        if not deltas:
+            return parsed
+        for participant in parsed["participants"]:
+            if participant["champion_name"].lower() == parsed["champion"].lower():
+                participant.update(deltas)
+                break
+        return parsed
 
     @staticmethod
     def calculate_participant_rating(participant_data: dict[str, Any], match_duration: float) -> float:

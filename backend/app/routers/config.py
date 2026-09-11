@@ -53,6 +53,9 @@ async def update_config(payload: UserSettingsUpdate) -> UserSettings:
         champion_pool=payload.champion_pool,
         target_cs_min=payload.target_cs_min,
         max_deaths=payload.max_deaths,
+        target_dpm=payload.target_dpm,
+        target_kp_percent=payload.target_kp_percent,
+        target_vision_score=payload.target_vision_score,
     )
     return UserSettings(**row)
 

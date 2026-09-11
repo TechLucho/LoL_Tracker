@@ -138,6 +138,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/stats/patch-alert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Patch Alert Endpoint
+         * @description Alerta de parche: caída de winrate del Champion Pool tras una actualización.
+         *
+         *     Resuelve el parche actual desde Data Dragon (caché 1h), lo normaliza a "X.Y" y compara
+         *     el winrate de los 3 campeones más jugados en ese parche contra su historial previo.
+         *     `has_current_games` distingue el caso de "parche recién salido sin partidas aún".
+         */
+        get: operations["patch_alert_endpoint_api_stats_patch_alert_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/stats/lp-trend": {
         parameters: {
             query?: never;
@@ -174,6 +198,30 @@ export interface paths {
          *     Ignora remakes (< 5 min); los DPM de filas legacy sin participants llegan como 0.
          */
         get: operations["kpi_trends_api_stats_trends_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/stats/laning": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Laning
+         * @description Triángulo del Laning: promedios GD@15 / XPD@15 / CSD@15 (Timeline de Riot).
+         *
+         *     `games_analyzed` dice cuántas de las últimas 50 partidas válidas tenían datos de
+         *     timeline (0 recién instalado, antes del primer sync con la nueva extracción); los
+         *     promedios son None sin ninguna partida.
+         */
+        get: operations["laning_api_stats_laning_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -676,6 +724,16 @@ export interface components {
             /** Winrate */
             winrate: number;
         };
+        /**
+         * HeatmapResponse
+         * @description Wrapper del heatmap: celdas + mejor/peor horario (con umbral mínimo de 3 partidas).
+         */
+        HeatmapResponse: {
+            /** Cells */
+            cells: components["schemas"]["HeatmapCell"][];
+            best_slot?: components["schemas"]["HeatmapCell"] | null;
+            worst_slot?: components["schemas"]["HeatmapCell"] | null;
+        };
         /** ItemMeta */
         ItemMeta: {
             /** Id */
@@ -699,6 +757,36 @@ export interface components {
             items: {
                 [key: string]: components["schemas"]["ItemMeta"];
             };
+        };
+        /**
+         * LaningSummary
+         * @description Promedios del Triángulo del Laning sobre las últimas partidas con datos de Timeline.
+         *
+         *     `games_analyzed` = cuántas partidas (de la ventana) alimentaron el promedio; 0 cuando los
+         *     datos de timeline aún no se han sincronizado. Los promedios son None sin ninguna partida.
+         */
+        LaningSummary: {
+            /**
+             * Avg Gd15
+             * @description Diferencia media de oro a los 15:00 (a tu favor si >0)
+             */
+            avg_gd15?: number | null;
+            /**
+             * Avg Xpd15
+             * @description Diferencia media de XP a los 15:00
+             */
+            avg_xpd15?: number | null;
+            /**
+             * Avg Csd15
+             * @description Diferencia media de CS a los 15:00
+             */
+            avg_csd15?: number | null;
+            /**
+             * Games Analyzed
+             * @description Partidas con datos de timeline en la ventana (mínimo piramidal del triángulo)
+             * @default 0
+             */
+            games_analyzed: number;
         };
         /**
          * LpCapture
@@ -975,6 +1063,73 @@ export interface components {
              * @default 1
              */
             rating_version: number;
+            /**
+             * Gd15
+             * @description Diferencia de oro a los 15:00 (a tu favor si >0)
+             */
+            gd15?: number | null;
+            /**
+             * Xpd15
+             * @description Diferencia de XP a los 15:00
+             */
+            xpd15?: number | null;
+            /**
+             * Csd15
+             * @description Diferencia de CS (minions+jungle) a los 15:00
+             */
+            csd15?: number | null;
+        };
+        /**
+         * PatchAlert
+         * @description Alerta de parche: siempre devuelve datos; el frontend decide si mostrar banner según
+         *     `has_current_games` (parche demasiado nuevo = sin partidas aún) y `alerting_champions`.
+         */
+        PatchAlert: {
+            /** Current Patch */
+            current_patch: string;
+            /** Has Current Games */
+            has_current_games: boolean;
+            /** Alerting Champions */
+            alerting_champions?: string[];
+            /** Champions */
+            champions: components["schemas"]["PatchChampionInfo"][];
+        };
+        /**
+         * PatchChampionInfo
+         * @description Rendimiento de un campeón del pool en el parche actual vs. los anteriores.
+         */
+        PatchChampionInfo: {
+            /** Champion */
+            champion: string;
+            /** Games Current */
+            games_current: number;
+            /** Wins Current */
+            wins_current: number;
+            /**
+             * Winrate Current
+             * @description NULL si no hay partidas en el parche actual
+             */
+            winrate_current?: number | null;
+            /** Games Previous */
+            games_previous: number;
+            /** Wins Previous */
+            wins_previous: number;
+            /**
+             * Winrate Previous
+             * @description NULL si el campeón nunca se jugó antes
+             */
+            winrate_previous?: number | null;
+            /**
+             * Delta Pp
+             * @description winrate actual - winrate previo, en puntos porcentuales
+             */
+            delta_pp?: number | null;
+            /**
+             * Dropped
+             * @description Caída >4pp con mínimo de 5 partidas en el parche actual
+             * @default false
+             */
+            dropped: boolean;
         };
         /** SpellMeta */
         SpellMeta: {
@@ -1061,6 +1216,12 @@ export interface components {
              */
             errors: components["schemas"]["SyncError"][];
             lp_captured?: components["schemas"]["LpCapture"] | null;
+            /**
+             * Losing Streak Warning
+             * @description True si las últimas 3+ partidas son derrotas consecutivas (Tilt Alert)
+             * @default false
+             */
+            losing_streak_warning: boolean;
         };
         /**
          * SyncStatus
@@ -1086,6 +1247,9 @@ export interface components {
          *
          *     Orden cronológico ascendente (partida más antigua primero) para que las gráficas de
          *     línea recorran el tiempo de izquierda a derecha. `timestamp` es la hora de juego en UTC.
+         *
+         *     `vision_delta` y `kp` se leen del JSONB `participants` (nulos en filas legacy o cuando
+         *     no existe rival directo); `win` es el resultado de la partida, siempre presente.
          */
         TrendPoint: {
             /** Game Id */
@@ -1101,6 +1265,12 @@ export interface components {
             dpm: number;
             /** Kda */
             kda: number;
+            /** Vision Delta */
+            vision_delta?: number | null;
+            /** Kp */
+            kp?: number | null;
+            /** Win */
+            win: boolean;
         };
         /**
          * UserSettings
@@ -1117,6 +1287,24 @@ export interface components {
             target_cs_min: number;
             /** Max Deaths */
             max_deaths: number;
+            /**
+             * Target Dpm
+             * @description Meta de DPM (Daño Por Minuto)
+             * @default 500
+             */
+            target_dpm: number;
+            /**
+             * Target Kp Percent
+             * @description Meta de Kill Participation en %
+             * @default 50
+             */
+            target_kp_percent: number;
+            /**
+             * Target Vision Score
+             * @description Meta de Vision Score por partida
+             * @default 20
+             */
+            target_vision_score: number;
             /** Updated At */
             updated_at?: string | null;
             /** Impact Ratings */
@@ -1164,6 +1352,24 @@ export interface components {
              * @description Tope de muertes por partida
              */
             max_deaths: number;
+            /**
+             * Target Dpm
+             * @description Meta de DPM
+             * @default 500
+             */
+            target_dpm: number;
+            /**
+             * Target Kp Percent
+             * @description Meta de Kill Participation en %
+             * @default 50
+             */
+            target_kp_percent: number;
+            /**
+             * Target Vision Score
+             * @description Meta de Vision Score
+             * @default 20
+             */
+            target_vision_score: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -1490,7 +1696,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["HeatmapCell"][];
+                    "application/json": components["schemas"]["HeatmapResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_alert_endpoint_api_stats_patch_alert_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "x-api-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PatchAlert"];
                 };
             };
             /** @description Validation Error */
@@ -1560,6 +1797,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TrendPoint"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    laning_api_stats_laning_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: {
+                "x-api-token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LaningSummary"];
                 };
             };
             /** @description Validation Error */

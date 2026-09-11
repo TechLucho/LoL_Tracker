@@ -187,7 +187,22 @@ export function useSyncMatches(options: { silent?: boolean } = {}) {
       throw new Error('El sync tardó demasiado. Revisa /api/sync/status.')
     },
     onSuccess: (result) => {
+      // Invalidar TODO lo que la sincronización puede haber impactado: matches, stats agregados,
+      // la alerta de parche (depende del conteo por game_version) y el triángulo de laning
+      // (depende de los GD/XPD/CSD@15 extraídos del Timeline).
       queryClient.invalidateQueries({ queryKey: ['matches'] })
+      queryClient.invalidateQueries({ queryKey: ['patch-alert'] })
+      queryClient.invalidateQueries({ queryKey: ['laning'] })
+
+      // Tilt Alert: va ANTES del guard de modo silencioso. La racha de derrotas es la
+      // intervención anti-tilt central — debe sonar también en el auto-sync de la app.
+      if (result?.losing_streak_warning) {
+        toast.error(
+          '🚨 Racha de 3+ derrotas detectada: considera aplicar La Constitución y cerrar el juego.',
+          { duration: 8000 },
+        )
+      }
+
       if (silent) {
         if (result && result.inserted > 0) {
           toast.success(`✅ ${result.inserted} partidas nuevas sincronizadas`)

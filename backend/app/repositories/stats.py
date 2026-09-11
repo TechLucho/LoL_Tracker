@@ -120,13 +120,28 @@ async def matchup(user_champion: str, enemy_champion: str) -> dict[str, Any]:
     }
 
 
-async def activity_heatmap(timezone: str) -> list[dict[str, Any]]:
+_MIN_GAMES_FOR_BEST_WORST = 3
+
+# Alerta de Parche: umbral de caída de winrate (puntos porcentuales) y mínimo de partidas
+# en el parche actual para no dar un veredicto con una muestra irrisoria. 5 partidas: con 3,
+# 0/3 vs 1/3 movía el winrate 33pp y disparaba falsos alertas ("0/5 vs 2/5" ya da una señal
+# más estable sin ser una publicación estadística).
+PATCH_DROP_THRESHOLD_PP = 4.0
+MIN_PATCH_CURRENT_GAMES = 5
+PATCH_POOL_SIZE = 3
+
+
+async def activity_heatmap(timezone: str) -> dict[str, Any]:
     """Agregado día-de-semana x bloque horario (4 bloques de 6h), en la zona horaria de visualización.
 
     EXTRACT(DOW) -> 0 = domingo.
     Los bloques son: Madrugada (00-06), Mañana (06-12), Tarde (12-18), Noche (18-00).
+
+    Devuelve ``cells`` (lista de filas), ``best_slot`` y ``worst_slot`` calculados con un
+    umbral mínimo de ``_MIN_GAMES_FOR_BEST_WORST`` partidas por franja. Si ninguna franja
+    supera el umbral, ambos campos son ``None``.
     """
-    return await db.fetch_all(
+    cells = await db.fetch_all(
         f"""
         WITH raw AS (
             SELECT
@@ -135,6 +150,9 @@ async def activity_heatmap(timezone: str) -> list[dict[str, Any]]:
                 win
             FROM matches
             WHERE {_NOT_A_REMAKE}
+              -- Fila legacy sin fecha: EXTRACT daría NULL y agruparía en una celda sintética
+              -- `day_of_week=None` que Pydantic rechaza (<0 o >6) y tumbaría el endpoint entero.
+              AND date IS NOT NULL
         ),
         blocked AS (
             SELECT
@@ -170,6 +188,15 @@ async def activity_heatmap(timezone: str) -> list[dict[str, Any]]:
         """,
         (timezone, timezone),
     )
+
+    eligible = [c for c in cells if c["games_played"] >= _MIN_GAMES_FOR_BEST_WORST]
+    best_slot: dict[str, Any] | None = None
+    worst_slot: dict[str, Any] | None = None
+    if eligible:
+        best_slot = max(eligible, key=lambda c: c["winrate"])
+        worst_slot = min(eligible, key=lambda c: c["winrate"])
+
+    return {"cells": cells, "best_slot": best_slot, "worst_slot": worst_slot}
 
 
 async def lp_trend(limit: int = 20, queue_id: int | None = None) -> list[dict[str, Any]]:
@@ -208,29 +235,37 @@ async def lp_trend(limit: int = 20, queue_id: int | None = None) -> list[dict[st
 async def kpi_trend(limit: int = 50) -> list[dict[str, Any]]:
     """Serie temporal de KPIs de mejora de las últimas N partidas válidas (orden cronológico asc).
 
-    Por partida devuelve CS/min y KDA desde las columnas de la fila, y el DPM REAL del propio
-    usuario desde su participante en el JSONB (misma heurística que `_DPM_REAL` agregada: empareja
-    por campeón). Si una fila legacy no tiene participants, su DPM es NULL y la gráfica lo salta.
+    Por partida devuelve CS/min y KDA desde las columnas de la fila, el DPM REAL del propio
+    usuario desde su participante en el JSONB, su `kp` (kill participation almacenada al
+    sincronizar) y el `vision_delta` contra su rival directo de línea.
 
-    Anti-remake sí en este endpoint: una rendición temprana distorsiona CS/min y muertes y no es
-    un dato de evolución real.
+    Para extraer los campos del JSONB se usa `JOIN LATERAL` (una sola pasada sobre el array
+    `participants` por fila), en lugar de las subconsultas correlacionadas que recorrían el
+    array hasta 4 veces. Las filas legacy sin `participants` producen NULL → el COALESCE
+    exterior mantiene el comportamiento anterior (dpm=0, kp=NULL, vision_delta=NULL).
+
+    `vision_delta` busca al participante enemigo con el mismo `team_position` en el equipo
+    contrario y resta sus `vision_score` (usuario - rival). Sin rivales directos (ARAM, roles
+    inválidos) devuelve `None`.
+
+    Anti-remake sí en este endpoint: una rendición temprana distorsiona CS/min y muertes.
     """
     return await db.fetch_all(
         f"""
         WITH ultimas AS (
             SELECT
-                game_id, date, cs_min, kills, deaths, assists, champion,
-                game_duration_minutes,
-                participants,
-                (
-                    SELECT (p->>'total_damage')::numeric
-                    FROM jsonb_array_elements(participants) AS p
-                    WHERE LOWER(p->>'champion_name') = LOWER(champion)
-                    LIMIT 1
-                ) AS my_damage
-            FROM matches
+                m.game_id, m.date, m.cs_min, m.kills, m.deaths, m.assists,
+                m.champion, m.win, m.game_duration_minutes, m.participants,
+                me.p AS me
+            FROM matches m
+            LEFT JOIN LATERAL (
+                SELECT p
+                FROM jsonb_array_elements(m.participants) AS p
+                WHERE LOWER(p->>'champion_name') = LOWER(m.champion)
+                LIMIT 1
+            ) AS me ON TRUE
             WHERE {_NOT_A_REMAKE}
-            ORDER BY date DESC
+            ORDER BY m.date DESC
             LIMIT %s
         )
         SELECT
@@ -238,14 +273,176 @@ async def kpi_trend(limit: int = 50) -> list[dict[str, Any]]:
             date                                            AS timestamp,
             COALESCE(ROUND(cs_min::numeric, 2), 0)          AS cs_min,
             COALESCE(ROUND(
-                (my_damage / GREATEST(game_duration_minutes, 1))::numeric
-            , 0), 0)                                         AS dpm,
-            ROUND((kills::numeric + assists::numeric) / GREATEST(deaths, 1), 2) AS kda
+                (me->>'total_damage')::numeric
+                / GREATEST(game_duration_minutes, 1)
+            , 0), 0)                                        AS dpm,
+            ROUND((kills::numeric + assists::numeric) / GREATEST(deaths, 1), 2) AS kda,
+            (
+                (me->>'vision_score')::numeric - (
+                    SELECT (enemy->>'vision_score')::numeric
+                    FROM jsonb_array_elements(participants) AS enemy
+                    WHERE enemy->>'team_id' <> me->>'team_id'
+                      AND enemy->>'team_position' = me->>'team_position'
+                      AND UPPER(me->>'team_position') NOT IN
+                          ('', 'UNKNOWN', 'INVALID', 'NONE')
+                    LIMIT 1
+                )
+            ) AS vision_delta,
+            (me->>'kill_participation')::numeric            AS kp,
+            win
         FROM ultimas
         ORDER BY date ASC
         """,
         (limit,),
     )
+
+
+async def patch_alert(current_patch: str) -> dict[str, Any]:
+    """Compara el winrate de los `PATCH_POOL_SIZE` campeones más jugados entre el parche
+    actual y los anteriores, para avisar de caídas de rendimiento tras un parche nuevo.
+
+    El parche llega ya normalizado a "X.Y" (ej. "14.18"); `matches.game_version` guarda la
+    versión completa de Riot ("14.18.586.6903") y se compara por los dos primeros componentes.
+    Las filas con `game_version` NULL (legacy) no pueden ser del parche actual: cuentan como
+    historial previo.
+
+    Devuelve por campeón las partidas/winrate de cada lado y `delta_pp` (winrate actual -
+    winrate previo, en puntos porcentuales). `dropped` marca si la caída supera
+    `PATCH_DROP_THRESHOLD_PP` con al menos `MIN_PATCH_CURRENT_GAMES` partidas en el parche
+    actual; con muestra insuficiente el campo queda False.
+
+    `has_current_games` NO se limita al top-3: responde a si existe *cualquier* partida en el
+    parche actual (p.ej. el usuario cambió de pool con el parche nuevo y el top-3 histórico no
+    se ha jugado aún). Así el banner nunca afirma "parche sin partidas" cuando sí las hay.
+    """
+    rows = await db.fetch_all(
+        f"""
+        WITH pool AS (
+            SELECT champion
+            FROM matches
+            WHERE {_NOT_A_REMAKE}
+            GROUP BY champion
+            ORDER BY COUNT(*) DESC, MAX(date) DESC
+            LIMIT %s
+        ),
+        patched AS (
+            SELECT
+                m.champion,
+                m.win,
+                CASE
+                    WHEN m.game_version IS NOT NULL
+                         AND SPLIT_PART(m.game_version, '.', 1) || '.'
+                             || SPLIT_PART(m.game_version, '.', 2) = %s
+                    THEN 'current'
+                    ELSE 'previous'
+                END AS bucket
+            FROM matches m
+            JOIN pool ON pool.champion = m.champion
+            WHERE {_NOT_A_REMAKE}
+        )
+        SELECT
+            champion,
+            COUNT(*) FILTER (WHERE bucket = 'current')            AS games_current,
+            COUNT(*) FILTER (WHERE bucket = 'current' AND win)    AS wins_current,
+            COUNT(*) FILTER (WHERE bucket = 'previous')           AS games_previous,
+            COUNT(*) FILTER (WHERE bucket = 'previous' AND win)   AS wins_previous,
+            ROUND(
+                COUNT(*) FILTER (WHERE bucket = 'current' AND win)::numeric
+                / NULLIF(COUNT(*) FILTER (WHERE bucket = 'current'), 0) * 100
+            , 1)                                                  AS winrate_current,
+            ROUND(
+                COUNT(*) FILTER (WHERE bucket = 'previous' AND win)::numeric
+                / NULLIF(COUNT(*) FILTER (WHERE bucket = 'previous'), 0) * 100
+            , 1)                                                  AS winrate_previous
+        FROM patched
+        GROUP BY champion
+        ORDER BY games_previous + games_current DESC
+        """,
+        (PATCH_POOL_SIZE, current_patch),
+    )
+
+    # ¿Existe CUALQUIER partida en el parche actual? Independiente del pool: lo que importa es
+    # no mostrar el aviso "parche nuevo sin partidas" si el usuario ya juega (aunque sea con
+    # campeones fuera del top-3 histórico). Los remakes no validan nada, igual que en el pool.
+    any_cell = await db.fetch_one(
+        f"""
+        SELECT COUNT(*) AS n
+        FROM matches
+        WHERE {_NOT_A_REMAKE}
+          AND game_version IS NOT NULL
+          AND SPLIT_PART(game_version, '.', 1) || '.' || SPLIT_PART(game_version, '.', 2) = %s
+        """,
+        (current_patch,),
+    )
+    has_current_games = bool(any_cell and any_cell["n"] > 0)
+
+    champions: list[dict[str, Any]] = []
+    for row in rows:
+        cur = row["winrate_current"]
+        prev = row["winrate_previous"]
+        delta = None
+        if cur is not None and prev is not None:
+            delta = round(float(cur) - float(prev), 1)
+        dropped = bool(
+            delta is not None
+            and delta < -PATCH_DROP_THRESHOLD_PP
+            and row["games_current"] >= MIN_PATCH_CURRENT_GAMES
+        )
+        champions.append({**row, "delta_pp": delta, "dropped": dropped})
+
+    return {
+        "current_patch": current_patch,
+        "has_current_games": has_current_games,
+        "champions": champions,
+    }
+
+
+# ─────────────────────────── Triángulo del Laning (Timeline) ──────────────────────
+
+async def laning_summary(limit: int = 50) -> dict[str, Any]:
+    """Promedios GD@15 / XPD@15 / CSD@15 de las últimas N partidas válidas.
+
+    Lee del JSONB `participants` los campos nuevos `gd15`/`xpd15`/`csd15`, escritos por el
+    sync al consumir el Timeline de Riot. Partidas sin esos campos (sincronizadas antes de
+    esta feature, sin rival de línea directo, o con duración < 15 min) no entran en el
+    promedio; `games_analyzed` refleja cuántas sí contaron.
+
+    Anti-remake sí: una rendición temprana (< 5 min) no tiene un marco de 15 minutos real.
+    """
+    row = await db.fetch_one(
+        f"""
+        WITH ultimas AS (
+            SELECT game_id, champion, participants
+            FROM matches
+            WHERE {_NOT_A_REMAKE}
+            ORDER BY date DESC
+            LIMIT %s
+        )
+        SELECT
+            ROUND(AVG(l.gd15)::numeric, 1)  AS avg_gd15,
+            ROUND(AVG(l.xpd15)::numeric, 1) AS avg_xpd15,
+            ROUND(AVG(l.csd15)::numeric, 1) AS avg_csd15,
+            COUNT(l.gd15)                   AS games_analyzed
+        FROM ultimas u
+        JOIN LATERAL (
+            SELECT
+                (p->>'gd15')::numeric  AS gd15,
+                (p->>'xpd15')::numeric AS xpd15,
+                (p->>'csd15')::numeric AS csd15
+            FROM jsonb_array_elements(u.participants) AS p
+            WHERE LOWER(p->>'champion_name') = LOWER(u.champion)
+              AND (p->>'gd15') IS NOT NULL
+            LIMIT 1
+        ) AS l ON TRUE
+        """,
+        (limit,),
+    )
+    return {
+        "avg_gd15": row["avg_gd15"] if row else None,
+        "avg_xpd15": row["avg_xpd15"] if row else None,
+        "avg_csd15": row["avg_csd15"] if row else None,
+        "games_analyzed": int(row["games_analyzed"]) if row else 0,
+    }
 
 
 # CTE compartida por las tres queries del reporte semanal: la ventana de los últimos 7

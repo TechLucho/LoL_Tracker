@@ -63,6 +63,11 @@ class Participant(BaseModel):
         ge=1,
         description="Versión de la fórmula que generó `rating` (trazabilidad)",
     )
+    # Triángulo del Laning: diffs del usuario contra su rival directo al minuto 15
+    # (extraídos del Timeline de Riot en el sync). NULL/ausente en partidas sin datos.
+    gd15: float | None = Field(default=None, description="Diferencia de oro a los 15:00 (a tu favor si >0)")
+    xpd15: float | None = Field(default=None, description="Diferencia de XP a los 15:00")
+    csd15: float | None = Field(default=None, description="Diferencia de CS (minions+jungle) a los 15:00")
 
 
 class Match(BaseModel):
@@ -148,11 +153,22 @@ class HeatmapCell(BaseModel):
     winrate: float
 
 
+class HeatmapResponse(BaseModel):
+    """Wrapper del heatmap: celdas + mejor/peor horario (con umbral mínimo de 3 partidas)."""
+
+    cells: list[HeatmapCell]
+    best_slot: HeatmapCell | None = None
+    worst_slot: HeatmapCell | None = None
+
+
 class TrendPoint(BaseModel):
     """Un punto de la serie temporal de KPIs de mejora (últimas N partidas válidas).
 
     Orden cronológico ascendente (partida más antigua primero) para que las gráficas de
     línea recorran el tiempo de izquierda a derecha. `timestamp` es la hora de juego en UTC.
+
+    `vision_delta` y `kp` se leen del JSONB `participants` (nulos en filas legacy o cuando
+    no existe rival directo); `win` es el resultado de la partida, siempre presente.
     """
 
     game_id: str
@@ -160,6 +176,49 @@ class TrendPoint(BaseModel):
     cs_min: float
     dpm: float
     kda: float
+    vision_delta: float | None = None
+    kp: float | None = None
+    win: bool
+
+
+class LaningSummary(BaseModel):
+    """Promedios del Triángulo del Laning sobre las últimas partidas con datos de Timeline.
+
+    `games_analyzed` = cuántas partidas (de la ventana) alimentaron el promedio; 0 cuando los
+    datos de timeline aún no se han sincronizado. Los promedios son None sin ninguna partida.
+    """
+
+    avg_gd15: float | None = Field(default=None, description="Diferencia media de oro a los 15:00 (a tu favor si >0)")
+    avg_xpd15: float | None = Field(default=None, description="Diferencia media de XP a los 15:00")
+    avg_csd15: float | None = Field(default=None, description="Diferencia media de CS a los 15:00")
+    games_analyzed: int = Field(
+        default=0,
+        description="Partidas con datos de timeline en la ventana (mínimo piramidal del triángulo)",
+    )
+
+
+class PatchChampionInfo(BaseModel):
+    """Rendimiento de un campeón del pool en el parche actual vs. los anteriores."""
+
+    champion: str
+    games_current: int
+    wins_current: int
+    winrate_current: float | None = Field(default=None, description="NULL si no hay partidas en el parche actual")
+    games_previous: int
+    wins_previous: int
+    winrate_previous: float | None = Field(default=None, description="NULL si el campeón nunca se jugó antes")
+    delta_pp: float | None = Field(default=None, description="winrate actual - winrate previo, en puntos porcentuales")
+    dropped: bool = Field(default=False, description="Caída >4pp con mínimo de 5 partidas en el parche actual")
+
+
+class PatchAlert(BaseModel):
+    """Alerta de parche: siempre devuelve datos; el frontend decide si mostrar banner según
+    `has_current_games` (parche demasiado nuevo = sin partidas aún) y `alerting_champions`."""
+
+    current_patch: str
+    has_current_games: bool
+    alerting_champions: list[str] = Field(default_factory=list)
+    champions: list[PatchChampionInfo]
 
 
 class WeeklyTopChampion(BaseModel):
@@ -282,6 +341,10 @@ class SyncResult(BaseModel):
     skipped: int
     errors: list[SyncError] = []
     lp_captured: LpCapture | None = None
+    losing_streak_warning: bool = Field(
+        default=False,
+        description="True si las últimas 3+ partidas son derrotas consecutivas (Tilt Alert)",
+    )
 
 
 class SyncAccepted(BaseModel):
@@ -327,6 +390,9 @@ class UserSettings(BaseModel):
     champion_pool: list[str]
     target_cs_min: float
     max_deaths: float
+    target_dpm: int = Field(default=500, ge=0, le=3000, description="Meta de DPM (Daño Por Minuto)")
+    target_kp_percent: int = Field(default=50, ge=0, le=100, description="Meta de Kill Participation en %")
+    target_vision_score: int = Field(default=20, ge=0, le=200, description="Meta de Vision Score por partida")
     updated_at: datetime | None = None
 
     # Canónicos (solo lectura, no persistidos en DB)
@@ -347,6 +413,9 @@ class UserSettingsUpdate(BaseModel):
     )
     target_cs_min: float = Field(gt=0, le=20, description="Meta de CS por minuto")
     max_deaths: float = Field(gt=0, le=20, description="Tope de muertes por partida")
+    target_dpm: int = Field(default=500, ge=0, le=3000, description="Meta de DPM")
+    target_kp_percent: int = Field(default=50, ge=0, le=100, description="Meta de Kill Participation en %")
+    target_vision_score: int = Field(default=20, ge=0, le=200, description="Meta de Vision Score")
 
     @field_validator("champion_pool")
     @classmethod

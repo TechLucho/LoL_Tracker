@@ -44,7 +44,11 @@ def test_openapi_expone_todos_los_endpoints(client):
         "/api/stats/summary",
         "/api/stats/champions",
         "/api/stats/heatmap",
+        "/api/stats/patch-alert",
         "/api/stats/lp-trend",
+        "/api/stats/trends",
+        "/api/stats/laning",
+        "/api/stats/weekly",
         "/api/stats/constitution",
         "/api/scout/nemesis",
         "/api/scout/matchups",
@@ -81,6 +85,21 @@ def test_matchups_exige_algun_filtro(client):
 def test_patch_sin_campos_es_rechazado(client):
     r = client.patch("/api/matches/EUW1_TEST/", json={})
     assert r.status_code in (404, 422, 307)
+
+
+def test_okrs_expuestos_en_user_settings(client):
+    """Los objetivos de rendimiento deben viajar en la config y en su update."""
+    props = (client.get("/openapi.json").json()["components"]["schemas"]["UserSettings"]
+             ["properties"])
+    for campo in ("target_dpm", "target_kp_percent", "target_vision_score"):
+        assert campo in props, f"{campo} debería estar expuesto en UserSettings"
+
+
+def test_sync_result_incluye_tilt_alert(client):
+    """El contrato del sync debe poder avisar de una racha de derrotas."""
+    props = (client.get("/openapi.json").json()["components"]["schemas"]["SyncResult"]
+             ["properties"])
+    assert "losing_streak_warning" in props
 
 
 # ───────────────────── observabilidad (middleware + métricas) ─────────────────────

@@ -6,6 +6,19 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ---
 
+> **Cierre v1.3 (2026-09-11):** cierre oficial de la v1.3 tras auditoría técnica completa
+> (Postgres/JSONB, seguridad, resiliencia del sync, React Query, bundle) con QA en verde:
+> 37 pytest + 35 vitest + oxlint + build. La v1.3 añade sobre la v1.2: Heatmap con umbrales
+> (mejor/peor franja con mínimo de 3 partidas), Analítica de Laning (Timeline de Riot →
+> GD@15/XPD@15/CSD@15 y RadarChart en Tendencias), Delta de Visión (tendencia vs. rival de
+> línea), Dispersión KP% vs. winrate, Alerta de Parche dinámica (banner en Dashboard), nuevos
+> OKRs configurables (DPM, KP%, Vision Score) en Settings, y Alerta de racha de derrotas
+> (Tilt Alert: 3+ derrotas → Discord en rojo + toast en la app). Pendientes no bloqueantes:
+> aplicar migraciones 008 y 009 en Supabase (validadas en CI) y el despliegue formal (sigue
+> abierto en la v1.1).
+
+---
+
 > **Cierre v1.2 (2026-08-28):** la v1.2 introduce la capa de analítica avanzada. Implementada la
 > vista de Matchups (con notas persistentes en DB), agrupación por sesiones lógicas en el
 > Dashboard, KPIs de tendencia (CS/min, DPM, KDA), Reporte Semanal estático y notificaciones
@@ -156,7 +169,7 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ---
 
-## Completado (v1.2)
+## Completado (v1.3)
 
 ### Analítica avanzada y nuevas vistas
 
@@ -170,6 +183,16 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 - [x] Eliminado `backend/scripts/apply_migration_005.py` (deuda técnica; las migraciones ya las cubre el runner idempotente)
 - [x] **Webhook de Discord**: `DISCORD_WEBHOOK_URL` en config; al cerrar `_run_sync` (éxito o error) se envía un embed de resumen (estado final + partidas añadidas) vía httpx, silenciando cualquier error de red
 
+### Nuevas características (2026-09-11)
+
+- [x] **Triángulo del Laning (Timeline)**: el sync pide `/matches/{match_id}/timeline` por partida ≥15 min, toma el frame más cercano a 900.000 ms y guarda `gd15`/`xpd15`/`csd15` (tus stats − rival con mismo `teamPosition`) en el JSONB del participante; `GET /api/stats/laning` promedia las últimas 50 válidas y Tendencias las pinta en un RadarChart normalizado (0.5 = duelo parejo). Fallos del timeline = warning + partida intacta, nunca tumba el sync
+- [x] **Delta de Visión**: `TrendPoint.vision_delta` (tu `vision_score` − el del rival directo de línea) extraído con `JOIN LATERAL` en `kpi_trend`; gráfica de tendencia en `/trends`
+- [x] **Dispersión KP% vs. Winrate**: componente de dispersión cruzando Kill Participation con victorias para definir tu estilo de juego (splitpush vs teamfight)
+- [x] **Alerta de Parche dinámica**: `game_version` por partida (migración 008); winrate del pool en el parche actual vs. histórico (`GET /api/stats/patch-alert`, caída >4pp con mínimo 5 partidas del parche actual → banner en Dashboard). Parche resuelto de Data Dragon sin hardcodeo
+- [x] **Heatmap con umbrales**: mejor/peor franja sólo cuando hay ≥3 partidas en la franja (`_MIN_GAMES_FOR_BEST_WORST`); sin muestra suficiente, `best_slot`/`worst_slot` son null
+- [x] **Nuevos OKRs configurables**: `target_dpm`, `target_kp_percent`, `target_vision_score` en `user_settings` (migración 009) y formulario en Settings con validación de rangos
+- [x] **Alerta de racha de derrotas (Tilt Alert)**: `SyncResult.losing_streak_warning` cuando las últimas 3+ partidas Ranked válidas son derrotas; embed de Discord en rojo y toast en la app (se dispara también en el auto-sync)
+
 ---
 
 ## Pendiente (Backlog / Features futuras)
@@ -180,14 +203,8 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ### Features futuras (sin fecha)
 
-- [ ] Medallas/Badges automaticas por partida: CS God (CS/min >= 9), Muralla (deaths <= 2 + win), Feeder (deaths >= 7), Visionary (vision score >= 50), Carry (DPM >= 700 + win)
-- [ ] Badges acumulativos: "Streak Master" (3+ wins seguidas), "Pool Purist" (100% partidas en pool champion)
-- [ ] Badges visibles tanto en el accordion como en la tabla, y globales en el perfil resumen del Dashboard
-- [ ] Exportar datos a CSV/JSON para analisis externo
-- [ ] Comparacion con estadisticas globales de la ladder (challenger-v4 para percentiles; League-V4 ya integrado para LP)
-- [ ] Notificaciones push cuando el sync detecta una racha de derrotas
-- [ ] Multi-usuario: auth con Supabase Auth, dashboard compartido
-- [ ] Integracion con overlay de OBS para streamers
+- [ ] Comparación con estadísticas globales de la ladder (API challenger-v4).
+- [ ] Multi-usuario: auth con Supabase, dashboard compartido.
 
 ### Deuda tecnica
 
@@ -200,25 +217,28 @@ para mejorar en League of Legends. Ninguna es social/gamificada por naturaleza.
 
 #### Analitica y Estadisticas Avanzadas
 
-1. **Tempo de Juego (oro al minuto 15)** — El predictor individual mas fiable de resultado.
-   Riot Timeline (match v5) da snapshots de oro en intervalos regulares. Un grafico que
-   cruce "tu oro al min 15 vs. winrate" por campeon revela donde realmente estas ganando
-   o perdiendo: no es lo mismo llegar 1.5k ahead con Jinx que con Caitlyn. Implementacion:
-   `/api/stats/tempo` consume timeline por partida, cachea el gold_diff@15 en participants
-   JSONB y alimenta un Recharts AreaChart con percentiles por rol.
-
-2. **Delta de Vision** — Vision score actual es un numero crudo que no dice nada. Un delta
-   (tu vision score menos el del support enemigo en tu linea) indica si de verdad controlas
-   visibilidad o solo pones wards que se limpian. Requiere el participant data del enemigo
-   (ya lo tenemos en JSONB) y un calculo simple de diferencia por partida. Un trend line
-   de delta de vision vs. winrate mostraria la correlacion real.
+1. [x] **Triángulo del Laning (Evolución del Tempo)** — Consumir Timeline (match v5) para extraer y visualizar en un gráfico radial tu Oro, Experiencia y CS al minuto 15 (GD@15, XPD@15, CSD@15). Implementacion: el sync pide `/matches/{match_id}/timeline` por partida, toma el frame mas cercano a 900.000 ms y guarda (tus stats - las del rival con el mismo `teamPosition`) como `gd15`/`xpd15`/`csd15` en el JSONB del participante; partidas < 15 min se omiten. GET /api/stats/laning promedia las ultimas 50 validas y el Dashboard de Tendencias las pinta en un RadarChart normalizado (0.5 = duelo parejo).
+2. [x] **Delta de Visión** — Calcular la diferencia real (Delta) entre tu puntuación de visión y la de tu oponente directo de línea, mostrando un gráfico de tendencia.
+3. [x] **Indicador de Dependencia (KP% vs Winrate)** — Gráfico de dispersión cruzando tu Participación en Asesinatos con el porcentaje de victorias para definir tu estilo de juego óptimo (splitpush vs teamfight).
 
 #### Backend, Seguridad e Integraciones
 
-3. **Alerta de Parche** — Cuando Data Dragon detecta un patch nuevo (el cache de 1h ya
+4. [x] **Alerta de Parche** — Cuando Data Dragon detecta un patch nuevo (el cache de 1h ya
    lo resuelve), comparar las stats de tus campeones de pool pre/post parche. Si un
    campeon recibio nerf significativo (Data Dragon no tiene notas de parche, pero el
    matchup matrix mostraria drop de winrate post-parche), mostrar un banner informativo
    en el Dashboard: "Patch 14.2 detectado: 2 campeones de tu pool afectados". Implementacion:
-   comparar `dd_version` almacenado vs. actual; si cambia, re-evaluar winrate de pool en
-   las ultimas N partidas vs. historico.
+   `game_version` por partida (Riot `info.gameVersion` via migracion 008); si cambia, re-evaluar
+   winrate de pool en el parche actual vs. historico (GET /api/stats/patch-alert, caida >4pp
+   con minimo 3 partidas en el parche actual → banner en Dashboard).
+
+### Ideas Congeladas (Prioridad Nula)
+
+Ideas que alguna vez se consideraron pero que no aportan valor suficiente para justificar el
+desarrollo. Se conservan aquí como referencia histórica por si el contexto cambia.
+
+- **Medallas dinámicas**: "CS God", "Muralla", etc., calculadas de forma relativa a tu propio histórico (ej. mejor CS de tus últimas 50 partidas) en lugar de umbrales fijos.
+- **Badges acumulativos**: "Streak Master" (3+ wins seguidas), "Pool Purist" (100% partidas en pool).
+- **Badges visibles** en el accordion, tabla y perfil resumen del Dashboard.
+- **Exportar datos a CSV/JSON** para análisis externo.
+- **Integración con overlay de OBS** para streamers.

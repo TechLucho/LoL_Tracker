@@ -27,19 +27,37 @@ async def get() -> dict[str, Any]:
 
 
 async def replace(
-    champion_pool: list[str], target_cs_min: float, max_deaths: float
+    champion_pool: list[str],
+    target_cs_min: float,
+    max_deaths: float,
+    target_dpm: int,
+    target_kp_percent: int,
+    target_vision_score: int,
 ) -> dict[str, Any]:
     """Reemplaza la configuración completa y devuelve el estado resultante."""
     return await db.fetch_one(  # type: ignore[return-value]
         """
-        INSERT INTO user_settings (id, champion_pool, target_cs_min, max_deaths, updated_at)
-        VALUES (1, %s, %s, %s, now())
+        INSERT INTO user_settings (
+            id, champion_pool, target_cs_min, max_deaths,
+            target_dpm, target_kp_percent, target_vision_score, updated_at
+        )
+        VALUES (1, %s, %s, %s, %s, %s, %s, now())
         ON CONFLICT (id) DO UPDATE SET
-            champion_pool = EXCLUDED.champion_pool,
-            target_cs_min = EXCLUDED.target_cs_min,
-            max_deaths    = EXCLUDED.max_deaths,
-            updated_at    = now()
+            champion_pool      = EXCLUDED.champion_pool,
+            target_cs_min      = EXCLUDED.target_cs_min,
+            max_deaths         = EXCLUDED.max_deaths,
+            target_dpm         = EXCLUDED.target_dpm,
+            target_kp_percent  = EXCLUDED.target_kp_percent,
+            target_vision_score = EXCLUDED.target_vision_score,
+            updated_at         = now()
         RETURNING *
         """,
-        (champion_pool, target_cs_min, max_deaths),
+        (
+            champion_pool,
+            target_cs_min,
+            max_deaths,
+            target_dpm,
+            target_kp_percent,
+            target_vision_score,
+        ),
     )

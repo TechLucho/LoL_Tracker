@@ -8,6 +8,7 @@ import RatingTrend from '../components/RatingTrend'
 import MatchesTable from '../components/MatchesTable'
 import { useMatches, useSyncMatches, useUpdateMatchReview } from '../hooks/useMatches'
 import { useChampionStats } from '../hooks/useChampionStats'
+import PatchAlertBanner from '../components/PatchAlertBanner'
 import type { QueueFilter } from '../data/types'
 
 const QUEUE_FILTER_KEY = 'lol_tracker.queue_filter'
@@ -73,6 +74,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-3">
+      <PatchAlertBanner />
       <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1fr_280px] 2xl:grid-cols-[1fr_320px]">
         {/* Main Column */}
         <div className="space-y-3">

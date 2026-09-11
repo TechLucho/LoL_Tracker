@@ -1,50 +1,65 @@
 import { useState } from 'react'
 import { Clock, AlertTriangle } from 'lucide-react'
 import { useHeatmapStats } from '../hooks/useHeatmapStats'
+import type { HeatmapCell } from '../api/client'
 
-const DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+// La cuadrícula ordena los días Lunes → Domingo (el backend codifica DOW con 0 = Domingo).
+const DAY_COLUMNS: { label: string; dow: number }[] = [
+  { label: 'Lun', dow: 1 },
+  { label: 'Mar', dow: 2 },
+  { label: 'Mié', dow: 3 },
+  { label: 'Jue', dow: 4 },
+  { label: 'Vie', dow: 5 },
+  { label: 'Sáb', dow: 6 },
+  { label: 'Dom', dow: 0 },
+]
+
+const DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+
 const TIME_BLOCKS = ['Madrugada', 'Mañana', 'Tarde', 'Noche']
-const TIME_LABELS: Record<string, string> = {
-  Madrugada: '🌙 Madrugada (00-06)',
-  Mañana: '☀️ Mañana (06-12)',
-  Tarde: '🌤 Tarde (12-18)',
-  Noche: '🌃 Noche (18-00)',
+
+// Escala térmica basada en winrate: verdes hacia la victoria, rojos hacia la derrota,
+// neutro cuando la franja no tiene partidas.
+function cellColor(wr: number, games: number): string {
+  if (games === 0) return 'border-gray-800/40 bg-[#0D0D12]'
+  if (wr >= 75) return 'border-emerald-400/40 bg-emerald-500/90'
+  if (wr >= 65) return 'border-emerald-400/30 bg-emerald-500/65'
+  if (wr >= 50) return 'border-emerald-400/20 bg-emerald-500/35'
+  if (wr >= 40) return 'border-red-400/20 bg-red-500/35'
+  if (wr >= 25) return 'border-red-400/30 bg-red-500/65'
+  return 'border-red-400/40 bg-red-500/90'
 }
 
-function winrateColor(wr: number, games: number): string {
-  if (games === 0) return 'bg-[#0D0D12]'
-  if (wr >= 70) return 'bg-emerald-500/80'
-  if (wr >= 60) return 'bg-emerald-500/50'
-  if (wr >= 50) return 'bg-emerald-500/25'
-  if (wr >= 40) return 'bg-red-500/25'
-  if (wr >= 30) return 'bg-red-500/50'
-  return 'bg-red-500/80'
-}
-
-function winrateTextColor(wr: number, games: number): string {
+function cellTextColor(wr: number, games: number): string {
   if (games === 0) return 'text-gray-700'
-  if (wr >= 60) return 'text-emerald-300'
+  if (wr >= 60) return 'text-emerald-100'
   if (wr >= 50) return 'text-emerald-200'
   if (wr >= 40) return 'text-red-200'
-  return 'text-red-300'
+  return 'text-red-100'
 }
 
 function CellSkeleton() {
-  return <div className="shimmer h-20 rounded-lg bg-gray-800/30" />
+  return <div className="shimmer h-9 rounded-md bg-gray-800/30" />
+}
+
+function formatTooltip(cell: HeatmapCell): string {
+  const day = DAY_NAMES[cell.day_of_week]
+  return `${day} · ${cell.time_block}: ${cell.winrate.toFixed(0)}% WR (${cell.wins}V - ${cell.losses}D)`
 }
 
 export default function HeatmapPage() {
-  const { data: cells, isLoading, isError } = useHeatmapStats()
-  const [hoveredCell, setHoveredCell] = useState<string | null>(null)
+  const { data, isLoading, isError } = useHeatmapStats()
+  const [hovered, setHovered] = useState<{ key: string; x: number; y: number } | null>(null)
 
-  const cellMap = new Map<string, { games_played: number; wins: number; losses: number; winrate: number }>()
-  if (cells) {
-    for (const c of cells) {
-      cellMap.set(`${c.day_of_week}-${c.time_block}`, c)
-    }
+  const cells = data?.cells ?? []
+  const cellMap = new Map<string, HeatmapCell>()
+  for (const c of cells) {
+    cellMap.set(`${c.day_of_week}-${c.time_block}`, c)
   }
 
-  const totalGames = cells?.reduce((s, c) => s + c.games_played, 0) ?? 0
+  const totalGames = cells.reduce((s, c) => s + c.games_played, 0)
+  const bestSlot = data?.best_slot ?? null
+  const worstSlot = data?.worst_slot ?? null
 
   return (
     <div className="space-y-6">
@@ -58,23 +73,26 @@ export default function HeatmapPage() {
       </div>
 
       {/* Summary Bar */}
-      {!isLoading && !isError && cells && cells.length > 0 && (
+      {!isLoading && !isError && cells.length > 0 && (
         <div className="flex items-center gap-4 rounded-xl border border-gray-800 bg-[#14141C] px-4 py-3">
           <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
             Total
           </span>
           <span className="font-mono text-sm font-bold text-white">{totalGames} partidas</span>
           <span className="text-[10px] text-gray-600">·</span>
-          <span className="text-[10px] text-gray-500">7 días × 4 bloques horarios</span>
+          <span className="text-[10px] text-gray-500">7 días × 4 franjas horarias</span>
         </div>
       )}
 
       {/* Loading */}
       {isLoading && (
         <div className="space-y-2">
-          <div className="grid grid-cols-[100px_repeat(4,1fr)] gap-2">
-            {Array.from({ length: 7 }).map((_, i) => (
+          <div className="grid grid-cols-[56px_repeat(7,1fr)] gap-1.5">
+            {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="contents">
+                <CellSkeleton />
+                <CellSkeleton />
+                <CellSkeleton />
                 <CellSkeleton />
                 <CellSkeleton />
                 <CellSkeleton />
@@ -105,154 +123,159 @@ export default function HeatmapPage() {
       )}
 
       {/* Heatmap Grid */}
-      {!isLoading && !isError && cells && totalGames > 0 && (
+      {!isLoading && !isError && cells.length > 0 && (
         <div className="rounded-xl border border-gray-800 bg-[#14141C] p-4">
           <div className="overflow-x-auto">
-          {/* Column Headers */}
-          <div className="mb-2 grid grid-cols-[72px_repeat(4,1fr)] min-w-[400px] gap-2">
-            <div /> {/* empty corner */}
-            {TIME_BLOCKS.map((tb) => (
-              <div key={tb} className="text-center">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                  {TIME_LABELS[tb]}
-                </span>
+            <div className="min-w-[480px]">
+              {/* Column headers: días */}
+              <div className="mb-1.5 grid grid-cols-[56px_repeat(7,1fr)] gap-1.5">
+                <div />
+                {DAY_COLUMNS.map((d) => (
+                  <div key={d.dow} className="text-center">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500">
+                      {d.label}
+                    </span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          {/* Rows */}
-          <div className="space-y-2">
-            {DAYS.map((dayLabel, dayIdx) => (
-              <div key={dayIdx} className="grid grid-cols-[72px_repeat(4,1fr)] min-w-[400px] gap-2">
-                {/* Day label */}
-                <div className="flex items-center">
-                  <span className="text-xs font-bold text-gray-400">{dayLabel}</span>
-                </div>
-
-                {/* Time block cells */}
-                {TIME_BLOCKS.map((tb) => {
-                  const key = `${dayIdx}-${tb}`
-                  const cell = cellMap.get(key)
-                  const games = cell?.games_played ?? 0
-                  const wins = cell?.wins ?? 0
-                  const losses = cell?.losses ?? 0
-                  const wr = cell?.winrate ?? 0
-                  const cellId = key
-
-                  return (
-                    <div
-                      key={cellId}
-                      className={`relative flex h-20 flex-col items-center justify-center rounded-lg border transition-all ${
-                        games === 0
-                          ? 'border-gray-800/50 bg-[#0D0D12]'
-                          : `border-gray-700/50 ${winrateColor(wr, games)} cursor-pointer hover:scale-105 hover:border-gray-600`
-                      }`}
-                      onMouseEnter={() => setHoveredCell(cellId)}
-                      onMouseLeave={() => setHoveredCell(null)}
-                    >
-                      {games > 0 ? (
-                        <>
-                          <span className={`font-mono text-lg font-black ${winrateTextColor(wr, games)}`}>
-                            {wr.toFixed(0)}%
-                          </span>
-                          <span className="text-[9px] text-gray-400">
-                            {wins}W – {losses}L
-                          </span>
-                          <span className="text-[8px] text-gray-600">
-                            {games} game{games !== 1 ? 's' : ''}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-[9px] text-gray-700">—</span>
-                      )}
-
-                      {/* Tooltip */}
-                      {hoveredCell === cellId && games > 0 && (
-                        <div className="absolute -top-16 left-1/2 z-50 w-40 -translate-x-1/2 rounded-lg border border-gray-700 bg-[#1A1A24] px-3 py-2 shadow-xl">
-                          <p className="text-[11px] font-bold text-white">
-                            {dayLabel} · {tb}
-                          </p>
-                          <p className={`font-mono text-sm font-black ${winrateTextColor(wr, games)}`}>
-                            {wr.toFixed(1)}% winrate
-                          </p>
-                          <p className="text-[10px] text-gray-400">
-                            {wins} victoria{wins !== 1 ? 's' : ''} · {losses} derrota{losses !== 1 ? 's' : ''}
-                          </p>
-                        </div>
-                      )}
+              {/* Filas: franjas horarias */}
+              <div className="space-y-1.5">
+                {TIME_BLOCKS.map((tb) => (
+                  <div key={tb} className="grid grid-cols-[56px_repeat(7,1fr)] gap-1.5">
+                    <div className="flex items-center">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500">
+                        {tb}
+                      </span>
                     </div>
-                  )
-                })}
+                    {DAY_COLUMNS.map((d) => {
+                      const key = `${d.dow}-${tb}`
+                      const cell = cellMap.get(key)
+                      const games = cell?.games_played ?? 0
+                      const wr = cell?.winrate ?? 0
+
+                      return (
+                        <div
+                          key={key}
+                          className={`relative flex h-9 cursor-default items-center justify-center rounded-md border transition-transform ${
+                            games > 0 ? 'hover:z-10 hover:scale-110' : ''
+                          } ${cellColor(wr, games)}`}
+                          onMouseEnter={(e) =>
+                            setHovered(games > 0 ? { key, x: e.clientX, y: e.clientY } : null)
+                          }
+                          onMouseLeave={() => setHovered(null)}
+                        >
+                          {games > 0 && (
+                            <span className={`font-mono text-[10px] font-bold ${cellTextColor(wr, games)}`}>
+                              {wr.toFixed(0)}%
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
-          </div>
+
+          {/* Tooltip flotante */}
+          {hovered && cellMap.get(hovered.key) && (
+            <div
+              className="pointer-events-none fixed z-50 rounded-lg border border-gray-700 bg-[#1A1A24] px-3 py-2 shadow-xl"
+              style={{
+                left: Math.min(hovered.x + 14, window.innerWidth - 220),
+                top: hovered.y - 14,
+              }}
+            >
+              <p className="text-[11px] font-bold text-white">
+                {formatTooltip(cellMap.get(hovered.key)!)}
+              </p>
+              <p className="mt-0.5 text-[10px] text-gray-400">
+                {cellMap.get(hovered.key)!.games_played}{' '}
+                {cellMap.get(hovered.key)!.games_played === 1 ? 'partida' : 'partidas'}
+              </p>
+            </div>
+          )}
 
           {/* Legend */}
-          <div className="mt-4 flex items-center justify-center gap-4 border-t border-gray-800 pt-3">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-4 border-t border-gray-800 pt-3">
             <span className="text-[9px] font-bold uppercase tracking-wider text-gray-600">Leyenda:</span>
             <div className="flex items-center gap-1.5">
-              <div className="h-3 w-3 rounded-sm bg-red-500/80" />
+              <div className="h-3 w-3 rounded-sm bg-red-500/90" />
               <span className="text-[9px] text-gray-500">{"< 40%"}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="h-3 w-3 rounded-sm bg-red-500/25" />
+              <div className="h-3 w-3 rounded-sm bg-red-500/35" />
               <span className="text-[9px] text-gray-500">40-50%</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="h-3 w-3 rounded-sm bg-[#0D0D12] border border-gray-800" />
+              <div className="h-3 w-3 rounded-sm border border-gray-800 bg-[#0D0D12]" />
               <span className="text-[9px] text-gray-500">Sin datos</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="h-3 w-3 rounded-sm bg-emerald-500/25" />
-              <span className="text-[9px] text-gray-500">50-60%</span>
+              <div className="h-3 w-3 rounded-sm bg-emerald-500/35" />
+              <span className="text-[9px] text-gray-500">50-65%</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="h-3 w-3 rounded-sm bg-emerald-500/80" />
-              <span className="text-[9px] text-gray-500">{"> 70%"}</span>
+              <div className="h-3 w-3 rounded-sm bg-emerald-500/90" />
+              <span className="text-[9px] text-gray-500">{"> 65%"}</span>
             </div>
           </div>
         </div>
       )}
 
-      {/* Tip */}
-      {!isLoading && !isError && cells && totalGames > 0 && (() => {
-        const bestCell = cells.reduce(
-          (best, c) => (c.games_played >= 2 && c.winrate > (best?.winrate ?? -1)) ? c : best,
-          cells[0],
-        )
-        const worstCell = cells.reduce(
-          (worst, c) => (c.games_played >= 2 && c.winrate < (worst?.winrate ?? 101)) ? c : worst,
-          cells[0],
-        )
-        if (!bestCell || !worstCell) return null
-        return (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {/* Mejor / Peor horario (con umbral mínimo de 3 partidas) */}
+      {!isLoading && !isError && cells.length > 0 && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {bestSlot ? (
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
               <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
                 🏆 Mejor Horario
               </span>
               <p className="mt-1 text-sm font-bold text-white">
-                {DAYS[bestCell.day_of_week]} · {bestCell.time_block}
+                {DAY_NAMES[bestSlot.day_of_week]} · {bestSlot.time_block}
               </p>
               <p className="text-xs text-gray-400">
-                {bestCell.winrate.toFixed(1)}% WR en {bestCell.games_played} partidas
+                {bestSlot.winrate.toFixed(0)}% WR en {bestSlot.games_played} partidas (
+                {bestSlot.wins}V - {bestSlot.losses}D)
               </p>
             </div>
+          ) : (
+            <div className="rounded-xl border border-gray-800 bg-[#14141C] p-4">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                🏆 Mejor Horario
+              </span>
+              <p className="mt-1 text-xs text-gray-400">
+                Aún sin datos suficientes (mínimo 3 partidas por franja).
+              </p>
+            </div>
+          )}
+          {worstSlot ? (
             <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4">
               <span className="text-[10px] font-bold uppercase tracking-wider text-red-400">
                 ⚠️ Peor Horario
               </span>
               <p className="mt-1 text-sm font-bold text-white">
-                {DAYS[worstCell.day_of_week]} · {worstCell.time_block}
+                {DAY_NAMES[worstSlot.day_of_week]} · {worstSlot.time_block}
               </p>
               <p className="text-xs text-gray-400">
-                {worstCell.winrate.toFixed(1)}% WR en {worstCell.games_played} partidas
+                {worstSlot.winrate.toFixed(0)}% WR en {worstSlot.games_played} partidas (
+                {worstSlot.wins}V - {worstSlot.losses}D)
               </p>
             </div>
-          </div>
-        )
-      })()}
+          ) : (
+            <div className="rounded-xl border border-gray-800 bg-[#14141C] p-4">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                ⚠️ Peor Horario
+              </span>
+              <p className="mt-1 text-xs text-gray-400">
+                Aún sin datos suficientes (mínimo 3 partidas por franja).
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

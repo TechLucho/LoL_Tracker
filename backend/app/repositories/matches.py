@@ -14,7 +14,7 @@ from typing import Any
 from backend.app import db
 
 INSERT_COLUMNS = (
-    "game_id", "date", "champion", "role",
+    "game_id", "date", "game_version", "champion", "role",
     "kills", "deaths", "assists",
     "cs_total", "cs_min", "control_wards", "win",
     "enemy_champion", "game_duration_minutes",

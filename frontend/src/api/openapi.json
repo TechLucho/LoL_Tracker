@@ -430,11 +430,57 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/HeatmapCell"
-                  },
-                  "title": "Response Heatmap Api Stats Heatmap Get"
+                  "$ref": "#/components/schemas/HeatmapResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/patch-alert": {
+      "get": {
+        "tags": [
+          "stats"
+        ],
+        "summary": "Patch Alert Endpoint",
+        "description": "Alerta de parche: ca\u00edda de winrate del Champion Pool tras una actualizaci\u00f3n.\n\nResuelve el parche actual desde Data Dragon (cach\u00e9 1h), lo normaliza a \"X.Y\" y compara\nel winrate de los 3 campeones m\u00e1s jugados en ese parche contra su historial previo.\n`has_current_games` distingue el caso de \"parche reci\u00e9n salido sin partidas a\u00fan\".",
+        "operationId": "patch_alert_endpoint_api_stats_patch_alert_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatchAlert"
                 }
               }
             }
@@ -580,6 +626,66 @@
                     "$ref": "#/components/schemas/TrendPoint"
                   },
                   "title": "Response Kpi Trends Api Stats Trends Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/stats/laning": {
+      "get": {
+        "tags": [
+          "stats"
+        ],
+        "summary": "Laning",
+        "description": "Tri\u00e1ngulo del Laning: promedios GD@15 / XPD@15 / CSD@15 (Timeline de Riot).\n\n`games_analyzed` dice cu\u00e1ntas de las \u00faltimas 50 partidas v\u00e1lidas ten\u00edan datos de\ntimeline (0 reci\u00e9n instalado, antes del primer sync con la nueva extracci\u00f3n); los\npromedios son None sin ninguna partida.",
+        "operationId": "laning_api_stats_laning_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LaningSummary"
                 }
               }
             }
@@ -1947,6 +2053,43 @@
         ],
         "title": "HeatmapCell"
       },
+      "HeatmapResponse": {
+        "properties": {
+          "cells": {
+            "items": {
+              "$ref": "#/components/schemas/HeatmapCell"
+            },
+            "type": "array",
+            "title": "Cells"
+          },
+          "best_slot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HeatmapCell"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "worst_slot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HeatmapCell"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "cells"
+        ],
+        "title": "HeatmapResponse",
+        "description": "Wrapper del heatmap: celdas + mejor/peor horario (con umbral m\u00ednimo de 3 partidas)."
+      },
       "ItemMeta": {
         "properties": {
           "id": {
@@ -1996,6 +2139,55 @@
           "items"
         ],
         "title": "ItemsIndex"
+      },
+      "LaningSummary": {
+        "properties": {
+          "avg_gd15": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Gd15",
+            "description": "Diferencia media de oro a los 15:00 (a tu favor si >0)"
+          },
+          "avg_xpd15": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Xpd15",
+            "description": "Diferencia media de XP a los 15:00"
+          },
+          "avg_csd15": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avg Csd15",
+            "description": "Diferencia media de CS a los 15:00"
+          },
+          "games_analyzed": {
+            "type": "integer",
+            "title": "Games Analyzed",
+            "description": "Partidas con datos de timeline en la ventana (m\u00ednimo piramidal del tri\u00e1ngulo)",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "title": "LaningSummary",
+        "description": "Promedios del Tri\u00e1ngulo del Laning sobre las \u00faltimas partidas con datos de Timeline.\n\n`games_analyzed` = cu\u00e1ntas partidas (de la ventana) alimentaron el promedio; 0 cuando los\ndatos de timeline a\u00fan no se han sincronizado. Los promedios son None sin ninguna partida."
       },
       "LpCapture": {
         "properties": {
@@ -2538,6 +2730,42 @@
             "title": "Rating Version",
             "description": "Versi\u00f3n de la f\u00f3rmula que gener\u00f3 `rating` (trazabilidad)",
             "default": 1
+          },
+          "gd15": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gd15",
+            "description": "Diferencia de oro a los 15:00 (a tu favor si >0)"
+          },
+          "xpd15": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xpd15",
+            "description": "Diferencia de XP a los 15:00"
+          },
+          "csd15": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Csd15",
+            "description": "Diferencia de CS (minions+jungle) a los 15:00"
           }
         },
         "type": "object",
@@ -2553,6 +2781,116 @@
         ],
         "title": "Participant",
         "description": "Un jugador dentro de una partida (10 por match).\n\n`player_name` sustituye al viejo `summoner_name` (que Riot ya no rellena en Match-V5): ahora\nse guarda el Riot ID completo \"GameName#TAG\". Los campos con default toleran filas antiguas\ndel JSONB sincronizadas antes del nuevo esquema, para que /api/matches no reviente; tras un\nTRUNCATE + resync todos los participantes salen completos."
+      },
+      "PatchAlert": {
+        "properties": {
+          "current_patch": {
+            "type": "string",
+            "title": "Current Patch"
+          },
+          "has_current_games": {
+            "type": "boolean",
+            "title": "Has Current Games"
+          },
+          "alerting_champions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Alerting Champions"
+          },
+          "champions": {
+            "items": {
+              "$ref": "#/components/schemas/PatchChampionInfo"
+            },
+            "type": "array",
+            "title": "Champions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "current_patch",
+          "has_current_games",
+          "champions"
+        ],
+        "title": "PatchAlert",
+        "description": "Alerta de parche: siempre devuelve datos; el frontend decide si mostrar banner seg\u00fan\n`has_current_games` (parche demasiado nuevo = sin partidas a\u00fan) y `alerting_champions`."
+      },
+      "PatchChampionInfo": {
+        "properties": {
+          "champion": {
+            "type": "string",
+            "title": "Champion"
+          },
+          "games_current": {
+            "type": "integer",
+            "title": "Games Current"
+          },
+          "wins_current": {
+            "type": "integer",
+            "title": "Wins Current"
+          },
+          "winrate_current": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Winrate Current",
+            "description": "NULL si no hay partidas en el parche actual"
+          },
+          "games_previous": {
+            "type": "integer",
+            "title": "Games Previous"
+          },
+          "wins_previous": {
+            "type": "integer",
+            "title": "Wins Previous"
+          },
+          "winrate_previous": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Winrate Previous",
+            "description": "NULL si el campe\u00f3n nunca se jug\u00f3 antes"
+          },
+          "delta_pp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Pp",
+            "description": "winrate actual - winrate previo, en puntos porcentuales"
+          },
+          "dropped": {
+            "type": "boolean",
+            "title": "Dropped",
+            "description": "Ca\u00edda >4pp con m\u00ednimo de 5 partidas en el parche actual",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "champion",
+          "games_current",
+          "wins_current",
+          "games_previous",
+          "wins_previous"
+        ],
+        "title": "PatchChampionInfo",
+        "description": "Rendimiento de un campe\u00f3n del pool en el parche actual vs. los anteriores."
       },
       "SpellMeta": {
         "properties": {
@@ -2726,6 +3064,12 @@
                 "type": "null"
               }
             ]
+          },
+          "losing_streak_warning": {
+            "type": "boolean",
+            "title": "Losing Streak Warning",
+            "description": "True si las \u00faltimas 3+ partidas son derrotas consecutivas (Tilt Alert)",
+            "default": false
           }
         },
         "type": "object",
@@ -2824,6 +3168,32 @@
           "kda": {
             "type": "number",
             "title": "Kda"
+          },
+          "vision_delta": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vision Delta"
+          },
+          "kp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kp"
+          },
+          "win": {
+            "type": "boolean",
+            "title": "Win"
           }
         },
         "type": "object",
@@ -2832,10 +3202,11 @@
           "timestamp",
           "cs_min",
           "dpm",
-          "kda"
+          "kda",
+          "win"
         ],
         "title": "TrendPoint",
-        "description": "Un punto de la serie temporal de KPIs de mejora (\u00faltimas N partidas v\u00e1lidas).\n\nOrden cronol\u00f3gico ascendente (partida m\u00e1s antigua primero) para que las gr\u00e1ficas de\nl\u00ednea recorran el tiempo de izquierda a derecha. `timestamp` es la hora de juego en UTC."
+        "description": "Un punto de la serie temporal de KPIs de mejora (\u00faltimas N partidas v\u00e1lidas).\n\nOrden cronol\u00f3gico ascendente (partida m\u00e1s antigua primero) para que las gr\u00e1ficas de\nl\u00ednea recorran el tiempo de izquierda a derecha. `timestamp` es la hora de juego en UTC.\n\n`vision_delta` y `kp` se leen del JSONB `participants` (nulos en filas legacy o cuando\nno existe rival directo); `win` es el resultado de la partida, siempre presente."
       },
       "UserSettings": {
         "properties": {
@@ -2853,6 +3224,30 @@
           "max_deaths": {
             "type": "number",
             "title": "Max Deaths"
+          },
+          "target_dpm": {
+            "type": "integer",
+            "maximum": 3000.0,
+            "minimum": 0.0,
+            "title": "Target Dpm",
+            "description": "Meta de DPM (Da\u00f1o Por Minuto)",
+            "default": 500
+          },
+          "target_kp_percent": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Target Kp Percent",
+            "description": "Meta de Kill Participation en %",
+            "default": 50
+          },
+          "target_vision_score": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 0.0,
+            "title": "Target Vision Score",
+            "description": "Meta de Vision Score por partida",
+            "default": 20
           },
           "updated_at": {
             "anyOf": [
@@ -2934,6 +3329,30 @@
             "exclusiveMinimum": 0.0,
             "title": "Max Deaths",
             "description": "Tope de muertes por partida"
+          },
+          "target_dpm": {
+            "type": "integer",
+            "maximum": 3000.0,
+            "minimum": 0.0,
+            "title": "Target Dpm",
+            "description": "Meta de DPM",
+            "default": 500
+          },
+          "target_kp_percent": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Target Kp Percent",
+            "description": "Meta de Kill Participation en %",
+            "default": 50
+          },
+          "target_vision_score": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 0.0,
+            "title": "Target Vision Score",
+            "description": "Meta de Vision Score",
+            "default": 20
           }
         },
         "type": "object",

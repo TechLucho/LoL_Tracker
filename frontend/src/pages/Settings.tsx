@@ -16,6 +16,9 @@ export default function SettingsPage() {
   const [pool, setPool] = useState<string[]>([])
   const [targetCs, setTargetCs] = useState('7.5')
   const [maxDeaths, setMaxDeaths] = useState('4')
+  const [targetDpm, setTargetDpm] = useState('500')
+  const [targetKp, setTargetKp] = useState('50')
+  const [targetVision, setTargetVision] = useState('20')
   const [search, setSearch] = useState('')
   const [showDropdown, setShowDropdown] = useState(false)
   const [saveState, setSaveState] = useState<'idle' | 'success' | 'error'>('idle')
@@ -28,6 +31,9 @@ export default function SettingsPage() {
       setPool(settings.champion_pool)
       setTargetCs(String(settings.target_cs_min))
       setMaxDeaths(String(Math.round(settings.max_deaths)))
+      setTargetDpm(String(settings.target_dpm ?? 500))
+      setTargetKp(String(settings.target_kp_percent ?? 50))
+      setTargetVision(String(settings.target_vision_score ?? 20))
     }
   }, [settings])
 
@@ -65,8 +71,14 @@ export default function SettingsPage() {
   const handleSave = () => {
     const cs = parseFloat(targetCs)
     const deaths = parseInt(maxDeaths, 10)
+    const dpm = parseInt(targetDpm, 10)
+    const kp = parseInt(targetKp, 10)
+    const vision = parseInt(targetVision, 10)
     if (isNaN(cs) || cs <= 0 || cs > 20) return
     if (isNaN(deaths) || deaths <= 0 || deaths > 20) return
+    if (isNaN(dpm) || dpm <= 0 || dpm > 3000) return
+    if (isNaN(kp) || kp <= 0 || kp > 100) return
+    if (isNaN(vision) || vision <= 0 || vision > 200) return
     if (pool.length === 0) return
 
     setSaveState('idle')
@@ -75,6 +87,9 @@ export default function SettingsPage() {
         champion_pool: pool,
         target_cs_min: cs,
         max_deaths: deaths,
+        target_dpm: dpm,
+        target_kp_percent: kp,
+        target_vision_score: vision,
       },
       {
         onSuccess: () => {
@@ -270,6 +285,63 @@ export default function SettingsPage() {
             />
             <p className="mt-1.5 text-[11px] text-text-muted">
               Si superas este tope, la app activará la alerta de <span className="text-red-400"> tilt</span>.
+            </p>
+          </div>
+
+          {/* Target DPM */}
+          <div>
+            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-text-secondary">
+              Target DPM
+            </label>
+            <input
+              type="number"
+              value={targetDpm}
+              onChange={(e) => setTargetDpm(e.target.value)}
+              min="0"
+              max="3000"
+              step="50"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm text-text-primary outline-none transition-colors focus:border-accent-purple/50"
+            />
+            <p className="mt-1.5 text-[11px] text-text-muted">
+              Daño por minuto objetivo. Apunta a tu rol (lanes 550-650, jungla ~500).
+            </p>
+          </div>
+
+          {/* Target KP% */}
+          <div>
+            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-text-secondary">
+              Target KP%
+            </label>
+            <input
+              type="number"
+              value={targetKp}
+              onChange={(e) => setTargetKp(e.target.value)}
+              min="0"
+              max="100"
+              step="5"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm text-text-primary outline-none transition-colors focus:border-accent-purple/50"
+            />
+            <p className="mt-1.5 text-[11px] text-text-muted">
+              Participación en asesinatos objetivo. Rol de impacto (support/jungla) arriba del 60%.
+            </p>
+          </div>
+
+          {/* Target Vision Score */}
+          <div>
+            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-text-secondary">
+              Target Vision Score
+            </label>
+            <input
+              type="number"
+              value={targetVision}
+              onChange={(e) => setTargetVision(e.target.value)}
+              min="0"
+              max="200"
+              step="5"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm text-text-primary outline-none transition-colors focus:border-accent-purple/50"
+            />
+            <p className="mt-1.5 text-[11px] text-text-muted">
+              Puntuación de visión media por partida. Wardear un cuadrante y prioriza pink wards.
             </p>
           </div>
         </div>

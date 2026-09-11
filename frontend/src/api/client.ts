@@ -9,7 +9,9 @@ import type {
   UserSettings,
   UserSettingsUpdate,
   ChampionStats,
-  HeatmapCell,
+  HeatmapResponse,
+  LaningSummary,
+  PatchAlert,
   SyncStatus,
   SyncAccepted,
   MatchupStats,
@@ -24,6 +26,10 @@ export type {
   HealthStatus,
   ChampionStats,
   HeatmapCell,
+  HeatmapResponse,
+  PatchAlert,
+  PatchChampionInfo,
+  LaningSummary,
   ChampionMeta,
   MatchupStats,
   MatchupNotes,
@@ -168,13 +174,23 @@ export async function getChampionStats(): Promise<ChampionStats[]> {
   return data
 }
 
-export async function getHeatmapStats(): Promise<HeatmapCell[]> {
-  const { data } = await api.get<HeatmapCell[]>('/stats/heatmap')
+export async function getHeatmapStats(): Promise<HeatmapResponse> {
+  const { data } = await api.get<HeatmapResponse>('/stats/heatmap')
+  return data
+}
+
+export async function getPatchAlert(): Promise<PatchAlert> {
+  const { data } = await api.get<PatchAlert>('/stats/patch-alert')
   return data
 }
 
 export async function getKpiTrends(limit = 50): Promise<TrendPoint[]> {
   const { data } = await api.get<TrendPoint[]>('/stats/trends', { params: { limit } })
+  return data
+}
+
+export async function getLaningStats(limit = 50): Promise<LaningSummary> {
+  const { data } = await api.get<LaningSummary>('/stats/laning', { params: { limit } })
   return data
 }
 
