@@ -9,9 +9,6 @@
     "lint": "oxlint",
     "test": "vitest run",
     "preview": "vite preview",
-    "test:e2e": "playwright test",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build",
     "codegen:openapi": "cd .. && python -m backend.scripts.export_openapi && cd frontend && npx openapi-typescript src/api/openapi.json -o src/api/schema.d.ts"
   },
   "dependencies": {
@@ -28,13 +25,6 @@
     "sonner": "^2.0.8"
   },
   "devDependencies": {
-    "@chromatic-com/storybook": "latest",
-    "@playwright/test": "^1.62.1",
-    "@storybook/addon-a11y": "^10.5.10",
-    "@storybook/addon-docs": "^10.5.10",
-    "@storybook/addon-mcp": "latest",
-    "@storybook/addon-vitest": "^10.5.10",
-    "@storybook/react-vite": "^10.5.10",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.2",
@@ -43,13 +33,10 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.4",
-    "@vitest/browser-playwright": "4.1.11",
     "@vitest/coverage-v8": "4.1.11",
     "jsdom": "^30.0.1",
     "openapi-typescript": "^7.13.0",
     "oxlint": "^1.75.0",
-    "playwright": "latest",
-    "storybook": "^10.5.10",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
     "vite": "^8.2.0",
