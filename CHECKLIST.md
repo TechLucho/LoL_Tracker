@@ -203,7 +203,7 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 - [x] No fijar `_state.status = "processing"` hasta obtener `run_id` (si `start_run` falla, el sync queda bloqueado en 409 hasta reiniciar)
 - [x] Eliminar el motor de La Constitución duplicado (`/api/stats/constitution` + `services/constitution.py`, muertos) y cubrir el rules-engine activo (`/api/constitution/status`) con tests herméticos
 - [x] `insert_many` en lote (executemany / VALUES multi-fila) en vez de 1 INSERT por partida
-- [ ] Aplicar migraciones 008 y 009 en Supabase (validadas en CI; sin 009 el PUT de config falla)
+- [x] Aplicar migraciones 008 y 009 en Supabase (validadas en CI; sin 009 el PUT de config falla)
 - [x] Version string de `main.py` ("2.0.0-dev") y `backend/README.md` (documenta el endpoint de Constitution muerto) al día
 
 ### Despliegue
