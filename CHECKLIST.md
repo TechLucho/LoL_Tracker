@@ -6,6 +6,10 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ---
 
+> **Cierre v1.6 (2026-09-12):** Analítica de sesión, validación de OKRs, Escout de rivales en caché, Sync reanudable y Baselines comparativas de Élite.
+
+---
+
 > **Cierre v1.3 (2026-09-11):** cierre oficial de la v1.3 tras auditoría técnica completa
 > (Postgres/JSONB, seguridad, resiliencia del sync, React Query, bundle) con QA en verde:
 > 37 pytest + 35 vitest + oxlint + build. La v1.3 añade sobre la v1.2: Heatmap con umbrales
@@ -195,6 +199,28 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ---
 
+## Completado (v1.6)
+
+> Cierre oficial 2026-09-12 (v1.4 → v1.6): analítica de sesión, validación de OKRs, escout de
+> rivales en caché, sync reanudable y baselines comparativas de élite. QA en verde: 75 pytest
+> + 40 vitest + oxlint + build. Auditoría final con parche del race del guard 409 y deuda de
+> tooling liquidada (Storybook/Chromatic/Playwright).
+
+### Medio plazo
+
+- [x] **Resumen por rol / campeón de la semana**: winrate y KDA por (campeón, rol, cola) con mínimo de partidas para sacar conclusiones honestas ("solo rindes con Jax en toplane") — `GET /api/stats/champion-summary` (HAVING ≥ 3) + tarjeta `ChampionRoleSummary` en Dashboard
+- [x] **Carga acumulada de sesión**: winrate de las últimas 5 partidas vs. las 5 anteriores, para detectar el punto donde entras en autopilot (apoya la agrupación por sesiones del Dashboard) — `GET /api/stats/session-fatigue` + banner `SessionFatigueCard` (caída ≥20pp de winrate o −2.0 KDA)
+- [x] **Objetivos por partida vía OKRs**: marcar en la review si cumpliste DPM/KP%/Visión — conecta los OKRs de Settings con el resultado real de la partida — strip `🎯 OKR` en el accordion de cada partida (check/cruz contra `target_dpm`, `target_kp_percent`, `target_vision_score`)
+- [x] **Escout del pool rival**: winrate del champion pool del rival de línea por rol, integrado en la vista Matchups — v1 implementada como **Champion Mastery**: `GET /api/matches/{game_id}/scout-opponent` devuelve los 3 campeones más jugados del rival de línea (OTP vs first time), cacheada 24h en `scout_cache` para no quemar la cuota de Riot, con tab 🔎 Escout en el accordion
+- [x] **Veredicto de meta**: cruzar la matriz de matchups contra `game_version` para alertar cuándo tu pool pierde contra el meta del rango (extensión natural de la Alerta de Parche) — `GET /api/stats/meta-verdict` compara winrate por (tú vs enemigo) del parche actual contra el histórico y marca `meta_shift` (favorable ≥55% antes, <50% ahora) con toggle "Filtro de Meta Actual" en Matchups
+
+### Fase 1 del largo plazo (v2.0)
+
+- [x] **Sync reanudable**: checkpoint por partida + detección de "Riot degradado" para abortar esperas de backoff largas — micro-lotes de 5 partidas persisten al vuelo (`on_match` en `fetch_recent_matches`), `RiotDegradedError` aborta limpio (429 con Retry-After > 60s o 5xx agotados), estado `partial` con `degraded_api: true` y toast naranja de aviso en la UI
+- [x] **Comparación con estadísticas globales de la ladder**: línea base por rol (CS/min, DPM, KP%, Visión) inyectada por participante en la serialización (`services/baselines.py`, espejo de `_ROLE_PROFILES` para no contradecir el rating) y renderizada en la vista Full Stats de cada partida — valor real destacado + `Exp: …` en gris con flecha verde ▲ si superas la base del rol; `GET /api/stats/baselines` expone el mapa completo
+
+---
+
 ## Pendiente (Backlog / Features futuras)
 
 ### Deuda técnica de auditoría (v1.3.1)
@@ -212,18 +238,11 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ### Medio plazo
 
-- [x] **Resumen por rol / campeón de la semana**: winrate y KDA por (campeón, rol, cola) con mínimo de partidas para sacar conclusiones honestas ("solo rindes con Jax en toplane") — `GET /api/stats/champion-summary` (HAVING ≥ 3) + tarjeta `ChampionRoleSummary` en Dashboard
-- [x] **Carga acumulada de sesión**: winrate de las últimas 5 partidas vs. las 5 anteriores, para detectar el punto donde entras en autopilot (apoya la agrupación por sesiones del Dashboard) — `GET /api/stats/session-fatigue` + banner `SessionFatigueCard` (caída ≥20pp de winrate o −2.0 KDA)
-- [x] **Objetivos por partida vía OKRs**: marcar en la review si cumpliste DPM/KP%/Visión — conecta los OKRs de Settings con el resultado real de la partida — strip `🎯 OKR` en el accordion de cada partida (check/cruz contra `target_dpm`, `target_kp_percent`, `target_vision_score`)
-- [x] **Escout del pool rival**: winrate del champion pool del rival de línea por rol, integrado en la vista Matchups — v1 implementada como **Champion Mastery**: `GET /api/matches/{game_id}/scout-opponent` devuelve los 3 campeones más jugados del rival de línea (OTP vs first time), cacheada 24h en `scout_cache` para no quemar la cuota de Riot, con tab 🔎 Escout en el accordion
-- [x] **Veredicto de meta**: cruzar la matriz de matchups contra `game_version` para alertar cuándo tu pool pierde contra el meta del rango (extensión natural de la Alerta de Parche) — `GET /api/stats/meta-verdict` compara winrate por (tú vs enemigo) del parche actual contra el histórico y marca `meta_shift` (favorable ≥55% antes, <50% ahora) con toggle "Filtro de Meta Actual" en Matchups
+- [ ] **Reporte semanal a Discord**: cruce de `weekly_report` (ya implementado) con el webhook ya existente
 
 ### Largo plazo (v2.0)
 
-- [x] **Sync reanudable**: checkpoint por partida + detección de "Riot degradado" para abortar esperas de backoff largas — micro-lotes de 5 partidas persisten al vuelo (`on_match` en `fetch_recent_matches`), `RiotDegradedError` aborta limpio (429 con Retry-After > 60s o 5xx agotados), estado `partial` con `degraded_api: true` y toast naranja de aviso en la UI
-- [ ] Multi-usuario: auth con Supabase, dashboard compartido.
-- [x] **Comparación con estadísticas globales de la ladder**: línea base por rol (CS/min, DPM, KP%, Visión) inyectada por participante en la serialización (`services/baselines.py`, espejo de `_ROLE_PROFILES` para no contradecir el rating) y renderizada en la vista Full Stats de cada partida — valor real destacado + `Exp: …` en gris con flecha verde ▲ si superas la base del rol; `GET /api/stats/baselines` expone el mapa completo
-- [ ] **Reporte semanal a Discord**: cruce de `weekly_report` (ya implementado) con el webhook ya existente
+- [ ] Multi-usuario: auth con Supabase, dashboard compartido y políticas RLS
 
 ### Ideas Congeladas (Prioridad Nula)
 
