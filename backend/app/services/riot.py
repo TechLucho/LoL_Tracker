@@ -39,6 +39,9 @@ MAX_RETRIES = 3
 BACKOFF_BASE_SECONDS = 2.0
 # Techo al Retry-After que dicta Riot: una cabecera exótica no debe colgar el sync minutos.
 MAX_RETRY_AFTER_SECONDS = 120.0
+# Umbral de degradación: un 429 con Retry-After superior a esto se considera "Riot caído a
+# largo plazo" y el sync aborta limpio en vez de dormir durante el backoff.
+_DEGRADED_RETRY_AFTER_MAX = 60.0
 PUUID_CACHE_TTL_SECONDS = 24 * 60 * 60
 # Timeline (Match-V5): marcamos exactamente el minuto 15, el corte canónico del early game.
 # Las partidas que no llegan a 15:00 no tienen un "marco de 15 minutos" honesto -> sin laning.
@@ -53,6 +56,19 @@ class RiotServiceError(Exception):
         super().__init__(message)
         self.status = status
         self.retryable = retryable
+
+
+class RiotDegradedError(RiotServiceError):
+    """Riot está degradado: 429 con Retry-After largo, o fallos 5xx sostenidos.
+
+    A diferencia de un RiotServiceError normal, NO merece la pena reintentar a corto plazo —
+    esperar el backoff quemaría minutos y Riot seguiría caído. El sync lo usa para abortar de
+    forma limpia: guarda lo ya descargado, marca `degraded_api` y se reanuda con otro POST
+    (insert_many es idempotente, no se pierde nada).
+    """
+
+    def __init__(self, message: str, *, status: int | None = None):
+        super().__init__(message, status=status, retryable=False)
 
 
 @dataclass(slots=True)
@@ -179,7 +195,24 @@ class RiotService:
                 return await run_in_threadpool(fn, *args)
             except Exception as err:  # noqa: BLE001 - ApiError (HTTP) y errores de red puros
                 last = _classify(err)
-                if not last.retryable or attempt == MAX_RETRIES - 1:
+                if not last.retryable:
+                    raise last from err
+                # 429 con Retry-After enorme: Riot está caído a largo plazo, no dormimos el
+                # backoff — abortamos limpio para que el sync guarde el progreso parcial.
+                if last.status == 429 and _retry_after(err, attempt) > _DEGRADED_RETRY_AFTER_MAX:
+                    raise RiotDegradedError(
+                        f"Riot degradado: 429 con Retry-After > {_DEGRADED_RETRY_AFTER_MAX:.0f}s "
+                        f"en {description}",
+                        status=429,
+                    ) from err
+                if attempt == MAX_RETRIES - 1:
+                    # Intentos agotados. Distinguimos "Riot caído" (5xx sostenidos, degradado)
+                    # de un fallo transitorio que simplemente no remontamos.
+                    if last.status is not None and last.status >= 500:
+                        raise RiotDegradedError(
+                            f"Riot degradado: {last.status} sostenido en {description}",
+                            status=last.status,
+                        ) from err
                     raise last from err
                 delay = _retry_after(err, attempt)
                 log.info("Reintentando %s en %.1fs (intento %d/%d)",
@@ -275,9 +308,17 @@ class RiotService:
     # ------------------------------------------------------------------ partidas
 
     async def fetch_recent_matches(
-        self, riot_id: str, limit: int = 10, queue: int | None = 420
+        self, riot_id: str, limit: int = 10, queue: int | None = 420,
+        *,
+        on_match: Callable[[dict[str, Any]], Awaitable[None]] | None = None,
     ) -> tuple[list[dict[str, Any]], list[FailedMatch]]:
-        """Descarga partidas recientes. Devuelve (partidas_ok, fallos) — los fallos NO se ocultan."""
+        """Descarga partidas recientes. Devuelve (partidas_ok, fallos) — los fallos NO se ocultan.
+
+        `on_match` se invoca tras procesar CADA partida (Timeline incluido), permitiendo al
+        llamante guardar progreso incremental sin esperar a que la descarga entera termine.
+        Un `RiotDegradedError` no se traga aquí: propaga para que el sync cierre en 'partial'
+        con lo que ya ha conseguido descargar y guardar.
+        """
         account = await self.resolve_account(riot_id)
         puuid = account["puuid"]
 
@@ -295,6 +336,8 @@ class RiotService:
         for match_id in match_ids:
             try:
                 raw = await self._fetch_match_with_retry(match_id)
+            except RiotDegradedError:
+                raise  # interrupción limpia: el sync hace commit parcial y aborta
             except RiotServiceError as exc:
                 log.warning("Partida %s no descargada: %s", match_id, exc)
                 failures.append(FailedMatch(match_id, str(exc), exc.retryable))
@@ -306,6 +349,8 @@ class RiotService:
                 failures.append(FailedMatch(match_id, "El jugador no figura en la partida", False))
                 continue
             parsed = await self._attach_laning(raw, puuid, parsed)
+            if on_match is not None:
+                await on_match(parsed)
             matches.append(parsed)
 
         return matches, failures
@@ -425,7 +470,9 @@ class RiotService:
 
         Es un enriquecimiento OPCIONAL: un fallo del timeline (429/404, frame incompleto,
         partida < 15 min) deja la partida tal cual y nunca tumba el sync — los datos de
-        laning simplemente no se escriben.
+        laning simplemente no se escriben. La única excepción es un `RiotDegradedError`
+        (Riot caído a largo plazo): ahí sí propaga, porque continuar buscando más partidas
+        solo acumularía más 429/5xx.
         """
         info = raw["info"]
         me = next((p for p in info["participants"] if p["puuid"] == puuid), None)
@@ -445,6 +492,8 @@ class RiotService:
                 self._lol.match.timeline_by_match,
                 self._route, parsed["game_id"],
             )
+        except RiotDegradedError:
+            raise  # Riot caído: abortar limpio en vez de seguir buscando más partidas
         except RiotServiceError as exc:
             log.warning("Sin datos de laning para %s: %s", parsed["game_id"], exc)
             return parsed

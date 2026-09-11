@@ -447,6 +447,11 @@ class SyncResult(BaseModel):
         default=False,
         description="True si las últimas 3+ partidas son derrotas consecutivas (Tilt Alert)",
     )
+    degraded_api: bool = Field(
+        default=False,
+        description="True si Riot se degradó a mitad del sync: se guardó el progreso parcial "
+        "pero no se pudo completar. Reintenta con otro POST (insert_many es idempotente).",
+    )
 
 
 class SyncAccepted(BaseModel):
@@ -457,9 +462,12 @@ class SyncAccepted(BaseModel):
 
 
 class SyncStatus(BaseModel):
-    """Estado del sync en curso (o del último terminado), para el polling del frontend."""
+    """Estado del sync en curso (o del último terminado), para el polling del frontend.
 
-    status: Literal["idle", "processing", "success", "error"]
+    `partial` = terminó con Riot degradado: `result.degraded_api` es True y lo descargado
+    hasta entonces quedó guardado."""
+
+    status: Literal["idle", "processing", "success", "partial", "error"]
     started_at: datetime | None = None
     finished_at: datetime | None = None
     result: SyncResult | None = None

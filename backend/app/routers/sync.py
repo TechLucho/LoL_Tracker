@@ -20,12 +20,15 @@ from backend.app.repositories import lp as lp_repo
 from backend.app.repositories import matches as repo
 from backend.app.repositories import sync_runs
 from backend.app.schemas import LpCapture, SyncAccepted, SyncError, SyncResult, SyncStatus
-from backend.app.services.riot import RiotService, RiotServiceError
+from backend.app.services.riot import FailedMatch, RiotDegradedError, RiotService, RiotServiceError
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/sync", tags=["sync"])
 
 DEFAULT_QUEUES = [420, 400]
+# Micro-lote del checkpoint incremental: cada N partidas descargadas se persisten al vuelo.
+# Si Riot se cae a mitad de un sync largo, lo ya guardado NO se pierde.
+SYNC_CHECKPOINT_BATCH = 5
 
 
 class _SyncState:
@@ -36,7 +39,7 @@ class _SyncState:
     """
 
     def __init__(self) -> None:
-        self.status: Literal["idle", "processing", "success", "error"] = "idle"
+        self.status: Literal["idle", "processing", "success", "partial", "error"] = "idle"
         self.started_at: datetime | None = None
         self.finished_at: datetime | None = None
         self.result: SyncResult | None = None
@@ -127,58 +130,94 @@ async def _run_sync(riot: RiotService, target: str, limit: int, queue_ids: list[
     """Cuerpo del sync. Corre como BackgroundTask: NUNCA debe lanzar una excepción sin
     capturar, porque moriría en silencio y el frontend se quedaría sondeando 'processing'.
 
+    Guarda progreso incremental desde el primer micro-lote (SYNC_CHECKPOINT_BATCH partidas) en
+    vez de acumular todo en memoria y hacer un único insert al final. Si Riot se degrada a
+    mitad de camino (RiotDegradedError: 429 con Retry-After largo o 5xx sostenidos), el sync
+    termina en 'partial' con degraded_api=True: lo ya descargado persiste y un nuevo POST
+    reanuda sin duplicar (insert_many es idempotente). Sólo un sync completo reevalúa LP y
+    Tilt Alert.
+
     Persiste el resultado final en sync_runs (tabla de auditoría, migración 006). El
     _SyncState en memoria se sigue actualizando para el polling rápido del frontend.
     """
     inserted = 0
     error_msg: str | None = None
     losing_streak = False
+    degraded: bool = False
+    pending: list[dict] = []
+    seen: set[str] = set()
+    all_failures: list[FailedMatch] = []
+
+    async def _flush() -> None:
+        nonlocal inserted
+        if pending:
+            inserted += await repo.insert_many(pending)
+            pending.clear()
+
+    async def _checkpoint(match: dict) -> None:
+        pending.append(match)
+        gid = match.get("game_id", "")
+        if gid:
+            seen.add(gid)
+        if len(pending) >= SYNC_CHECKPOINT_BATCH:
+            await _flush()
 
     try:
-        all_matches = []
-        all_failures = []
-
         for qid in queue_ids:
-            matches, failures = await riot.fetch_recent_matches(target, limit=limit, queue=qid)
-            all_matches.extend(matches)
-            all_failures.extend(failures)
+            try:
+                matches, q_failures = await riot.fetch_recent_matches(
+                    target, limit=limit, queue=qid, on_match=_checkpoint,
+                )
+                all_failures.extend(q_failures)
+            except RiotDegradedError as exc:
+                degraded = True
+                error_msg = f"Riot degradado: {exc}"
+                log.warning("Sync %s interrumpido por Riot degradado (progreso parcial): %s",
+                            target, exc)
+                break
+            finally:
+                # Drena el micro-lote pendiente de esta cola (nunca quedan >=5 en vuelo).
+                await _flush()
 
-        # Dedupe by game_id (a match can appear in multiple queue lookups)
-        seen: set[str] = set()
-        unique_matches = []
-        for m in all_matches:
-            gid = m.get("game_id", "")
-            if gid and gid not in seen:
-                seen.add(gid)
-                unique_matches.append(m)
+        fetched = len(seen)
+        log.info("Sync %s: %d únicas, %d insertadas, %d fallos (degraded=%s)",
+                 target, fetched, inserted, len(all_failures), degraded)
+        sync_errors = [
+            SyncError(game_id=f.game_id, reason=f.reason, retryable=f.retryable)
+            for f in all_failures
+        ]
 
-        inserted = await repo.insert_many(unique_matches)
-        log.info("Sync %s: %d descargadas, %d nuevas, %d fallos",
-                 target, len(unique_matches), inserted, len(all_failures))
+        if degraded:
+            # No es un 500: el sync "funcionó" hasta donde Riot dejó. Lo que quedó guardado
+            # persiste y el frontend avisa de que hay que reintentar más tarde.
+            _state.result = SyncResult(
+                fetched=fetched, inserted=inserted, skipped=fetched - inserted,
+                errors=sync_errors, degraded_api=True,
+            )
+            _state.status = "partial"
+        else:
+            # Auto-tracker de LP: sólo tiene sentido si entraron partidas nuevas de Solo/Duo.
+            lp_captured = None
+            if inserted > 0 and 420 in queue_ids:
+                lp_captured = await _capture_ranked_lp(riot, target)
 
-        # Auto-tracker de LP: sólo tiene sentido si entraron partidas nuevas de Solo/Duo.
-        lp_captured = None
-        if inserted > 0 and 420 in queue_ids:
-            lp_captured = await _capture_ranked_lp(riot, target)
+            # Tilt Alert: si las últimas 3 partidas válidas (Ranked, anti-remake) son derrotas
+            # consecutivas, el sync avisa. Se evalúa SIEMPRE (no sólo con insertadas): así un
+            # resync manual durante una racha en curso vuelve a recordar que hay que parar.
+            recent = await repo.last_results(limit=3)
+            losing_streak = len(recent) >= 3 and all(not r["win"] for r in recent)
+            if losing_streak:
+                log.warning("Tilt Alert: %s lleva 3+ derrotas consecutivas", target)
 
-        # Tilt Alert: si las últimas 3 partidas válidas (Ranked, anti-remake) son derrotas
-        # consecutivas, el sync avisa. Se evalúa SIEMPRE (no sólo con insertadas): así un
-        # resync manual durante una racha en curso vuelve a recordar que hay que parar.
-        recent = await repo.last_results(limit=3)
-        losing_streak = len(recent) >= 3 and all(not r["win"] for r in recent)
-        if losing_streak:
-            log.warning("Tilt Alert: %s lleva 3+ derrotas consecutivas", target)
-
-        _state.result = SyncResult(
-            fetched=len(unique_matches),
-            inserted=inserted,
-            skipped=len(unique_matches) - inserted,
-            errors=[SyncError(game_id=f.game_id, reason=f.reason, retryable=f.retryable)
-                    for f in all_failures],
-            lp_captured=lp_captured,
-            losing_streak_warning=losing_streak,
-        )
-        _state.status = "success"
+            _state.result = SyncResult(
+                fetched=fetched,
+                inserted=inserted,
+                skipped=fetched - inserted,
+                errors=sync_errors,
+                lp_captured=lp_captured,
+                losing_streak_warning=losing_streak,
+            )
+            _state.status = "success"
     except RiotServiceError as exc:
         log.error("Sync falló: %s", exc)
         error_msg = str(exc)
@@ -253,7 +292,7 @@ async def sync(
 
 @router.get("/status", response_model=SyncStatus)
 async def sync_status() -> SyncStatus:
-    """Estado del sync para el polling del frontend (idle/processing/success/error)."""
+    """Estado del sync para el polling del frontend (idle/processing/success/partial/error)."""
     return SyncStatus(
         status=_state.status,
         started_at=_state.started_at,

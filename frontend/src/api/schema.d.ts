@@ -1475,17 +1475,26 @@ export interface components {
              * @default false
              */
             losing_streak_warning: boolean;
+            /**
+             * Degraded Api
+             * @description True si Riot se degradó a mitad del sync: se guardó el progreso parcial pero no se pudo completar. Reintenta con otro POST (insert_many es idempotente).
+             * @default false
+             */
+            degraded_api: boolean;
         };
         /**
          * SyncStatus
          * @description Estado del sync en curso (o del último terminado), para el polling del frontend.
+         *
+         *     `partial` = terminó con Riot degradado: `result.degraded_api` es True y lo descargado
+         *     hasta entonces quedó guardado.
          */
         SyncStatus: {
             /**
              * Status
              * @enum {string}
              */
-            status: "idle" | "processing" | "success" | "error";
+            status: "idle" | "processing" | "success" | "partial" | "error";
             /** Started At */
             started_at?: string | null;
             /** Finished At */

@@ -3523,6 +3523,12 @@
             "title": "Losing Streak Warning",
             "description": "True si las \u00faltimas 3+ partidas son derrotas consecutivas (Tilt Alert)",
             "default": false
+          },
+          "degraded_api": {
+            "type": "boolean",
+            "title": "Degraded Api",
+            "description": "True si Riot se degrad\u00f3 a mitad del sync: se guard\u00f3 el progreso parcial pero no se pudo completar. Reintenta con otro POST (insert_many es idempotente).",
+            "default": false
           }
         },
         "type": "object",
@@ -3542,6 +3548,7 @@
               "idle",
               "processing",
               "success",
+              "partial",
               "error"
             ],
             "title": "Status"
@@ -3597,7 +3604,7 @@
           "status"
         ],
         "title": "SyncStatus",
-        "description": "Estado del sync en curso (o del \u00faltimo terminado), para el polling del frontend."
+        "description": "Estado del sync en curso (o del \u00faltimo terminado), para el polling del frontend.\n\n`partial` = termin\u00f3 con Riot degradado: `result.degraded_api` es True y lo descargado\nhasta entonces qued\u00f3 guardado."
       },
       "TrendPoint": {
         "properties": {

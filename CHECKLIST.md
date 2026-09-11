@@ -220,7 +220,7 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ### Largo plazo (v2.0)
 
-- [ ] **Sync reanudable**: checkpoint por partida + detección de "Riot degradado" para abortar esperas de backoff largas
+- [x] **Sync reanudable**: checkpoint por partida + detección de "Riot degradado" para abortar esperas de backoff largas — micro-lotes de 5 partidas persisten al vuelo (`on_match` en `fetch_recent_matches`), `RiotDegradedError` aborta limpio (429 con Retry-After > 60s o 5xx agotados), estado `partial` con `degraded_api: true` y toast naranja de aviso en la UI
 - [ ] Multi-usuario: auth con Supabase, dashboard compartido.
 - [ ] Comparación con estadísticas globales de la ladder (API challenger-v4).
 - [ ] **Reporte semanal a Discord**: cruce de `weekly_report` (ya implementado) con el webhook ya existente

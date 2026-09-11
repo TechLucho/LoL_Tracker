@@ -181,6 +181,7 @@ export function useSyncMatches(options: { silent?: boolean } = {}) {
         await sleep(SYNC_POLL_INTERVAL_MS)
         const status = await getSyncStatus()
         if (status.status === 'success') return status.result
+        if (status.status === 'partial') return status.result
         if (status.status === 'error') throw new Error(status.error ?? 'El sync falló en el backend')
         if (status.status === 'idle') return null // el backend se reinició mientras sondeábamos
       }
@@ -199,6 +200,15 @@ export function useSyncMatches(options: { silent?: boolean } = {}) {
       if (result?.losing_streak_warning) {
         toast.error(
           '🚨 Racha de 3+ derrotas detectada: considera aplicar La Constitución y cerrar el juego.',
+          { duration: 8000 },
+        )
+      }
+
+      // Riot degradado: el progreso parcial quedó guardado, pero hay que reintentar. Avisa
+      // también en modo silencioso — es una señal crítica que el auto-sync no debe callar.
+      if (result?.degraded_api) {
+        toast.warning(
+          '⚠️ Sincronización pausada: Servidores de Riot lentos. Progreso guardado, reintenta en unos minutos.',
           { duration: 8000 },
         )
       }
