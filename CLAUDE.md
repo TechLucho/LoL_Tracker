@@ -21,7 +21,7 @@ backend/
     main.py          # FastAPI app, lifespan (pool open/close), CORS, router wiring
     config.py        # pydantic-settings; validates ALL env vars at startup
     db.py            # psycopg3 AsyncConnectionPool (min 1 / max 5), sslmode=require
-    deps.py          # require_token (X-API-Token header)
+    deps.py          # get_current_user (JWT Supabase HS256), CurrentUserId, SettingsDep, RiotServiceDep
     schemas.py       # Pydantic models (Match, Participant, StatsSummary, ...)
     routers/         # matches, stats, scout, sync, config, constitution, health, metadata
     services/        # riot.py (sync + rating), datadragon.py, constitution.py
@@ -83,7 +83,7 @@ booting** — that is by design (the Streamlit monolith used to degrade silently
 | `RIOT_REGION` | Platform id (`EUW1`, `LA1`, …). Validated against `ROUTING_MAP` in `config.py`. |
 | `DB_HOST` `DB_NAME` `DB_USER` `DB_PASSWORD` `DB_PORT` | Supabase Postgres (pooler host). `DB_USER` must be `postgres.<project-ref>`. |
 | `DISPLAY_TIMEZONE` | Zone used to interpret heatmap hours. Defaults to `Europe/Madrid`. |
-| `APP_API_TOKEN` | If set, all endpoints except `/health` require `X-API-Token`. Empty = open (local use). |
+| `SUPABASE_JWT_SECRET` | HS256 JWT gateway secret from Supabase (Settings › API › JWT Settings). Used to decode the session token's `sub` claim. Default `super-secret-jwt-token-for-testing-only` is test/CI-only — set the real one in production. |
 | `CORS_ORIGINS` | JSON array. Defaults to the Vite dev server origins. |
 
 ## Backend behavior worth knowing
@@ -105,7 +105,7 @@ booting** — that is by design (the Streamlit monolith used to degrade silently
   manually, in order. There is no ORM; repositories write raw SQL with psycopg3.
 - **Timestamps are stored in UTC**; `DISPLAY_TIMEZONE` only affects how heatmap hours are grouped for
   display. Don't mix local-time assumptions into queries.
-- **Auth**: `deps.require_token` guards everything except `/health`.
+- **Auth**: `deps.get_current_user` guards everything except `/health`. It decodes an `Authorization: Bearer <token>` JWT with `SUPABASE_JWT_SECRET` (HS256) and returns the `sub` claim as `UUID` (`CurrentUserId`); invalid/expired tokens get a 401.
 - **Sync** (`POST /api/sync?queues=420,400`): resolves the Riot ID → PUUID once per sync (cached 24h),
   then fetches match details per match. Retries use exponential backoff and respect `Retry-After`;
   failures are reported per-match in `SyncResult` instead of being swallowed.

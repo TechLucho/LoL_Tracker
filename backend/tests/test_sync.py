@@ -34,7 +34,7 @@ async def _run_sync_noop(*args: object, **kwargs: object) -> None:
     return None
 
 
-def test_dos_posts_simultaneos_solo_uno_pasa(monkeypatch):
+def test_dos_posts_simultaneos_solo_uno_pasa(monkeypatch, auth_headers):
     """`asyncio.gather` de dos POST /api/sync: exactamente un 202 y un 409.
 
     El resto de la cadena (Riot, finishes, `_run_sync`) se parchea a no-op: el test sólo
@@ -50,15 +50,15 @@ def test_dos_posts_simultaneos_solo_uno_pasa(monkeypatch):
             transport=httpx.ASGITransport(app=app), base_url="http://test"
         ) as client:
             r1, r2 = await asyncio.gather(
-                client.post("/api/sync", params={"riot_id": "Lucho#EUW"}),
-                client.post("/api/sync", params={"riot_id": "Lucho#EUW"}),
+                client.post("/api/sync", params={"riot_id": "Lucho#EUW"}, headers=auth_headers),
+                client.post("/api/sync", params={"riot_id": "Lucho#EUW"}, headers=auth_headers),
             )
 
             codes = sorted([r1.status_code, r2.status_code])
             assert codes == [202, 409], f"esperaba un 202 y un 409, llegó {codes}"
 
             # Mientras el run siga en vuelo, el guard debe seguir bloqueando.
-            third = await client.post("/api/sync", params={"riot_id": "Lucho#EUW"})
+            third = await client.post("/api/sync", params={"riot_id": "Lucho#EUW"}, headers=auth_headers)
             assert third.status_code == 409
             assert "en curso" in third.json()["detail"]
 
@@ -70,7 +70,7 @@ def test_dos_posts_simultaneos_solo_uno_pasa(monkeypatch):
         sync_router._state.error = None
 
 
-def test_sync_tras_fallo_en_start_run_vuelve_a_idle(monkeypatch):
+def test_sync_tras_fallo_en_start_run_vuelve_a_idle(monkeypatch, auth_headers):
     """Si `start_run` revienta (DB caída), el estado vuelve a "idle": no hay 409 pegado.
 
     Regresión del comentario original de 006: un fallo de persistencia NO debe dejar el
@@ -93,7 +93,7 @@ def test_sync_tras_fallo_en_start_run_vuelve_a_idle(monkeypatch):
             transport=httpx.ASGITransport(app=app), base_url="http://test"
         ) as client:
             with pytest.raises(RuntimeError, match="DB caída"):
-                await client.post("/api/sync", params={"riot_id": "Lucho#EUW"})
+                await client.post("/api/sync", params={"riot_id": "Lucho#EUW"}, headers=auth_headers)
         assert sync_router._state.status == "idle"
 
     try:

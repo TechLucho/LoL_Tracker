@@ -35,8 +35,9 @@ jobs:
       DB_USER: testuser
       DB_PASSWORD: testpass
       DB_PORT: 5432
-      DB_SSLMODE: disable
-      DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
+DB_SSLMODE: disable
+        DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
+        TEST_DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
 
     steps:
       - uses: actions/checkout@v4
@@ -55,7 +56,7 @@ jobs:
         run: python -m backend.scripts.migrate
 
       - name: Run tests
-        run: python -m pytest backend/tests -q --ignore=backend/tests/integration
+        run: python -m pytest backend/tests -q
 
   frontend:
     name: Frontend (lint + test + build)

@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-import secrets
 from typing import Annotated
+from uuid import UUID
 
-from fastapi import Depends, Header, HTTPException, status
+import jwt
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from backend.app.config import Settings, get_settings
 from backend.app.services.riot import RiotService
@@ -20,43 +22,62 @@ def get_riot_service(settings: SettingsDep) -> RiotService:
 RiotServiceDep = Annotated[RiotService, Depends(get_riot_service)]
 
 
-async def require_token(
+_bearer_scheme = HTTPBearer(auto_error=False)
+
+
+def get_current_user(
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)],
     settings: SettingsDep,
-    x_api_token: Annotated[str | None, Header()] = None,
-) -> None:
-    """Auth mínima para app mono-usuario.
+) -> UUID:
+    """Valida el JWT de sesión de Supabase y devuelve el `sub` (user_id de auth.users) como UUID.
 
-    Si `APP_API_TOKEN` está vacío (uso local), no se exige nada. En cuanto se define —por ejemplo
-    al desplegar en una VPS— pasa a ser obligatorio. La clave de Riot y las credenciales de DB
-    nunca salen del backend en ninguno de los dos casos.
+    El frontend recibe el token de la sesión de Supabase y lo envía como `Authorization:
+    Bearer <token>`. Verificación estricta:
+      * firma HS256 contra `SUPABASE_JWT_SECRET` (rota el secreto en Supabase = tokens muertos);
+      * claim `exp` (PyJWT lo valida automáticamente si está presente, y Supabase lo incluye);
+      * `sub` presente y convertible a UUID — es el user_id que ya hace de clave de todas las
+        tablas transaccionales (migración 013 y RLS).
 
-    La comparación usa `secrets.compare_digest` para prevenir ataques de timing: un atacante
-    que mida el tiempo de respuesta no puede inferir cuántos bytes coinciden.
+    Cualquier fallo en firma, formato o expiración → 401, sin distinción de motivos al cliente.
     """
-    if not settings.app_api_token:
-        return
-    if x_api_token is None or not secrets.compare_digest(x_api_token, settings.app_api_token):
+    if credentials is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token inválido o ausente (header X-API-Token).",
+            detail="Token de autenticación ausente (header Authorization: Bearer <token>).",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
+    try:
+        claims = jwt.decode(
+            credentials.credentials,
+            settings.supabase_jwt_secret,
+            algorithms=["HS256"],
+            # Verificación ceñida al contrato interno: firma HS256 + `exp` + `sub`. Sin
+            # exigir `aud` (PyJWT lo validaría por defecto y rechazaría tokens sin ese claim).
+            options={"verify_aud": False},
+        )
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expirado.",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from None
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido.",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from None
 
-AuthDep = Depends(require_token)
+    raw_sub = claims.get("sub")
+    try:
+        return UUID(str(raw_sub))
+    except (TypeError, ValueError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="El token no incluye un `sub` (user_id) válido.",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from None
 
 
-# ─────────────────────────────── Identidad del usuario (v2.0) ───────────────────────────────
-
-# TODO(v2.0): cuando exista autenticación de Supabase, `get_current_user_id` extraerá el
-# `sub` del JWT y validará `exp`. Mientras tanto TODA la app opera contra este UUID fijo:
-# los datos migrados viven bajo él y las queries de repositorio ya reciben `user_id` como
-# primer parámetro — el cambio de identidad no tocará ni una línea de SQL.
-TEMPORAL_USER_ID = "00000000-0000-0000-0000-000000000001"
-
-
-def get_current_user_id() -> str:
-    """Resuelve el user_id del request. HOY: identidad fija mono-usuario."""
-    return TEMPORAL_USER_ID
-
-
-CurrentUserId = Annotated[str, Depends(get_current_user_id)]
+CurrentUserId = Annotated[UUID, Depends(get_current_user)]

@@ -81,13 +81,13 @@ def test_summary_devuelve_numeros_no_strings(client):
     assert "kda" not in props, "No debe haber un campo KDA pre-formateado"
 
 
-def test_matchups_exige_algun_filtro(client):
-    r = client.get("/api/scout/matchups")
+def test_matchups_exige_algun_filtro(client, auth_headers):
+    r = client.get("/api/scout/matchups", headers=auth_headers)
     assert r.status_code == 422
 
 
-def test_patch_sin_campos_es_rechazado(client):
-    r = client.patch("/api/matches/EUW1_TEST/", json={})
+def test_patch_sin_campos_es_rechazado(client, auth_headers):
+    r = client.patch("/api/matches/EUW1_TEST/", json={}, headers=auth_headers)
     assert r.status_code in (404, 422, 307)
 
 
@@ -137,10 +137,10 @@ def test_cada_respuesta_lleva_request_id_unico(client):
     assert rid1 != rid2, "cada petición debe tener su propio id"
 
 
-def test_metrics_expone_contrato_minimo(client):
+def test_metrics_expone_contrato_minimo(client, auth_headers):
     """p50/p95 por endpoint en memoria: el 'nivel mínimo' que pedía la auditoría."""
     client.get("/health")
-    r = client.get("/api/metrics")
+    r = client.get("/api/metrics", headers=auth_headers)
     assert r.status_code == 200
     body = r.json()
     assert {"uptime_seconds", "endpoints"} <= body.keys()

@@ -61,7 +61,10 @@ class Settings(BaseSettings):
     # en UTC; esta es sólo la zona de visualización. ASUNCIÓN: España (región EUW1 + UI española).
     display_timezone: str = "Europe/Madrid"
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
-    app_api_token: str = ""  # si está vacío, la API queda abierta (uso local)
+    # Secreto JWT de Supabase (sólo HS256). El frontend enviará el token de sesión de Supabase
+    # como `Authorization: Bearer <token>`; aquí se verifica firma y expiración. El default es
+    # SOLO para tests/CI locales: producción debe inyectarlo desde las settings de Supabase.
+    supabase_jwt_secret: str = "super-secret-jwt-token-for-testing-only"
     pool_min_size: int = 1
     pool_max_size: int = 5
     sentry_dsn: str = ""  # si está vacío, Sentry no se inicializa

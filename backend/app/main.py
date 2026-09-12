@@ -24,7 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app import db
 from backend.app.config import get_settings
-from backend.app.deps import require_token
+from backend.app.deps import get_current_user
 from backend.app.observability import (
     observability_middleware,
     setup_logging,
@@ -170,7 +170,7 @@ async def http_observability(request: Request, call_next) -> Response:
 # /health queda sin auth para poder diagnosticar credenciales sin credenciales.
 app.include_router(health.router)
 
-_protected = [Depends(require_token)]
+_protected = [Depends(get_current_user)]
 # Alias autenticado /api/health: mismo handler que /health, montado bajo el prefijo que usa el
 # cliente axios del frontend (baseURL termina en /api). Protegido como el resto de /api/*.
 app.include_router(health.router, prefix="/api", dependencies=_protected)
