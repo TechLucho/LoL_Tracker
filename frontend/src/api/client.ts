@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { supabase } from '../lib/supabase'
 import type { MatchReviewUpdate } from '../data/types'
 import type {
   BackendMatch,
@@ -53,13 +54,18 @@ export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
 })
 
-// Auth: si el backend tiene APP_API_TOKEN, cada petición lleva X-API-Token. Precedencia:
-// variable de entorno del build > localStorage (clave lol_tracker.api_token), que permite
-// rotar el token sin recompilar. Se lee en cada petición a propósito, no al arrancar.
-api.interceptors.request.use((config) => {
-  const token = import.meta.env.VITE_API_TOKEN ?? localStorage.getItem('lol_tracker.api_token')
-  if (token) {
-    config.headers.set('X-API-Token', token)
+// Auth: cada petición lleva el token de sesión de Supabase. Se obtiene la sesión en cada
+// llamada a propósito (no al arrancar): así el interceptor se entera al instante de logins y
+// logout sin reiniciar la SPA.
+api.interceptors.request.use(async (config) => {
+  try {
+    const { data } = await supabase.auth.getSession()
+    if (data.session?.access_token) {
+      config.headers.set('Authorization', `Bearer ${data.session.access_token}`)
+    }
+  } catch {
+    // Sin Supabase configurado la sesión es nula: la petición sale sin token y el backend
+    // responde 401 — nunca rompe el interceptor.
   }
   return config
 })
