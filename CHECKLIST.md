@@ -6,6 +6,23 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ---
 
+> **Cierre v2.0 (2026-09-12):** cierre de la migración SaaS multi-tenant tras la auditoría
+> técnica completa. Auth delegado 100% a **Supabase Auth**: registro/login en la SPA, tokens de
+> sesión JWT verificados en el backend por algoritmo dinámico — HS256 con `SUPABASE_JWT_SECRET`
+> o ES256/RS256 contra la JWKS pública (`PyJWKClient` + `cryptography`, caché por URL y fetch
+> fuera del event loop vía `asyncio.to_thread`). Datos aislados por usuario: migración 013
+> (`user_id` en todas las tablas transaccionales + RLS `auth.uid() = user_id`) y toda query de
+> repos condicionada por el `user_id` del JWT. Frontend con `AuthContext` + interceptor Bearer,
+> página de Login y guard de rutas. Liquidadas las deudas de la auditoría: rate limiter sin
+> `X-API-Token`, contrato OpenAPI regenerado (HTTPBearer), auth v1 archivada en
+> `legacy/auth_v1/`, React Query sin reintentos en 4xx (429-safe), fixes SQL de stats
+> (parámetros de timezone y `ORDER BY` de agregados). QA en verde: **85 pytest + 40 vitest +
+> oxlint + build**. Queda fuera de cierre (roadmap v2.1): el sync aún usa el `RIOT_ID` global del
+> `.env` y `_SyncState` es compartido — vincular el Riot ID por usuario y separar el estado del
+> sync son las dos primeras piezas pendientes.
+
+---
+
 > **Cierre v1.6 (2026-09-12):** Analítica de sesión, validación de OKRs, Escout de rivales en caché, Sync reanudable y Baselines comparativas de Élite.
 
 ---
@@ -238,9 +255,12 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 - [ ] **Despliegue formalizado**: no hay Dockerfile/compose/fly.toml/render.yaml — hoy vive solo en la maquina local. Contenerizar backend+frontend antes de usarlo fuera de casa
 
-### Largo plazo (v2.0)
+### Roadmap v2.1 (hoja de ruta de la auditoría v2.0 / onboarding)
 
-- [ ] Multi-usuario: auth con Supabase, dashboard compartido y políticas RLS
+- [ ] **P0 — Vincular Riot ID por usuario**: `user_settings` gana `riot_id`/`riot_region`; `/api/sync`, la captura de LP y `RiotService` leen del usuario (`CurrentUserId`) en vez del `RIOT_ID` del `.env`. Es la pieza que habilita el onboarding real (hoy el sync sigue siendo global).
+- [ ] **P0 — Sync multi-usuario**: `_SyncState` global → estado por `user_id`; el `409` de "sync en curso" solo bloquea al mismo usuario, no a los demás.
+- [ ] **P1 — Sesión expirada end-to-end**: interceptor axios ante `401` → `supabase.auth.signOut()` + toast "Sesión expirada" + redirect a `/login` conservando `state.from` (el `retry: false` en 4xx ya está aplicado).
+- [ ] **P1 — Panel de configuración completo**: editar Riot ID/región desde la UI, estado de conexión (`/health`) y verificación de email en el flujo de registro.
 
 ### Ideas Congeladas (Prioridad Nula)
 
