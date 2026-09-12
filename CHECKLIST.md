@@ -57,7 +57,7 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 - [x] Timestamps en UTC explicito, independientes de la maquina
 - [x] Rate limiter propio: todas las llamadas reintentan leyendo `Retry-After` con `asyncio.sleep()` exacto (tope 120s) + backoff exponencial de respaldo
 - [x] Data Dragon patch resuelto dinamicamente con cache 1h
-- [x] La `RIOT_API_KEY` nunca sale del backend; auth opcional por header `X-API-Token`
+- [x] La `RIOT_API_KEY` y las credenciales de DB nunca salen del backend; auth por sesión Supabase (JWT HS256/ES256 vía JWKS) en `Authorization: Bearer`
 
 #### Endpoints y analitica
 - [x] `GET /api/stats/champions` — rendimiento agregado por campeon con DPM REAL
@@ -142,7 +142,7 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ### Verificado sano en auditorias
 
-- `.env` NO versionado; `backups/` gitignored; CORS con origenes explicitos; todo salvo `/health` detras de `X-API-Token`
+- `.env` NO versionado; `backups/` gitignored; CORS con origenes explicitos; todo salvo `/health` detras de `get_current_user` (JWT Supabase, HS256/ES256 vía JWKS)
 - Rate limiting y reintentos hacia Riot solidos; fallos por partida reportados en `SyncResult`, nunca tragados
 - Arranque degradado con pool caido + `/health` diagnostico honesto
 - Error boundary + Suspense por ruta; strict mode TS limpio
@@ -236,7 +236,7 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ### Despliegue
 
-- [ ] **Despliegue formalizado**: no hay Dockerfile/compose/fly.toml/render.yaml — hoy vive solo en la maquina local. Contenerizar backend+frontend y definir destino (VPS con `APP_API_TOKEN`, ya soportado) antes de usarlo fuera de casa
+- [ ] **Despliegue formalizado**: no hay Dockerfile/compose/fly.toml/render.yaml — hoy vive solo en la maquina local. Contenerizar backend+frontend antes de usarlo fuera de casa
 
 ### Largo plazo (v2.0)
 

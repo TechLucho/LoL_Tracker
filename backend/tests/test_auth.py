@@ -94,3 +94,54 @@ def test_token_valido_da_200(client, auth_headers):
     r = client.get("/api/health", headers=auth_headers)
     assert r.status_code == 200
     assert r.json()["status"] in ("ok", "degraded")
+
+
+def test_token_es256_via_jwks_da_200(client, monkeypatch):
+    """Supabase rota a ES256: la clave llega de la JWKS, no del secreto compartido."""
+    from types import SimpleNamespace
+
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    from backend.app import deps as deps_mod
+    from backend.app.config import get_settings
+
+    private_key = ec.generate_private_key(ec.SECP256R1())
+    pub_pem = private_key.public_key().public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    token = pyjwt.encode(_valid_claims(), private_key, algorithm="ES256", headers={"kid": "test"})
+
+    uri = f"{get_settings().supabase_url}/auth/v1/.well-known/jwks.json"
+    fake_jwks = SimpleNamespace(get_signing_key_from_jwt=lambda _: SimpleNamespace(key=pub_pem))
+    monkeypatch.setitem(deps_mod._jwks_clients, uri, fake_jwks)
+
+    r = client.get("/api/health", headers=_bearer(token))
+    assert r.status_code == 200
+    assert r.json()["status"] in ("ok", "degraded")
+
+
+def test_token_es256_clave_equivocada_da_401(client, monkeypatch):
+    """La JWKS devuelve otra clave pública: la firma no verifica y el token cae en 401."""
+    from types import SimpleNamespace
+
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
+
+    from backend.app import deps as deps_mod
+    from backend.app.config import get_settings
+
+    private_key = ec.generate_private_key(ec.SECP256R1())
+    other_pub = ec.generate_private_key(ec.SECP256R1()).public_key().public_bytes(
+        serialization.Encoding.PEM,
+        serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+    token = pyjwt.encode(_valid_claims(), private_key, algorithm="ES256", headers={"kid": "test"})
+
+    uri = f"{get_settings().supabase_url}/auth/v1/.well-known/jwks.json"
+    fake_jwks = SimpleNamespace(get_signing_key_from_jwt=lambda _: SimpleNamespace(key=other_pub))
+    monkeypatch.setitem(deps_mod._jwks_clients, uri, fake_jwks)
+
+    r = client.get("/api/health", headers=_bearer(token))
+    assert r.status_code == 401

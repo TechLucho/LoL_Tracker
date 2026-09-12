@@ -34,6 +34,24 @@
         ],
         "summary": "Health",
         "operationId": "health_api_health_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -44,13 +62,18 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/matches": {
@@ -60,11 +83,6 @@
         ],
         "summary": "List Matches",
         "operationId": "list_matches_api_matches_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "limit",
@@ -106,6 +124,22 @@
               "title": "Queue"
             },
             "description": "Filtro: 'ranked' o 'normal'"
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
           }
         ],
         "responses": {
@@ -143,11 +177,6 @@
         ],
         "summary": "Get Match",
         "operationId": "get_match_api_matches__game_id__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "game_id",
@@ -156,6 +185,22 @@
             "schema": {
               "type": "string",
               "title": "Game Id"
+            }
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
             }
           }
         ],
@@ -189,11 +234,6 @@
         "summary": "Update Match",
         "description": "Actualiza s\u00f3lo los campos presentes en el body.\n\nEnviar `\"notes\": null` borra las notas; omitir `notes` las deja intactas. El monolito no pod\u00eda\ndistinguir estos dos casos.",
         "operationId": "update_match_api_matches__game_id__patch",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "game_id",
@@ -202,6 +242,22 @@
             "schema": {
               "type": "string",
               "title": "Game Id"
+            }
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
             }
           }
         ],
@@ -247,11 +303,6 @@
         "summary": "Scout Opponent",
         "description": "Escout del rival de l\u00ednea de una partida: sus 3 campeones m\u00e1s jugados (Champion Mastery).\n\nLa llamada a Riot se hace UNA vez por rival y se cachea en `scout_cache` (TTL 24h) para\nno quemar la cuota escouteando partidas repetidas del mismo jugador. `cached` distingue\ncach\u00e9 caliente de llamada fresca. Cuando no hay datos no se devuelve error: la respuesta\ntrae una `note` explicando por qu\u00e9 (rival sin maestr\u00edas, rol sin asignar...).",
         "operationId": "scout_opponent_api_matches__game_id__scout_opponent_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "game_id",
@@ -260,6 +311,22 @@
             "schema": {
               "type": "string",
               "title": "Game Id"
+            }
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
             }
           }
         ],
@@ -295,6 +362,24 @@
         "summary": "Summary",
         "description": "Promedios como n\u00fameros. El monolito devolv\u00eda la KDA como el string \"5.0 / 2.0 / 10.0\",\nque la UI re-parseaba con `.split('/')` \u2014 origen del bug de `app.py:128`.",
         "operationId": "summary_api_stats_summary_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -305,13 +390,18 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/stats/champions": {
@@ -322,27 +412,50 @@
         "summary": "Champions",
         "description": "Incluye `winrate` y `kda_ratio` calculados en SQL: las dos columnas que la Tab 3 de\nStreamlit ped\u00eda y que la query nunca devolv\u00eda.",
         "operationId": "champions_api_stats_champions_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/ChampionStats"
                   },
-                  "type": "array",
                   "title": "Response Champions Api Stats Champions Get"
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/stats/champion-summary": {
@@ -353,27 +466,50 @@
         "summary": "Champion Role Summary",
         "description": "D\u00f3nde rindes mejor: winrate/KDA por (campe\u00f3n, rol, cola) con m\u00ednimo de 3 partidas.\n\nEs el desglose que los stats globales no ven: una ca\u00edda en el winrate general puede\nvenir solo de jugar en una cola de normales o de un rol fuera del pool. `HAVING` en SQL\ndescarta las combinaciones con menos de 3 partidas, donde el winrate es ruido.",
         "operationId": "champion_role_summary_api_stats_champion_summary_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/ChampionRoleSummary"
                   },
-                  "type": "array",
                   "title": "Response Champion Role Summary Api Stats Champion Summary Get"
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/stats/session-fatigue": {
@@ -384,6 +520,24 @@
         "summary": "Session Fatigue",
         "description": "Estado de sesi\u00f3n: compara las \u00faltimas 5 partidas con las 5 anteriores.\n\nDetecta autopilot (ca\u00edda severa de winrate/KDA entre bloques) para el banner \"Estado de\nSesi\u00f3n\" del Dashboard. `sample_ok` es False cuando no hay 10 partidas v\u00e1lidas a\u00fan; el\nfrontend muestra el `message` informativo igualmente.",
         "operationId": "session_fatigue_api_stats_session_fatigue_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -394,13 +548,18 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/stats/heatmap": {
@@ -410,6 +569,24 @@
         ],
         "summary": "Heatmap",
         "operationId": "heatmap_api_stats_heatmap_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -420,13 +597,18 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/stats/patch-alert": {
@@ -437,6 +619,24 @@
         "summary": "Patch Alert Endpoint",
         "description": "Alerta de parche: ca\u00edda de winrate del Champion Pool tras una actualizaci\u00f3n.\n\nResuelve el parche actual desde Data Dragon (cach\u00e9 1h), lo normaliza a \"X.Y\" y compara\nel winrate de los 3 campeones m\u00e1s jugados en ese parche contra su historial previo.\n`has_current_games` distingue el caso de \"parche reci\u00e9n salido sin partidas a\u00fan\".",
         "operationId": "patch_alert_endpoint_api_stats_patch_alert_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -447,13 +647,18 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/stats/lp-trend": {
@@ -464,11 +669,6 @@
         "summary": "Lp Trend",
         "description": "LP acumulado en orden cronol\u00f3gico. `has_lp` distingue \"0 LP\" de \"a\u00fan sin registrar\".\n\n`queue` acota la cola (420 = Solo/Duo): las normales sin LP diluyen la curva si cuentan como 0.",
         "operationId": "lp_trend_api_stats_lp_trend_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "limit",
@@ -494,6 +694,22 @@
                 }
               ],
               "title": "Queue"
+            }
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
             }
           }
         ],
@@ -534,11 +750,6 @@
         "summary": "Kpi Trends",
         "description": "Serie temporal de KPIs de mejora (CS/min, DPM, KDA) de las \u00faltimas partidas v\u00e1lidas.\n\nIgnora remakes (< 5 min); los DPM de filas legacy sin participants llegan como 0.",
         "operationId": "kpi_trends_api_stats_trends_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "limit",
@@ -548,6 +759,22 @@
               "type": "integer",
               "default": 50,
               "title": "Limit"
+            }
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
             }
           }
         ],
@@ -587,11 +814,6 @@
         "summary": "Laning",
         "description": "Tri\u00e1ngulo del Laning: promedios GD@15 / XPD@15 / CSD@15 (Timeline de Riot).\n\n`games_analyzed` dice cu\u00e1ntas de las \u00faltimas 50 partidas v\u00e1lidas ten\u00edan datos de\ntimeline (0 reci\u00e9n instalado, antes del primer sync con la nueva extracci\u00f3n); los\npromedios son None sin ninguna partida.",
         "operationId": "laning_api_stats_laning_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "limit",
@@ -601,6 +823,22 @@
               "type": "integer",
               "default": 50,
               "title": "Limit"
+            }
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
             }
           }
         ],
@@ -636,6 +874,24 @@
         "summary": "Weekly Report",
         "description": "Resumen de la \u00faltima semana (7 d\u00edas, fecha UTC): partidas, winrate, KDA, top campe\u00f3n\ny mejor partida por rating. `most_played`/`best_match` son null si no hay partidas en la ventana.",
         "operationId": "weekly_report_api_stats_weekly_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -646,13 +902,18 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/stats/meta-verdict": {
@@ -663,6 +924,24 @@
         "summary": "Meta Verdict",
         "description": "Veredicto del meta: winrate por emparejamiento (t\u00fa vs enemigo) en el parche actual\ncontra el hist\u00f3rico de todos los parches anteriores.\n\nEs la extensi\u00f3n de la Alerta de Parche a la matriz de matchups: cruza `champion` vs\n`enemy_champion` y separa las partidas de la `game_version` actual del historial previo.\n`meta_shift` marca los emparejamientos que eran favorables (winrate previo >= 55% con\nmuestra previa) y ahora caen por debajo del 50% \u2014 la alerta de \"el meta se te ha dado la\nvuelta\" que el frontend resalta en la vista Matchups.",
         "operationId": "meta_verdict_api_stats_meta_verdict_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -673,13 +952,18 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/stats/matchups/{user_champion}/{enemy_champion}": {
@@ -690,11 +974,6 @@
         "summary": "Matchup Stats",
         "description": "Estad\u00edsticas hist\u00f3ricas del cruce de dos campeones.\n\nFiltra por campe\u00f3n del usuario contra el rival de l\u00ednea. Con cero partidas devuelve\ntodo a 0 (no 404), porque la vista Matchups sigue funcionando con notas aunque no\nhaya historial del cruce.",
         "operationId": "matchup_stats_api_stats_matchups__user_champion___enemy_champion__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "user_champion",
@@ -712,6 +991,22 @@
             "schema": {
               "type": "string",
               "title": "Enemy Champion"
+            }
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
             }
           }
         ],
@@ -747,27 +1042,50 @@
         "summary": "Baselines",
         "description": "L\u00edneas base por rol: lo 'normal' de CS/min, DPM, KP% y visi\u00f3n para comparar en Full Stats.\n\nLas mismas cifras que usa el rating (`_ROLE_PROFILES` en riot.py); incluye `\"default\"` para\nroles desconocidos (ARAM, remakes).",
         "operationId": "baselines_api_stats_baselines_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "object",
                   "additionalProperties": {
                     "$ref": "#/components/schemas/BaselineStats"
                   },
-                  "type": "object",
                   "title": "Response Baselines Api Stats Baselines Get"
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/matchup-notes/{user_champion}/{enemy_champion}": {
@@ -778,11 +1096,6 @@
         "summary": "Get Notes",
         "description": "Notas del cruce. Si nunca se guard\u00f3 nada, devuelve notas vac\u00edas (no 404).",
         "operationId": "get_notes_api_matchup_notes__user_champion___enemy_champion__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "user_champion",
@@ -800,6 +1113,22 @@
             "schema": {
               "type": "string",
               "title": "Enemy Champion"
+            }
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
             }
           }
         ],
@@ -833,11 +1162,6 @@
         "summary": "Put Notes",
         "description": "Guarda/reemplaza las notas del cruce (PUT semantics).",
         "operationId": "put_notes_api_matchup_notes__user_champion___enemy_champion__put",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "user_champion",
@@ -855,6 +1179,22 @@
             "schema": {
               "type": "string",
               "title": "Enemy Champion"
+            }
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
             }
           }
         ],
@@ -899,11 +1239,6 @@
         ],
         "summary": "Nemesis",
         "operationId": "nemesis_api_scout_nemesis_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "min_games",
@@ -926,6 +1261,22 @@
               "minimum": 1,
               "default": 5,
               "title": "Limit"
+            }
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
             }
           }
         ],
@@ -965,11 +1316,6 @@
         "summary": "Matchups",
         "description": "Busca por campe\u00f3n propio, enemigo o ambos.\n\nAmbos filtros usan `ILIKE`: en Streamlit la b\u00fasqueda con los dos campos era case-sensitive y\nla de s\u00f3lo-enemigo no, as\u00ed que \"jax\" funcionaba en un caso y no en el otro. Adem\u00e1s, buscar\ns\u00f3lo por campe\u00f3n propio aqu\u00ed s\u00ed devuelve resultados (antes el input no hac\u00eda nada).",
         "operationId": "matchups_api_scout_matchups_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "champion",
@@ -1006,6 +1352,22 @@
               "title": "Enemy"
             },
             "description": "Campe\u00f3n enemigo (subcadena, case-insensitive)"
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
           }
         ],
         "responses": {
@@ -1044,11 +1406,6 @@
         "summary": "Sync",
         "description": "Encola la sincronizaci\u00f3n y responde al instante (202).\n\nLa validaci\u00f3n (Riot ID, colas) sigue siendo s\u00edncrona: los errores de petici\u00f3n se reportan\naqu\u00ed, no en el polling. Los fallos de Riot/DB viajan despu\u00e9s por `/status`.",
         "operationId": "sync_api_sync_post",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
         "parameters": [
           {
             "name": "riot_id",
@@ -1091,6 +1448,22 @@
               "title": "Queues"
             },
             "description": "IDs de cola separados por coma (420=Solo/Duo, 400=Normal Draft). Default: ambos."
+          },
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
           }
         ],
         "responses": {
@@ -1125,6 +1498,24 @@
         "summary": "Sync Status",
         "description": "Estado del sync para el polling del frontend (idle/processing/success/partial/error).",
         "operationId": "sync_status_api_sync_status_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1135,13 +1526,18 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/config": {
@@ -1152,6 +1548,24 @@
         "summary": "Get Config",
         "description": "Config completa: can\u00f3nicos del sistema + configuraci\u00f3n persistida del usuario.\n\nEn Streamlit, `IMPACT_RATINGS` estaba hardcodeado en dos formularios distintos con riesgo\nde divergencia. Ahora vive en un solo sitio y se sirve desde la API.",
         "operationId": "get_config_api_config_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1162,13 +1576,18 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       },
       "put": {
         "tags": [
@@ -1177,15 +1596,33 @@
         "summary": "Update Config",
         "description": "Reemplaza champion pool y OKRs (PUT semantics).\n\nEl pool se limpia en el servidor: quita blancos y duplicados, respeta el m\u00e1ximo de 3\n(regla de La Constituci\u00f3n).",
         "operationId": "update_config_api_config_put",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UserSettingsUpdate"
               }
             }
-          },
-          "required": true
+          }
         },
         "responses": {
           "200": {
@@ -1208,12 +1645,7 @@
               }
             }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/datadragon/version": {
@@ -1224,27 +1656,50 @@
         "summary": "Get Datadragon Version",
         "description": "Parche actual de Data Dragon. El frontend lo usa para URLs de iconos.\n\nResuelve din\u00e1micamente el hardcodeo de `current_patch = \"14.24.1\"` (app.py:530).\nCach\u00e9 de 1h en el backend.",
         "operationId": "get_datadragon_version_api_datadragon_version_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "object",
                   "additionalProperties": {
                     "type": "string"
                   },
-                  "type": "object",
                   "title": "Response Get Datadragon Version Api Datadragon Version Get"
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/constitution/status": {
@@ -1254,25 +1709,48 @@
         ],
         "summary": "Constitution Status",
         "operationId": "constitution_status_api_constitution_status_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
                   "type": "object",
+                  "additionalProperties": true,
                   "title": "Response Constitution Status Api Constitution Status Get"
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/metadata/champions": {
@@ -1283,6 +1761,24 @@
         "summary": "Champions",
         "description": "Campeones del parche vigente. Clave = id de Data Dragon ('LeeSin'); `name` es el nombre\nvisible que la DB guarda en matches.champion/participants.champion_name.",
         "operationId": "champions_api_metadata_champions_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1293,13 +1789,18 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/metadata/items": {
@@ -1310,6 +1811,24 @@
         "summary": "Items",
         "description": "Objetos del parche vigente. Clave = id num\u00e9rico de Riot ('3078').",
         "operationId": "items_api_metadata_items_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1320,13 +1839,18 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/metadata/spells": {
@@ -1337,6 +1861,24 @@
         "summary": "Spells",
         "description": "Hechizos de invocador. Clave = id num\u00e9rico de partida ('4' = Flash).",
         "operationId": "spells_api_metadata_spells_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1347,13 +1889,18 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     },
     "/api/metrics": {
@@ -1363,6 +1910,24 @@
         ],
         "summary": "Metrics",
         "operationId": "metrics_api_metrics_get",
+        "parameters": [
+          {
+            "name": "x-api-token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Token"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1373,13 +1938,18 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
           }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
+        }
       }
     }
   },
@@ -3556,12 +4126,6 @@
         ],
         "title": "WeeklyTopChampion",
         "description": "Campe\u00f3n m\u00e1s jugado de la semana (nombre visible; el avatar lo resuelve el frontend v\u00eda Data Dragon)."
-      }
-    },
-    "securitySchemes": {
-      "HTTPBearer": {
-        "type": "http",
-        "scheme": "bearer"
       }
     }
   }

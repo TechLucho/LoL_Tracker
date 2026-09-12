@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Annotated
 from uuid import UUID
 
@@ -24,8 +25,24 @@ RiotServiceDep = Annotated[RiotService, Depends(get_riot_service)]
 
 _bearer_scheme = HTTPBearer(auto_error=False)
 
+# Caché del cliente JWKS por URL de Supabase (migración 013 put public JWKS on every ES256
+# token). PyJWKClient cachea internamente las claves recibidas; reutilizar la MISMA instancia
+# entre peticiones evita re-descargar `/auth/v1/.well-known/jwks.json` en cada validación.
+# `timeout` acota la descarga bloqueante: sin él urllib esperaría indefinidamente.
+_JWKS_FETCH_TIMEOUT_S = 5
+_jwks_clients: dict[str, jwt.PyJWKClient] = {}
 
-def _resolve_signing_key(token: str, settings: Settings) -> str:
+
+def _get_jwks_client(supabase_url: str) -> jwt.PyJWKClient:
+    uri = f"{supabase_url}/auth/v1/.well-known/jwks.json"
+    client = _jwks_clients.get(uri)
+    if client is None:
+        client = jwt.PyJWKClient(uri, timeout=_JWKS_FETCH_TIMEOUT_S)
+        _jwks_clients[uri] = client
+    return client
+
+
+async def _resolve_signing_key(token: str, settings: Settings) -> str:
     """Devuelve la clave con la que verificar `token`, según el algoritmo anunciado por el header.
 
     Supabase firma sus tokens de sesión con HS256 (secreto compartido) o con ES256/RS256
@@ -37,11 +54,15 @@ def _resolve_signing_key(token: str, settings: Settings) -> str:
     alg = jwt.get_unverified_header(token).get("alg")
     if alg == "HS256":
         return settings.supabase_jwt_secret
-    jwks_client = jwt.PyJWKClient(f"{settings.supabase_url}/auth/v1/.well-known/jwks.json")
-    return jwks_client.get_signing_key_from_jwt(token).key
+    client = _get_jwks_client(settings.supabase_url)
+    # El primer fetch de la JWKS es una red SÍNCRONA (urllib dentro de PyJWKClient): lanzarla
+    # aquí bloquearía el event loop de uvicorn. Se descarga en un hilo del pool (to_thread);
+    # la verificación ECDSA posterior es CPU pura y ya corre en el bucle, que es donde debe ser.
+    signing_key = await asyncio.to_thread(client.get_signing_key_from_jwt, token)
+    return signing_key.key
 
 
-def get_current_user(
+async def get_current_user(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer_scheme)],
     settings: SettingsDep,
 ) -> UUID:
@@ -65,7 +86,7 @@ def get_current_user(
         )
 
     try:
-        key = _resolve_signing_key(credentials.credentials, settings)
+        key = await _resolve_signing_key(credentials.credentials, settings)
         claims = jwt.decode(
             credentials.credentials,
             key,
@@ -85,6 +106,14 @@ def get_current_user(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token inválido.",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from None
+    except jwt.PyJWKError:
+        # La JWKS no se pudo descargar o no hay clave para el kid: imposible verificar. Sigue
+        # siendo un 401 para el cliente (sin detalle que filtre) pero loggeado al detalle.
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No se pudo verificar la firma del token.",
             headers={"WWW-Authenticate": "Bearer"},
         ) from None
 

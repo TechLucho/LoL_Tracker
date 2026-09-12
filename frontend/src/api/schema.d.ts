@@ -1807,9 +1807,7 @@ export interface operations {
     health_api_health_get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -1824,15 +1822,6 @@ export interface operations {
                     "application/json": components["schemas"]["HealthStatus"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     list_matches_api_matches_get: {
@@ -1843,9 +1832,7 @@ export interface operations {
                 /** @description Filtro: 'ranked' o 'normal' */
                 queue?: string | null;
             };
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -1874,9 +1861,7 @@ export interface operations {
     get_match_api_matches__game_id__get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path: {
                 game_id: string;
             };
@@ -1907,9 +1892,7 @@ export interface operations {
     update_match_api_matches__game_id__patch: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path: {
                 game_id: string;
             };
@@ -1944,9 +1927,7 @@ export interface operations {
     scout_opponent_api_matches__game_id__scout_opponent_get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path: {
                 game_id: string;
             };
@@ -1977,9 +1958,7 @@ export interface operations {
     summary_api_stats_summary_get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -1994,23 +1973,12 @@ export interface operations {
                     "application/json": components["schemas"]["StatsSummary"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     champions_api_stats_champions_get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2025,23 +1993,12 @@ export interface operations {
                     "application/json": components["schemas"]["ChampionStats"][];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     champion_role_summary_api_stats_champion_summary_get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2056,23 +2013,12 @@ export interface operations {
                     "application/json": components["schemas"]["ChampionRoleSummary"][];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     session_fatigue_api_stats_session_fatigue_get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2087,23 +2033,12 @@ export interface operations {
                     "application/json": components["schemas"]["SessionFatigue"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     heatmap_api_stats_heatmap_get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2118,23 +2053,12 @@ export interface operations {
                     "application/json": components["schemas"]["HeatmapResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     patch_alert_endpoint_api_stats_patch_alert_get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2149,15 +2073,6 @@ export interface operations {
                     "application/json": components["schemas"]["PatchAlert"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     lp_trend_api_stats_lp_trend_get: {
@@ -2166,9 +2081,7 @@ export interface operations {
                 limit?: number;
                 queue?: number | null;
             };
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2201,9 +2114,7 @@ export interface operations {
             query?: {
                 limit?: number;
             };
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2234,9 +2145,7 @@ export interface operations {
             query?: {
                 limit?: number;
             };
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2265,9 +2174,7 @@ export interface operations {
     weekly_report_api_stats_weekly_get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2282,23 +2189,12 @@ export interface operations {
                     "application/json": components["schemas"]["WeeklyReport"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     meta_verdict_api_stats_meta_verdict_get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2313,23 +2209,12 @@ export interface operations {
                     "application/json": components["schemas"]["MetaVerdictResponse"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     matchup_stats_api_stats_matchups__user_champion___enemy_champion__get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path: {
                 user_champion: string;
                 enemy_champion: string;
@@ -2361,9 +2246,7 @@ export interface operations {
     baselines_api_stats_baselines_get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2380,23 +2263,12 @@ export interface operations {
                     };
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     get_notes_api_matchup_notes__user_champion___enemy_champion__get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path: {
                 user_champion: string;
                 enemy_champion: string;
@@ -2428,9 +2300,7 @@ export interface operations {
     put_notes_api_matchup_notes__user_champion___enemy_champion__put: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path: {
                 user_champion: string;
                 enemy_champion: string;
@@ -2469,9 +2339,7 @@ export interface operations {
                 min_games?: number;
                 limit?: number;
             };
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2505,9 +2373,7 @@ export interface operations {
                 /** @description Campeón enemigo (subcadena, case-insensitive) */
                 enemy?: string | null;
             };
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2542,9 +2408,7 @@ export interface operations {
                 /** @description IDs de cola separados por coma (420=Solo/Duo, 400=Normal Draft). Default: ambos. */
                 queues?: string;
             };
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2573,9 +2437,7 @@ export interface operations {
     sync_status_api_sync_status_get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2590,23 +2452,12 @@ export interface operations {
                     "application/json": components["schemas"]["SyncStatus"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     get_config_api_config_get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2621,23 +2472,12 @@ export interface operations {
                     "application/json": components["schemas"]["UserSettings"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     update_config_api_config_put: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2670,9 +2510,7 @@ export interface operations {
     get_datadragon_version_api_datadragon_version_get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2689,23 +2527,12 @@ export interface operations {
                     };
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     constitution_status_api_constitution_status_get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2722,23 +2549,12 @@ export interface operations {
                     };
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     champions_api_metadata_champions_get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2753,23 +2569,12 @@ export interface operations {
                     "application/json": components["schemas"]["ChampionsIndex"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     items_api_metadata_items_get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2784,23 +2589,12 @@ export interface operations {
                     "application/json": components["schemas"]["ItemsIndex"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     spells_api_metadata_spells_get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2815,23 +2609,12 @@ export interface operations {
                     "application/json": components["schemas"]["SpellsIndex"];
                 };
             };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
         };
     };
     metrics_api_metrics_get: {
         parameters: {
             query?: never;
-            header?: {
-                "x-api-token"?: string | null;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -2844,15 +2627,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MetricsSnapshot"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

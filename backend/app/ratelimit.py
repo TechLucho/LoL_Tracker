@@ -1,9 +1,12 @@
-"""Rate limiter en memoria para app mono-usuario.
+"""Rate limiter en memoria (multi-usuario, proceso único).
 
-Diccionario sliding-window: cada clave (token o IP) mantiene una lista de timestamps.
+Diccionario sliding-window: cada clave (IP de origen) mantiene una lista de timestamps.
 Si la ventana supera MAX_REQUESTS por WINDOW_SECONDS, se devuelve 429. La limpieza
-de entradas antiguas ocurre en cada check (amortizado): en mono-usuario el diccionario
-nunca crece, así que no hay riesgo de memory leak.
+de entradas antiguas ocurre en cada check (amortizado): con pocos usuarios el diccionario
+no crece, así que no hay riesgo de memory leak.
+
+Clave por IP (vía X-Forwarded-For o peer): el auth real ya lo hace el JWT en cada endpoint;
+este middleware solo es un guard grueso anti-abuso dentro del proceso.
 """
 
 from __future__ import annotations
@@ -20,7 +23,7 @@ MAX_REQUESTS = 100
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Middleware HTTP: cuenta peticiones por clave y rechaza con 429 si se excede."""
+    """Middleware HTTP: cuenta peticiones por IP y rechaza con 429 si se excede."""
 
     def __init__(self, app: ASGIApp, max_requests: int = MAX_REQUESTS, window: int = WINDOW_SECONDS) -> None:
         super().__init__(app)
@@ -29,10 +32,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._hits: dict[str, list[float]] = defaultdict(list)
 
     def _client_key(self, request: Request) -> str:
-        """Clave de rate-limit: el token del header si existe, si no la IP."""
-        token = request.headers.get("x-api-token")
-        if token:
-            return f"token:{token}"
+        """Clave de rate-limit: la IP del cliente (proxy-aware)."""
         forwarded = request.headers.get("x-forwarded-for")
         if forwarded:
             return f"ip:{forwarded.split(',')[0].strip()}"
