@@ -15,7 +15,7 @@ from typing import Literal
 import httpx
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 
-from backend.app.deps import RiotServiceDep, SettingsDep
+from backend.app.deps import CurrentUserId, RiotServiceDep, SettingsDep
 from backend.app.repositories import lp as lp_repo
 from backend.app.repositories import matches as repo
 from backend.app.repositories import sync_runs
@@ -49,7 +49,7 @@ class _SyncState:
 _state = _SyncState()
 
 
-async def _capture_ranked_lp(riot: RiotService, riot_id: str) -> LpCapture | None:
+async def _capture_ranked_lp(user_id: str, riot: RiotService, riot_id: str) -> LpCapture | None:
     """Auto-tracker de LP: snapshot League-V4 + delta sobre la última partida sin review.
 
     Estrategia (migración 005): Riot ya no expone LP por partida, así que comparamos el
@@ -67,14 +67,17 @@ async def _capture_ranked_lp(riot: RiotService, riot_id: str) -> LpCapture | Non
             return None
 
         delta: int | None = None
-        prev = await lp_repo.latest_snapshot(riot_id)
+        prev = await lp_repo.latest_snapshot(user_id, riot_id)
         if prev is not None and prev["lp"] != entry["lp"]:
-            game_id = await repo.newest_unreviewed_ranked(after=prev["captured_at"])
-            if game_id is not None and await repo.update_details(game_id, {"lp_change": entry["lp"] - prev["lp"]}):
+            game_id = await repo.newest_unreviewed_ranked(user_id, after=prev["captured_at"])
+            if game_id is not None and await repo.update_details(
+                user_id, game_id, {"lp_change": entry["lp"] - prev["lp"]}
+            ):
                 delta = entry["lp"] - prev["lp"]
                 log.info("LP %s%d asignado a %s", "+" if delta > 0 else "", delta, game_id)
 
         await lp_repo.insert_snapshot(
+            user_id,
             riot_id,
             lp=entry["lp"], tier=entry["tier"], division=entry["division"],
             wins=entry["wins"], losses=entry["losses"],
@@ -126,7 +129,8 @@ async def _notify_discord(
 
 
 async def _run_sync(riot: RiotService, target: str, limit: int, queue_ids: list[int],
-                     *, run_id: int, discord_webhook_url: str | None = None) -> None:
+                     *, user_id: str, run_id: int,
+                     discord_webhook_url: str | None = None) -> None:
     """Cuerpo del sync. Corre como BackgroundTask: NUNCA debe lanzar una excepción sin
     capturar, porque moriría en silencio y el frontend se quedaría sondeando 'processing'.
 
@@ -151,7 +155,7 @@ async def _run_sync(riot: RiotService, target: str, limit: int, queue_ids: list[
     async def _flush() -> None:
         nonlocal inserted
         if pending:
-            inserted += await repo.insert_many(pending)
+            inserted += await repo.insert_many(user_id, pending)
             pending.clear()
 
     async def _checkpoint(match: dict) -> None:
@@ -199,12 +203,12 @@ async def _run_sync(riot: RiotService, target: str, limit: int, queue_ids: list[
             # Auto-tracker de LP: sólo tiene sentido si entraron partidas nuevas de Solo/Duo.
             lp_captured = None
             if inserted > 0 and 420 in queue_ids:
-                lp_captured = await _capture_ranked_lp(riot, target)
+                lp_captured = await _capture_ranked_lp(user_id, riot, target)
 
             # Tilt Alert: si las últimas 3 partidas válidas (Ranked, anti-remake) son derrotas
             # consecutivas, el sync avisa. Se evalúa SIEMPRE (no sólo con insertadas): así un
             # resync manual durante una racha en curso vuelve a recordar que hay que parar.
-            recent = await repo.last_results(limit=3)
+            recent = await repo.last_results(user_id, limit=3)
             losing_streak = len(recent) >= 3 and all(not r["win"] for r in recent)
             if losing_streak:
                 log.warning("Tilt Alert: %s lleva 3+ derrotas consecutivas", target)
@@ -244,6 +248,7 @@ async def _run_sync(riot: RiotService, target: str, limit: int, queue_ids: list[
 @router.post("", response_model=SyncAccepted, status_code=202)
 async def sync(
     background_tasks: BackgroundTasks,
+    user_id: CurrentUserId,
     riot: RiotServiceDep,
     settings: SettingsDep,
     riot_id: str | None = Query(None, description="Por defecto, el RIOT_ID del .env"),
@@ -283,12 +288,12 @@ async def sync(
     # falla (p.ej. la DB está caída), se restaura "idle" y el sync no queda pegado en 409.
     _state.status = "processing"
     try:
-        run_id = await sync_runs.start_run(_state.started_at)
+        run_id = await sync_runs.start_run(user_id, _state.started_at)
     except Exception:
         _state.status = "idle"
         raise
-    background_tasks.add_task(_run_sync, riot, target, limit, queue_ids, run_id=run_id,
-                              discord_webhook_url=settings.discord_webhook_url)
+    background_tasks.add_task(_run_sync, riot, target, limit, queue_ids, user_id=user_id,
+                              run_id=run_id, discord_webhook_url=settings.discord_webhook_url)
 
     return SyncAccepted(
         status="processing",

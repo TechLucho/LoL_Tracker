@@ -25,7 +25,7 @@ _WINRATE = "SUM(CASE WHEN win THEN 1 ELSE 0 END)::numeric / COUNT(*) * 100"
 _NOT_A_REMAKE = "(game_duration_minutes IS NULL OR game_duration_minutes >= 5)"
 
 
-async def summary() -> dict[str, Any]:
+async def summary(user_id: str) -> dict[str, Any]:
     row = await db.fetch_one(
         f"""
         SELECT
@@ -38,8 +38,9 @@ async def summary() -> dict[str, Any]:
             COALESCE(ROUND({_KDA_RATIO}, 2), 0)        AS kda_ratio,
             COALESCE(ROUND(AVG(cs_min)::numeric, 2), 0) AS avg_cs_min
         FROM matches
-        WHERE {_NOT_A_REMAKE}
-        """
+        WHERE user_id = %s AND {_NOT_A_REMAKE}
+        """,
+        (user_id,),
     )
     # Con la tabla vacía, COUNT(*) es 0 y los COALESCE dejan el resto en 0: nunca None.
     return row or {
@@ -67,7 +68,7 @@ _DPM_REAL = """
 """
 
 
-async def champion_performance() -> list[dict[str, Any]]:
+async def champion_performance(user_id: str) -> list[dict[str, Any]]:
     return await db.fetch_all(
         f"""
         SELECT
@@ -82,10 +83,11 @@ async def champion_performance() -> list[dict[str, Any]]:
             ROUND(AVG(cs_min)::numeric, 2)          AS avg_cs_min,
             ROUND({_DPM_REAL}::numeric, 0)         AS avg_dpm
         FROM matches
-        WHERE {_NOT_A_REMAKE}
+        WHERE user_id = %s AND {_NOT_A_REMAKE}
         GROUP BY champion
         ORDER BY games_played DESC, wins DESC
-        """
+        """,
+        (user_id,),
     )
 
 
@@ -94,7 +96,7 @@ async def champion_performance() -> list[dict[str, Any]]:
 _MIN_GAMES_FOR_ROLE_SUMMARY = 3
 
 
-async def champion_role_summary() -> list[dict[str, Any]]:
+async def champion_role_summary(user_id: str) -> list[dict[str, Any]]:
     """Winrate/KDA por (campeón, rol, cola) con mínimo de 3 partidas.
 
     `matches.role` es el teamPosition del usuario en esa partida (equivalente al
@@ -118,14 +120,14 @@ async def champion_role_summary() -> list[dict[str, Any]]:
             ROUND({_WINRATE}, 1)                    AS winrate,
             ROUND({_KDA_RATIO}, 2)                  AS kda_ratio
         FROM matches
-        WHERE {_NOT_A_REMAKE}
+        WHERE user_id = %s AND {_NOT_A_REMAKE}
           AND role IS NOT NULL AND role <> ''
           AND queue_id IS NOT NULL
         GROUP BY champion, role, queue_id
         HAVING COUNT(*) >= %s
         ORDER BY winrate DESC, games_played DESC
         """,
-        (_MIN_GAMES_FOR_ROLE_SUMMARY,),
+        (user_id, _MIN_GAMES_FOR_ROLE_SUMMARY),
     )
 
 
@@ -140,7 +142,7 @@ FATIGUE_WINRATE_DROP_PP = 20.0
 FATIGUE_KDA_DROP = 2.0
 
 
-async def session_fatigue() -> dict[str, Any]:
+async def session_fatigue(user_id: str) -> dict[str, Any]:
     """Compara las últimas 5 partidas válidas contra las 5 anteriores para detectar autopilot.
 
     Las 10 partidas más recientes (sin remakes, con fecha) se parten por la mitad:
@@ -158,7 +160,7 @@ async def session_fatigue() -> dict[str, Any]:
                 win, kills, deaths, assists,
                 ROW_NUMBER() OVER (ORDER BY date DESC) AS rn
             FROM matches
-            WHERE {_NOT_A_REMAKE}
+            WHERE user_id = %s AND {_NOT_A_REMAKE}
               AND date IS NOT NULL
             LIMIT %s
         ),
@@ -178,7 +180,7 @@ async def session_fatigue() -> dict[str, Any]:
         FROM bloques
         GROUP BY block
         """,
-        (SESSION_TOTAL_WINDOW, SESSION_RECENT_WINDOW),
+        (user_id, SESSION_TOTAL_WINDOW, SESSION_RECENT_WINDOW),
     )
 
     blocks = {row["block"]: row for row in rows}
@@ -241,7 +243,7 @@ async def session_fatigue() -> dict[str, Any]:
     return result
 
 
-async def matchup(user_champion: str, enemy_champion: str) -> dict[str, Any]:
+async def matchup(user_id: str, user_champion: str, enemy_champion: str) -> dict[str, Any]:
     """Estadísticas del cruce de dos campeones, insensible a mayúsculas.
 
     Filtra por el campeón del usuario (`matches.champion`) contra el rival de línea
@@ -260,11 +262,12 @@ async def matchup(user_champion: str, enemy_champion: str) -> dict[str, Any]:
             ROUND(AVG(assists)::numeric, 2)         AS avg_assists,
             ROUND({_KDA_RATIO}, 2)                  AS kda_ratio
         FROM matches
-        WHERE LOWER(champion) = LOWER(%s)
+        WHERE user_id = %s
+          AND LOWER(champion) = LOWER(%s)
           AND LOWER(enemy_champion) = LOWER(%s)
           AND {_NOT_A_REMAKE}
         """,
-        (user_champion, enemy_champion),
+        (user_id, user_champion, enemy_champion),
     )
     return row or {
         "games_played": 0, "wins": 0, "losses": 0, "winrate": 0.0,
@@ -283,7 +286,7 @@ MIN_PATCH_CURRENT_GAMES = 5
 PATCH_POOL_SIZE = 3
 
 
-async def activity_heatmap(timezone: str) -> dict[str, Any]:
+async def activity_heatmap(timezone: str, user_id: str) -> dict[str, Any]:
     """Agregado día-de-semana x bloque horario (4 bloques de 6h), en la zona horaria de visualización.
 
     EXTRACT(DOW) -> 0 = domingo.
@@ -301,7 +304,7 @@ async def activity_heatmap(timezone: str) -> dict[str, Any]:
                 CAST(EXTRACT(HOUR FROM date AT TIME ZONE %s) AS INTEGER) AS hour,
                 win
             FROM matches
-            WHERE {_NOT_A_REMAKE}
+            WHERE user_id = %s AND {_NOT_A_REMAKE}
               -- Fila legacy sin fecha: EXTRACT daría NULL y agruparía en una celda sintética
               -- `day_of_week=None` que Pydantic rechaza (<0 o >6) y tumbaría el endpoint entero.
               AND date IS NOT NULL
@@ -338,7 +341,7 @@ async def activity_heatmap(timezone: str) -> dict[str, Any]:
                 WHEN 'Noche'     THEN 4
             END
         """,
-        (timezone, timezone),
+        (user_id, timezone, timezone),
     )
 
     eligible = [c for c in cells if c["games_played"] >= _MIN_GAMES_FOR_BEST_WORST]
@@ -351,7 +354,9 @@ async def activity_heatmap(timezone: str) -> dict[str, Any]:
     return {"cells": cells, "best_slot": best_slot, "worst_slot": worst_slot}
 
 
-async def lp_trend(limit: int = 20, queue_id: int | None = None) -> list[dict[str, Any]]:
+async def lp_trend(
+    user_id: str, limit: int = 20, queue_id: int | None = None
+) -> list[dict[str, Any]]:
     """Últimas N partidas en orden cronológico ascendente, con el LP acumulado ya sumado en SQL.
 
     `lp_change` es NULL en las partidas aún no revisadas; se trata como 0 para que la línea no
@@ -363,8 +368,8 @@ async def lp_trend(limit: int = 20, queue_id: int | None = None) -> list[dict[st
     Sin filtro anti-remake a propósito: es el diario cronológico de reviews (dato subjetivo que
     el usuario registró), no estadística agregada; ocultarle partidas aquí sería mentirle.
     """
-    where = "WHERE queue_id = %s" if queue_id is not None else ""
-    params: tuple[Any, ...] = (limit,) if queue_id is None else (queue_id, limit)
+    where = "WHERE user_id = %s AND queue_id = %s" if queue_id is not None else "WHERE user_id = %s"
+    params: tuple[Any, ...] = (user_id, limit) if queue_id is None else (user_id, queue_id, limit)
     return await db.fetch_all(
         f"""
         WITH ultimas AS (
@@ -384,7 +389,7 @@ async def lp_trend(limit: int = 20, queue_id: int | None = None) -> list[dict[st
     )
 
 
-async def kpi_trend(limit: int = 50) -> list[dict[str, Any]]:
+async def kpi_trend(user_id: str, limit: int = 50) -> list[dict[str, Any]]:
     """Serie temporal de KPIs de mejora de las últimas N partidas válidas (orden cronológico asc).
 
     Por partida devuelve CS/min y KDA desde las columnas de la fila, el DPM REAL del propio
@@ -416,7 +421,7 @@ async def kpi_trend(limit: int = 50) -> list[dict[str, Any]]:
                 WHERE LOWER(p->>'champion_name') = LOWER(m.champion)
                 LIMIT 1
             ) AS me ON TRUE
-            WHERE {_NOT_A_REMAKE}
+            WHERE m.user_id = %s AND {_NOT_A_REMAKE}
             ORDER BY m.date DESC
             LIMIT %s
         )
@@ -445,11 +450,11 @@ async def kpi_trend(limit: int = 50) -> list[dict[str, Any]]:
         FROM ultimas
         ORDER BY date ASC
         """,
-        (limit,),
+        (user_id, limit),
     )
 
 
-async def patch_alert(current_patch: str) -> dict[str, Any]:
+async def patch_alert(user_id: str, current_patch: str) -> dict[str, Any]:
     """Compara el winrate de los `PATCH_POOL_SIZE` campeones más jugados entre el parche
     actual y los anteriores, para avisar de caídas de rendimiento tras un parche nuevo.
 
@@ -472,7 +477,7 @@ async def patch_alert(current_patch: str) -> dict[str, Any]:
         WITH pool AS (
             SELECT champion
             FROM matches
-            WHERE {_NOT_A_REMAKE}
+            WHERE user_id = %s AND {_NOT_A_REMAKE}
             GROUP BY champion
             ORDER BY COUNT(*) DESC, MAX(date) DESC
             LIMIT %s
@@ -490,7 +495,7 @@ async def patch_alert(current_patch: str) -> dict[str, Any]:
                 END AS bucket
             FROM matches m
             JOIN pool ON pool.champion = m.champion
-            WHERE {_NOT_A_REMAKE}
+            WHERE m.user_id = %s AND {_NOT_A_REMAKE}
         )
         SELECT
             champion,
@@ -510,7 +515,7 @@ async def patch_alert(current_patch: str) -> dict[str, Any]:
         GROUP BY champion
         ORDER BY games_previous + games_current DESC
         """,
-        (PATCH_POOL_SIZE, current_patch),
+        (user_id, PATCH_POOL_SIZE, current_patch, user_id),
     )
 
     # ¿Existe CUALQUIER partida en el parche actual? Independiente del pool: lo que importa es
@@ -520,11 +525,11 @@ async def patch_alert(current_patch: str) -> dict[str, Any]:
         f"""
         SELECT COUNT(*) AS n
         FROM matches
-        WHERE {_NOT_A_REMAKE}
+        WHERE user_id = %s AND {_NOT_A_REMAKE}
           AND game_version IS NOT NULL
           AND SPLIT_PART(game_version, '.', 1) || '.' || SPLIT_PART(game_version, '.', 2) = %s
         """,
-        (current_patch,),
+        (user_id, current_patch),
     )
     has_current_games = bool(any_cell and any_cell["n"] > 0)
 
@@ -596,7 +601,7 @@ def assess_meta_verdict_row(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-async def meta_verdict(current_patch: str) -> list[dict[str, Any]]:
+async def meta_verdict(user_id: str, current_patch: str) -> list[dict[str, Any]]:
     """Winrate por (tu campeón, campeón enemigo) separado por parche.
 
     El bucket se calcula igual que `patch_alert`: la `game_version` se normaliza a "X.Y" y se
@@ -626,20 +631,20 @@ async def meta_verdict(current_patch: str) -> list[dict[str, Any]]:
                     ELSE 'previous'
                 END AS bucket
             FROM matches m
-            WHERE {_NOT_A_REMAKE}
+            WHERE m.user_id = %s AND {_NOT_A_REMAKE}
               AND enemy_champion IS NOT NULL AND enemy_champion <> 'Unknown'
         ) enfrentamientos
         GROUP BY champion, enemy_champion
         ORDER BY games_previous + games_current DESC
         """,
-        (current_patch,),
+        (current_patch, user_id),
     )
     return [assess_meta_verdict_row(row) for row in rows]
 
 
 # ─────────────────────────── Triángulo del Laning (Timeline) ──────────────────────
 
-async def laning_summary(limit: int = 50) -> dict[str, Any]:
+async def laning_summary(user_id: str, limit: int = 50) -> dict[str, Any]:
     """Promedios GD@15 / XPD@15 / CSD@15 de las últimas N partidas válidas.
 
     Lee del JSONB `participants` los campos nuevos `gd15`/`xpd15`/`csd15`, escritos por el
@@ -654,7 +659,7 @@ async def laning_summary(limit: int = 50) -> dict[str, Any]:
         WITH ultimas AS (
             SELECT game_id, champion, participants
             FROM matches
-            WHERE {_NOT_A_REMAKE}
+            WHERE user_id = %s AND {_NOT_A_REMAKE}
             ORDER BY date DESC
             LIMIT %s
         )
@@ -675,7 +680,7 @@ async def laning_summary(limit: int = 50) -> dict[str, Any]:
             LIMIT 1
         ) AS l ON TRUE
         """,
-        (limit,),
+        (user_id, limit),
     )
     return {
         "avg_gd15": row["avg_gd15"] if row else None,
@@ -686,12 +691,13 @@ async def laning_summary(limit: int = 50) -> dict[str, Any]:
 
 
 # CTE compartida por las tres queries del reporte semanal: la ventana de los últimos 7
-# días (date >= now - 7d, según UTC porque `date` se guarda en UTC) SIN remakes.
+# días (date >= now - 7d, según UTC porque `date` se guarda en UTC) SIN remakes, de ESTE usuario.
 _WEEK_CTE = """
     WITH week AS (
         SELECT *
         FROM matches
-        WHERE date >= (NOW() - INTERVAL '7 days')
+        WHERE user_id = %s
+          AND date >= (NOW() - INTERVAL '7 days')
           AND {not_a_remake}
     )
 """
@@ -707,7 +713,7 @@ _RATING_REAL = """
 """
 
 
-async def weekly_report() -> dict[str, Any]:
+async def weekly_report(user_id: str) -> dict[str, Any]:
     """Resumen de la última semana (7 días según fecha UTC), para el "Reporte Semanal".
 
     Devuelve la agregación (partidas, winrate, KDA medio), el campeón más jugado y la mejor
@@ -737,7 +743,8 @@ async def weekly_report() -> dict[str, Any]:
                 / GREATEST(SUM(deaths), 1)
             , 2)                               AS avg_kda
         FROM week
-        """
+        """,
+        (user_id,),
     ) or {}
 
     most_played = await db.fetch_one(
@@ -748,7 +755,8 @@ async def weekly_report() -> dict[str, Any]:
         GROUP BY champion
         ORDER BY games DESC, wins DESC
         LIMIT 1
-        """
+        """,
+        (user_id,),
     )
 
     best_match = await db.fetch_one(
@@ -764,7 +772,8 @@ async def weekly_report() -> dict[str, Any]:
         WHERE {_RATING_REAL} IS NOT NULL
         ORDER BY rating DESC
         LIMIT 1
-        """
+        """,
+        (user_id,),
     )
 
     # Fallback seguro: sin partidas en la ventana, SUM(...) devuelve nulos (p.ej. avg_kda)

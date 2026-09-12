@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
+from backend.app.deps import CurrentUserId
 from backend.app.repositories import matchup_notes as repo
 from backend.app.schemas import MatchupNotes, MatchupNotesUpdate
 
@@ -16,18 +17,20 @@ def _empty(user_champion: str, enemy_champion: str) -> MatchupNotes:
 
 
 @router.get("/{user_champion}/{enemy_champion}", response_model=MatchupNotes)
-async def get_notes(user_champion: str, enemy_champion: str) -> MatchupNotes:
+async def get_notes(user_id: CurrentUserId, user_champion: str, enemy_champion: str) -> MatchupNotes:
     """Notas del cruce. Si nunca se guardó nada, devuelve notas vacías (no 404)."""
-    row = await repo.get(user_champion, enemy_champion)
+    row = await repo.get(user_id, user_champion, enemy_champion)
     if row is None:
         return _empty(user_champion, enemy_champion)
     return MatchupNotes(**row)
 
 
 @router.put("/{user_champion}/{enemy_champion}", response_model=MatchupNotes)
-async def put_notes(user_champion: str, enemy_champion: str, payload: MatchupNotesUpdate) -> MatchupNotes:
+async def put_notes(
+    user_id: CurrentUserId, user_champion: str, enemy_champion: str, payload: MatchupNotesUpdate
+) -> MatchupNotes:
     """Guarda/reemplaza las notas del cruce (PUT semantics)."""
     if not user_champion or not enemy_champion:
         raise HTTPException(422, "Faltan los campeones en la URL.")
-    row = await repo.upsert(user_champion, enemy_champion, payload.notes)
+    row = await repo.upsert(user_id, user_champion, enemy_champion, payload.notes)
     return MatchupNotes(**row)

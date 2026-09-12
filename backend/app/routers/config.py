@@ -10,6 +10,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, status
 
 from backend.app.config import ROUTING_MAP, get_settings
+from backend.app.deps import CurrentUserId
 from backend.app.repositories import settings as repo
 from backend.app.schemas import (
     CHAMPION_POOL_MAX,
@@ -23,14 +24,14 @@ router = APIRouter(tags=["config"])
 
 
 @router.get("/api/config", response_model=UserSettings)
-async def get_config() -> UserSettings:
+async def get_config(user_id: CurrentUserId) -> UserSettings:
     """Config completa: canónicos del sistema + configuración persistida del usuario.
 
     En Streamlit, `IMPACT_RATINGS` estaba hardcodeado en dos formularios distintos con riesgo
     de divergencia. Ahora vive en un solo sitio y se sirve desde la API.
     """
     settings = get_settings()
-    row = await repo.get()
+    row = await repo.get(user_id)
     return UserSettings(
         **row,
         impact_ratings=list(IMPACT_RATINGS),
@@ -43,13 +44,14 @@ async def get_config() -> UserSettings:
 
 
 @router.put("/api/config", response_model=UserSettings)
-async def update_config(payload: UserSettingsUpdate) -> UserSettings:
+async def update_config(user_id: CurrentUserId, payload: UserSettingsUpdate) -> UserSettings:
     """Reemplaza champion pool y OKRs (PUT semantics).
 
     El pool se limpia en el servidor: quita blancos y duplicados, respeta el máximo de 3
     (regla de La Constitución).
     """
     row = await repo.replace(
+        user_id,
         champion_pool=payload.champion_pool,
         target_cs_min=payload.target_cs_min,
         max_deaths=payload.max_deaths,

@@ -19,6 +19,9 @@ from backend.app.services.riot import RiotDegradedError
 
 pytestmark = pytest.mark.integration
 
+# v2.0: start_run/`_run_sync` llevan `user_id` (FK a auth.users de la migración 013).
+USER = "00000000-0000-0000-0000-000000000001"
+
 
 class _DegradedRiot:
     """RiotService falso que degrada antes de devolver la primera partida."""
@@ -37,8 +40,10 @@ def test_sync_degradado_cierra_en_partial():
         sync_router._state.error = None
 
         started = datetime.now(UTC)
-        run_id = await sync_runs.start_run(started)
-        await sync_router._run_sync(_DegradedRiot(), "Test#EUW", 10, [420, 400], run_id=run_id)
+        run_id = await sync_runs.start_run(USER, started)
+        await sync_router._run_sync(
+            _DegradedRiot(), "Test#EUW", 10, [420, 400], user_id=USER, run_id=run_id
+        )
 
         # Estado en memoria para el polling: 'partial', no 'error' ni 'success'.
         assert sync_router._state.status == "partial"
@@ -47,13 +52,17 @@ def test_sync_degradado_cierra_en_partial():
         assert sync_router._state.result.degraded_api is True
 
         # Auditoría: el run cerró como 'partial' (CHECK de la migración 012 lo permite).
-        runs = await sync_runs.recent_runs(limit=1)
+        runs = await sync_runs.recent_runs(USER, limit=1)
         assert runs and runs[0]["status"] == "partial"
 
     async def _main() -> None:
         await db.open_pool()
         try:
             await db.execute("TRUNCATE sync_runs RESTART IDENTITY")
+            # Stub de auth.users de la migración 013 (no-op en Supabase real).
+            await db.execute(
+                "INSERT INTO auth.users (id) VALUES (%s) ON CONFLICT (id) DO NOTHING", (USER,)
+            )
             await _scenario()
         finally:
             await db.close_pool()

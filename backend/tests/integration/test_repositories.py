@@ -23,16 +23,32 @@ from backend.app.repositories import scout, stats
 
 pytestmark = pytest.mark.integration
 
+# v2.0 (migración 013): las tablas transaccionales pertenecen a un usuario y las políticas RLS
+# se definen sobre `auth.users`. El Postgres de CI/efímero usa el stub de la migración 013; toda
+# la cobertura sembra y consulta bajo ESTE user_id. `_OTHER_USER` existe para el aislamiento.
+USER = "00000000-0000-0000-0000-000000000001"
+OTHER_USER = "00000000-0000-0000-0000-000000000002"
+
 
 def run_scenario(scenario: Callable[[], Awaitable[Any]]) -> Any:
-    """Abre pool → TRUNCATE → ejecuta el escenario → cierra pool. Un loop nuevo por test."""
+    """Abre pool → TRUNCATE → siembra el usuario stub → ejecuta el escenario → cierra pool."""
 
     async def main() -> Any:
         await db.open_pool()
         try:
             # RESTART IDENTITY también resetea lp_snapshots por si un futuro test lo usa.
             # scout_cache se trunca para que el roundtrip del escout parta siempre de vacío.
-            await db.execute("TRUNCATE matches, lp_snapshots, scout_cache RESTART IDENTITY")
+            await db.execute(
+                "TRUNCATE matches, user_settings, sync_runs, matchup_notes, "
+                "lp_snapshots, scout_cache RESTART IDENTITY"
+            )
+            # auth.users es el stub de la migración 013 en CI (no-op en Supabase real: las
+            # filas de verdad las crea el auth de Supabase). Sin esta siembra el FK de
+            # `user_id` rechazaría cualquier INSERT.
+            await db.execute(
+                "INSERT INTO auth.users (id) VALUES (%s), (%s) ON CONFLICT (id) DO NOTHING",
+                (USER, OTHER_USER),
+            )
             return await scenario()
         finally:
             await db.close_pool()
@@ -109,9 +125,9 @@ def test_insert_many_es_idempotente():
     rows = [row(date="2026-08-01 18:00:00"), row(date="2026-08-02 18:00:00")]
 
     async def s() -> tuple[int, int, int]:
-        primera = await matches_repo.insert_many(rows)
-        segunda = await matches_repo.insert_many(rows)
-        total = await matches_repo.count()
+        primera = await matches_repo.insert_many(USER, rows)
+        segunda = await matches_repo.insert_many(USER, rows)
+        total = await matches_repo.count(USER)
         return primera, segunda, total
 
     assert run_scenario(s) == (2, 0, 2)
@@ -127,10 +143,10 @@ def test_list_recent_oculta_remakes_pero_conserva_legacy():
     flex = row(queue=440, duration=40.0, date="2026-08-04 18:00:00")
 
     async def s():
-        await matches_repo.insert_many([remake, legacy, ranked, flex])
-        todas = await matches_repo.list_recent(limit=50)
-        ranked_view = await matches_repo.list_recent(limit=50, queue="ranked")
-        normal_view = await matches_repo.list_recent(limit=50, queue="normal")
+        await matches_repo.insert_many(USER, [remake, legacy, ranked, flex])
+        todas = await matches_repo.list_recent(USER, limit=50)
+        ranked_view = await matches_repo.list_recent(USER, limit=50, queue="ranked")
+        normal_view = await matches_repo.list_recent(USER, limit=50, queue="normal")
         return todas, ranked_view, normal_view
 
     todas, ranked_view, normal_view = run_scenario(s)
@@ -156,9 +172,10 @@ def test_last_results_ventana_de_la_constitucion():
 
     async def s():
         await matches_repo.insert_many(
-            [derrota_valida, remake, normal_larga, victoria_reciente, limite_exacto]
+            USER,
+            [derrota_valida, remake, normal_larga, victoria_reciente, limite_exacto],
         )
-        return await matches_repo.last_results(limit=3)
+        return await matches_repo.last_results(USER, limit=3)
 
     resultados = run_scenario(s)
 
@@ -190,8 +207,8 @@ def test_champion_performance_dpm_real_desde_jsonb():
     katarina_legacy = row(champion="Katarina", date="2026-08-03 18:00:00", duration=25.0)
 
     async def s():
-        await matches_repo.insert_many([jax_a, jax_b, katarina_legacy])
-        return {r["champion"]: r for r in await stats.champion_performance()}
+        await matches_repo.insert_many(USER, [jax_a, jax_b, katarina_legacy])
+        return {r["champion"]: r for r in await stats.champion_performance(USER)}
 
     filas = run_scenario(s)
 
@@ -215,13 +232,13 @@ def test_lp_trend_acumulado_y_filtro_por_cola():
     victoria_ranked = row(date="2026-08-03 18:00:00")
 
     async def s():
-        await matches_repo.insert_many([derrota_ranked, normal, victoria_ranked])
+        await matches_repo.insert_many(USER, [derrota_ranked, normal, victoria_ranked])
         # lp_change directo: es un campo subjetivo que aquí simulamos ya revisado.
         await db.execute("UPDATE matches SET lp_change = -16 WHERE game_id = %s", (derrota_ranked["game_id"],))
         await db.execute("UPDATE matches SET lp_change = 15 WHERE game_id = %s", (victoria_ranked["game_id"],))
 
-        filtrada = await stats.lp_trend(limit=10, queue_id=420)
-        completa = await stats.lp_trend(limit=10)
+        filtrada = await stats.lp_trend(USER, limit=10, queue_id=420)
+        completa = await stats.lp_trend(USER, limit=10)
         return filtrada, completa
 
     filtrada, completa = run_scenario(s)
@@ -264,8 +281,8 @@ def test_laning_summary_promedia_jsonb_y_ignora_sin_datos():
     )
 
     async def s():
-        await matches_repo.insert_many([g1, g2, sin_datos, remake])
-        return await stats.laning_summary(limit=50)
+        await matches_repo.insert_many(USER, [g1, g2, sin_datos, remake])
+        return await stats.laning_summary(USER, limit=50)
 
     result = run_scenario(s)
 
@@ -280,8 +297,8 @@ def test_laning_summary_sin_partidas_con_datos_reporta_cero():
     remakes = [row(duration=2.0, date=f"2026-08-0{i} 18:00:00") for i in range(1, 4)]
 
     async def s():
-        await matches_repo.insert_many(remakes)
-        return await stats.laning_summary(limit=50)
+        await matches_repo.insert_many(USER, remakes)
+        return await stats.laning_summary(USER, limit=50)
 
     result = run_scenario(s)
     assert result == {"avg_gd15": None, "avg_xpd15": None, "avg_csd15": None, "games_analyzed": 0}
@@ -301,9 +318,10 @@ def test_nemesis_orden_exclusiones_y_antiremake():
 
     async def s():
         await matches_repo.insert_many(
-            [darius_1, darius_2, garen_w, garen_l, morde_remake, unknown_1, unknown_2]
+            USER,
+            [darius_1, darius_2, garen_w, garen_l, morde_remake, unknown_1, unknown_2],
         )
-        return await scout.nemesis(min_games=2, limit=5)
+        return await scout.nemesis(USER, min_games=2, limit=5)
 
     enemigos = run_scenario(s)
 
@@ -342,3 +360,47 @@ def test_scout_cache_roundtrip_positivo_y_negativo():
         assert await scout.get_scout_cache("p-otro") == (None, None, "")
 
     return run_scenario(s)
+
+
+# ─────────────────────────── aislamiento por usuario (v2.0) ───────────────────────────
+
+
+def test_aislamiento_entre_usuarios():
+    """Los datos del USER no deben aparecer en las lecturas de OTHER_USER, ni al revés.
+
+    Es el contrato que impone la migración 013 + RLS a nivel de query de repositorio: si
+    alguien reintroduce una query global sin `user_id`, el agregado de un usuario se filtra
+    a otro y este test revienta.
+    """
+    mina = [
+        row(champion="Jax", enemy="Darius", win=True, date="2026-08-01 18:00:00"),
+        row(champion="Jax", enemy="Darius", win=False, date="2026-08-02 18:00:00"),
+    ]
+    suya = [
+        row(champion="Yasuo", enemy="Irelia", win=True, date="2026-08-01 18:00:00"),
+    ]
+
+    async def s() -> dict[str, Any]:
+        await matches_repo.insert_many(USER, mina)
+        await matches_repo.insert_many(OTHER_USER, suya)
+
+        # count: cada uno ve sólo sus partidas.
+        assert await matches_repo.count(USER) == 2
+        assert await matches_repo.count(OTHER_USER) == 1
+
+        # list_recent: la partida del otro usuario no colisiona ni se mezcla.
+        ids_mios = [m["game_id"] for m in await matches_repo.list_recent(USER, limit=50)]
+        assert all(m["game_id"] in ids_mios for m in mina)
+        assert suya[0]["game_id"] not in ids_mios
+
+        # last_results: ventana de La Constitución de USER sin filas ajenas.
+        ventana = await matches_repo.last_results(USER, limit=3)
+        assert len(ventana) == 2
+
+        # nemesis: el rival del otro usuario no es nemesis de USER.
+        enemigos = await scout.nemesis(USER, min_games=2, limit=5)
+        assert [e["enemy_champion"] for e in enemigos] == ["Darius"]
+
+        return {}
+
+    run_scenario(s)

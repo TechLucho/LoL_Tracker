@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, status
 
+from backend.app.deps import CurrentUserId
 from backend.app.repositories import scout as repo
 from backend.app.schemas import Match, Nemesis
 
@@ -12,14 +13,16 @@ router = APIRouter(prefix="/api/scout", tags=["scout"])
 
 @router.get("/nemesis", response_model=list[Nemesis])
 async def nemesis(
+    user_id: CurrentUserId,
     min_games: int = Query(2, ge=1),
     limit: int = Query(5, ge=1, le=20),
 ) -> list[Nemesis]:
-    return [Nemesis(**row) for row in await repo.nemesis(min_games=min_games, limit=limit)]
+    return [Nemesis(**row) for row in await repo.nemesis(user_id, min_games=min_games, limit=limit)]
 
 
 @router.get("/matchups", response_model=list[Match])
 async def matchups(
+    user_id: CurrentUserId,
     champion: str | None = Query(None, description="Campeón propio (subcadena, case-insensitive)"),
     enemy: str | None = Query(None, description="Campeón enemigo (subcadena, case-insensitive)"),
 ) -> list[Match]:
@@ -34,4 +37,4 @@ async def matchups(
             status.HTTP_422_UNPROCESSABLE_CONTENT,
             "Indica al menos `champion` o `enemy`.",
         )
-    return [Match(**row) for row in await repo.search_matchups(champion=champion, enemy=enemy)]
+    return [Match(**row) for row in await repo.search_matchups(user_id, champion=champion, enemy=enemy)]

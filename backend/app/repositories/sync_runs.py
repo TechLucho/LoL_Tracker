@@ -12,16 +12,16 @@ from typing import Any
 from backend.app import db
 
 
-async def start_run(started_at: Any) -> int:
+async def start_run(user_id: str, started_at: Any) -> int:
     """Crea un registro con status='in_progress'. Devuelve el id para actualizar después."""
     async with db.cursor() as cur:
         await cur.execute(
             """
-            INSERT INTO sync_runs (started_at, status)
-            VALUES (%s, 'in_progress')
+            INSERT INTO sync_runs (user_id, started_at, status)
+            VALUES (%s, %s, 'in_progress')
             RETURNING id
             """,
-            (started_at,),
+            (user_id, started_at),
         )
         row = await cur.fetchone()
         return row["id"] if row else 0
@@ -46,14 +46,15 @@ async def finish_run(
     )
 
 
-async def recent_runs(limit: int = 20) -> list[dict[str, Any]]:
-    """Últimos N sync runs, más reciente primero."""
+async def recent_runs(user_id: str, limit: int = 20) -> list[dict[str, Any]]:
+    """Últimos N sync runs de un usuario, más reciente primero."""
     return await db.fetch_all(
         """
         SELECT id, started_at, finished_at, status, matches_added, error_message
         FROM sync_runs
+        WHERE user_id = %s
         ORDER BY started_at DESC
         LIMIT %s
         """,
-        (limit,),
+        (user_id, limit),
     )

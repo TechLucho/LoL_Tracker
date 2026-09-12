@@ -48,6 +48,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r backend/requirements.txt
 
+      - name: Seed auth stub (Postgres efímero sin Supabase)
+        run: python -m backend.scripts.seed_auth_stub
+
       - name: Run migrations
         run: python -m backend.scripts.migrate
 

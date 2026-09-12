@@ -43,3 +43,20 @@ async def require_token(
 
 
 AuthDep = Depends(require_token)
+
+
+# ─────────────────────────────── Identidad del usuario (v2.0) ───────────────────────────────
+
+# TODO(v2.0): cuando exista autenticación de Supabase, `get_current_user_id` extraerá el
+# `sub` del JWT y validará `exp`. Mientras tanto TODA la app opera contra este UUID fijo:
+# los datos migrados viven bajo él y las queries de repositorio ya reciben `user_id` como
+# primer parámetro — el cambio de identidad no tocará ni una línea de SQL.
+TEMPORAL_USER_ID = "00000000-0000-0000-0000-000000000001"
+
+
+def get_current_user_id() -> str:
+    """Resuelve el user_id del request. HOY: identidad fija mono-usuario."""
+    return TEMPORAL_USER_ID
+
+
+CurrentUserId = Annotated[str, Depends(get_current_user_id)]

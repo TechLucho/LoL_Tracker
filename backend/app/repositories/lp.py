@@ -12,21 +12,22 @@ from typing import Any
 from backend.app import db
 
 
-async def latest_snapshot(riot_id: str) -> dict[str, Any] | None:
-    """Último snapshot guardado para este Riot ID, o None si nunca se capturó LP."""
+async def latest_snapshot(user_id: str, riot_id: str) -> dict[str, Any] | None:
+    """Último snapshot guardado para este Riot ID y usuario, o None si nunca se capturó LP."""
     return await db.fetch_one(
         """
         SELECT riot_id, lp, tier, division, wins, losses, captured_at
         FROM lp_snapshots
-        WHERE riot_id = %s
+        WHERE user_id = %s AND riot_id = %s
         ORDER BY captured_at DESC
         LIMIT 1
         """,
-        (riot_id,),
+        (user_id, riot_id),
     )
 
 
 async def insert_snapshot(
+    user_id: str,
     riot_id: str,
     *,
     lp: int,
@@ -38,8 +39,8 @@ async def insert_snapshot(
     """Guarda el estado actual del ladder. Nunca actualiza: cada sync es una fila nueva."""
     await db.execute(
         """
-        INSERT INTO lp_snapshots (riot_id, lp, tier, division, wins, losses)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        INSERT INTO lp_snapshots (user_id, riot_id, lp, tier, division, wins, losses)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         """,
-        (riot_id, lp, tier, division, wins, losses),
+        (user_id, riot_id, lp, tier, division, wins, losses),
     )

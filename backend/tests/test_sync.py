@@ -20,7 +20,7 @@ from backend.app.repositories import sync_runs
 from backend.app.routers import sync as sync_router
 
 
-async def _slow_start_run(_started_at: object) -> int:
+async def _slow_start_run(_user_id: object, _started_at: object) -> int:
     """Replicación del write real a DB: cede el bucle justo donde vivía el race."""
     await asyncio.sleep(0)
     return 1

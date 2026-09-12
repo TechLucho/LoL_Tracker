@@ -21,7 +21,9 @@ _WINRATE = "SUM(CASE WHEN win THEN 1 ELSE 0 END)::numeric / COUNT(*) * 100"
 _NOT_A_REMAKE = "(game_duration_minutes IS NULL OR game_duration_minutes >= 5)"
 
 
-async def nemesis(min_games: int = 2, limit: int = 5) -> list[dict[str, Any]]:
+async def nemesis(
+    user_id: str, min_games: int = 2, limit: int = 5
+) -> list[dict[str, Any]]:
     """Campeones enemigos con peor winrate. 'Unknown' se excluye: es el valor que pone
     `_get_enemy_laner` cuando no puede determinar el rival (remakes, roles inválidos)."""
     return await db.fetch_all(
@@ -34,23 +36,24 @@ async def nemesis(min_games: int = 2, limit: int = 5) -> list[dict[str, Any]]:
             ROUND(AVG(deaths)::numeric, 2)       AS avg_deaths,
             ROUND(AVG(cs_min)::numeric, 2)       AS avg_cs_min
         FROM matches
-        WHERE enemy_champion IS NOT NULL AND enemy_champion <> 'Unknown'
+        WHERE user_id = %s
+          AND enemy_champion IS NOT NULL AND enemy_champion <> 'Unknown'
           AND {_NOT_A_REMAKE}
         GROUP BY enemy_champion
         HAVING COUNT(*) >= %s
         ORDER BY winrate ASC, games DESC
         LIMIT %s
         """,
-        (min_games, limit),
+        (user_id, min_games, limit),
     )
 
 
 async def search_matchups(
-    champion: str | None = None, enemy: str | None = None
+    user_id: str, champion: str | None = None, enemy: str | None = None
 ) -> list[dict[str, Any]]:
     """Busca partidas por campeón propio, enemigo, o ambos. Subcadena e insensible a mayúsculas."""
-    conditions: list[str] = []
-    params: list[Any] = []
+    conditions: list[str] = ["user_id = %s"]
+    params: list[Any] = [user_id]
 
     if champion:
         conditions.append("champion ILIKE %s")
@@ -58,9 +61,6 @@ async def search_matchups(
     if enemy:
         conditions.append("enemy_champion ILIKE %s")
         params.append(f"%{enemy}%")
-
-    if not conditions:
-        return []
 
     # Anti-remake también aquí: un remake listado como "partida contra X" es ruido de review.
     conditions.append(_NOT_A_REMAKE)
