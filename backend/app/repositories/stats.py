@@ -341,7 +341,7 @@ async def activity_heatmap(timezone: str, user_id: str) -> dict[str, Any]:
                 WHEN 'Noche'     THEN 4
             END
         """,
-        (user_id, timezone, timezone),
+        (timezone, timezone, user_id),
     )
 
     eligible = [c for c in cells if c["games_played"] >= _MIN_GAMES_FOR_BEST_WORST]
@@ -497,22 +497,25 @@ async def patch_alert(user_id: str, current_patch: str) -> dict[str, Any]:
             JOIN pool ON pool.champion = m.champion
             WHERE m.user_id = %s AND {_NOT_A_REMAKE}
         )
-        SELECT
-            champion,
-            COUNT(*) FILTER (WHERE bucket = 'current')            AS games_current,
-            COUNT(*) FILTER (WHERE bucket = 'current' AND win)    AS wins_current,
-            COUNT(*) FILTER (WHERE bucket = 'previous')           AS games_previous,
-            COUNT(*) FILTER (WHERE bucket = 'previous' AND win)   AS wins_previous,
-            ROUND(
-                COUNT(*) FILTER (WHERE bucket = 'current' AND win)::numeric
-                / NULLIF(COUNT(*) FILTER (WHERE bucket = 'current'), 0) * 100
-            , 1)                                                  AS winrate_current,
-            ROUND(
-                COUNT(*) FILTER (WHERE bucket = 'previous' AND win)::numeric
-                / NULLIF(COUNT(*) FILTER (WHERE bucket = 'previous'), 0) * 100
-            , 1)                                                  AS winrate_previous
-        FROM patched
-        GROUP BY champion
+        SELECT *
+        FROM (
+            SELECT
+                champion,
+                COUNT(*) FILTER (WHERE bucket = 'current')            AS games_current,
+                COUNT(*) FILTER (WHERE bucket = 'current' AND win)    AS wins_current,
+                COUNT(*) FILTER (WHERE bucket = 'previous')           AS games_previous,
+                COUNT(*) FILTER (WHERE bucket = 'previous' AND win)   AS wins_previous,
+                ROUND(
+                    COUNT(*) FILTER (WHERE bucket = 'current' AND win)::numeric
+                    / NULLIF(COUNT(*) FILTER (WHERE bucket = 'current'), 0) * 100
+                , 1)                                                  AS winrate_current,
+                ROUND(
+                    COUNT(*) FILTER (WHERE bucket = 'previous' AND win)::numeric
+                    / NULLIF(COUNT(*) FILTER (WHERE bucket = 'previous'), 0) * 100
+                , 1)                                                  AS winrate_previous
+            FROM patched
+            GROUP BY champion
+        ) ordenado
         ORDER BY games_previous + games_current DESC
         """,
         (user_id, PATCH_POOL_SIZE, current_patch, user_id),
@@ -611,30 +614,33 @@ async def meta_verdict(user_id: str, current_patch: str) -> list[dict[str, Any]]
     """
     rows = await db.fetch_all(
         f"""
-        SELECT
-            champion                         AS user_champion,
-            enemy_champion,
-            COUNT(*) FILTER (WHERE bucket = 'current')          AS games_current,
-            COUNT(*) FILTER (WHERE bucket = 'current' AND win)  AS wins_current,
-            COUNT(*) FILTER (WHERE bucket = 'previous')         AS games_previous,
-            COUNT(*) FILTER (WHERE bucket = 'previous' AND win) AS wins_previous
+        SELECT *
         FROM (
             SELECT
-                m.win,
-                m.champion,
-                m.enemy_champion,
-                CASE
-                    WHEN m.game_version IS NOT NULL
-                         AND SPLIT_PART(m.game_version, '.', 1) || '.'
-                             || SPLIT_PART(m.game_version, '.', 2) = %s
-                    THEN 'current'
-                    ELSE 'previous'
-                END AS bucket
-            FROM matches m
-            WHERE m.user_id = %s AND {_NOT_A_REMAKE}
-              AND enemy_champion IS NOT NULL AND enemy_champion <> 'Unknown'
-        ) enfrentamientos
-        GROUP BY champion, enemy_champion
+                champion                         AS user_champion,
+                enemy_champion,
+                COUNT(*) FILTER (WHERE bucket = 'current')          AS games_current,
+                COUNT(*) FILTER (WHERE bucket = 'current' AND win)  AS wins_current,
+                COUNT(*) FILTER (WHERE bucket = 'previous')         AS games_previous,
+                COUNT(*) FILTER (WHERE bucket = 'previous' AND win) AS wins_previous
+            FROM (
+                SELECT
+                    m.win,
+                    m.champion,
+                    m.enemy_champion,
+                    CASE
+                        WHEN m.game_version IS NOT NULL
+                             AND SPLIT_PART(m.game_version, '.', 1) || '.'
+                                 || SPLIT_PART(m.game_version, '.', 2) = %s
+                        THEN 'current'
+                        ELSE 'previous'
+                    END AS bucket
+                FROM matches m
+                WHERE m.user_id = %s AND {_NOT_A_REMAKE}
+                  AND enemy_champion IS NOT NULL AND enemy_champion <> 'Unknown'
+            ) enfrentamientos
+            GROUP BY champion, enemy_champion
+        ) ordenado
         ORDER BY games_previous + games_current DESC
         """,
         (current_patch, user_id),
