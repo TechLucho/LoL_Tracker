@@ -65,6 +65,10 @@ class Settings(BaseSettings):
     # como `Authorization: Bearer <token>`; aquí se verifica firma y expiración. El default es
     # SOLO para tests/CI locales: producción debe inyectarlo desde las settings de Supabase.
     supabase_jwt_secret: str = "super-secret-jwt-token-for-testing-only"
+    # URL base del proyecto Supabase. Se usa para descargar la JWKS pública
+    # (`/auth/v1/.well-known/jwks.json`) cuando el token venga firmado con ES256/RS256.
+    # "http://localhost" es un placeholder: en producción inyecta https://<ref>.supabase.co.
+    supabase_url: str = "http://localhost"
     pool_min_size: int = 1
     pool_max_size: int = 5
     sentry_dsn: str = ""  # si está vacío, Sentry no se inicializa

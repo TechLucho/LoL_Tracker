@@ -7,6 +7,7 @@ riotwatcher==3.3.1
 httpx==0.28.1
 sentry-sdk[fastapi]==2.35.0
 PyJWT==2.10.1
+cryptography==50.0.1
 
 # dev
 pytest==8.4.2
