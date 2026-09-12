@@ -199,6 +199,17 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ---
 
+### Deuda técnica de auditoría (v1.3.1)
+
+- [x] Reintentar errores de red puros (timeout/conexión) en `_call_with_retry` — hoy solo se captura `ApiError`; un `status=None` debería ser `retryable=True`
+- [x] No fijar `_state.status = "processing"` hasta obtener `run_id` (si `start_run` falla, el sync queda bloqueado en 409 hasta reiniciar)
+- [x] Eliminar el motor de La Constitución duplicado (`/api/stats/constitution` + `services/constitution.py`, muertos) y cubrir el rules-engine activo (`/api/constitution/status`) con tests herméticos
+- [x] `insert_many` en lote (executemany / VALUES multi-fila) en vez de 1 INSERT por partida
+- [x] Aplicar migraciones 008 y 009 en Supabase (validadas en CI; sin 009 el PUT de config falla)
+- [x] Version string de `main.py` ("2.0.0-dev") y `backend/README.md` (documenta el endpoint de Constitution muerto) al día
+
+---
+
 ## Completado (v1.6)
 
 > Cierre oficial 2026-09-12 (v1.4 → v1.6): analítica de sesión, validación de OKRs, escout de
@@ -223,22 +234,9 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ## Pendiente (Backlog / Features futuras)
 
-### Deuda técnica de auditoría (v1.3.1)
-
-- [x] Reintentar errores de red puros (timeout/conexión) en `_call_with_retry` — hoy solo se captura `ApiError`; un `status=None` debería ser `retryable=True`
-- [x] No fijar `_state.status = "processing"` hasta obtener `run_id` (si `start_run` falla, el sync queda bloqueado en 409 hasta reiniciar)
-- [x] Eliminar el motor de La Constitución duplicado (`/api/stats/constitution` + `services/constitution.py`, muertos) y cubrir el rules-engine activo (`/api/constitution/status`) con tests herméticos
-- [x] `insert_many` en lote (executemany / VALUES multi-fila) en vez de 1 INSERT por partida
-- [x] Aplicar migraciones 008 y 009 en Supabase (validadas en CI; sin 009 el PUT de config falla)
-- [x] Version string de `main.py` ("2.0.0-dev") y `backend/README.md` (documenta el endpoint de Constitution muerto) al día
-
 ### Despliegue
 
 - [ ] **Despliegue formalizado**: no hay Dockerfile/compose/fly.toml/render.yaml — hoy vive solo en la maquina local. Contenerizar backend+frontend y definir destino (VPS con `APP_API_TOKEN`, ya soportado) antes de usarlo fuera de casa
-
-### Medio plazo
-
-- [ ] **Reporte semanal a Discord**: cruce de `weekly_report` (ya implementado) con el webhook ya existente
 
 ### Largo plazo (v2.0)
 
@@ -254,3 +252,4 @@ desarrollo. Se conservan aquí como referencia histórica por si el contexto cam
 - **Badges visibles** en el accordion, tabla y perfil resumen del Dashboard.
 - **Exportar datos a CSV/JSON** para análisis externo.
 - **Integración con overlay de OBS** para streamers.
+- **Reporte semanal a Discord**: cruce de `weekly_report` (ya implementado) con el webhook ya existente
