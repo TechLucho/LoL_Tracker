@@ -302,18 +302,44 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 - **Objetivo:** minijuego 1v1 en tiempo real usando Supabase Realtime.
 - **Flujo:** Lobby por código → Fase de Draft (elección de minijuegos) → Minijuegos (acumular segundos extras) → El Rosco final.
-- **Reglas Técnicas:**
-  - Validación estricta de texto ignorando mayúsculas y tildes, pero **sin tolerancia a fallos tipográficos** (una tecla errónea es fallo, no un "casi").
-  - Sin matchmaking público por ahora: solo **salas privadas por código** de 6 letras.
-  - Todo el contenido (preguntas y categorías) se precarga en **PostgreSQL**; nada de consultas a Riot en plena partida.
+
+#### Reglas de Negocio (cerradas 2026-09-13)
+
+1. **Autoridad (anti-trampas)** — Validación estricta en el **backend**. El frontend envía cada
+   respuesta al servidor (REST); el backend valida contra la pregunta oficial, calcula
+   aciertos/fallos y emite el broadcast por **Realtime**. Los broadcasts del cliente nunca son
+   de confianza.
+2. **Turnos del Rosco** — Clásico "a la contra": un jugador arranca en la **A** y sigue hasta
+   que falla o dice "pasapalabra". Su reloj se congela y arranca el turno del rival en la letra
+   en la que se quedó.
+3. **Economía y Reloj** — Banco de tiempo base de **100 segundos**. Los minijuegos suman
+   segundos extra. Quien gane los minijuegos gana el derecho a empezar el Rosco. Si el tiempo
+   llega a **0**, termina el turno de ese jugador.
+4. **Empates (tiebreaker)** — 1º gana quien tenga **más letras acertadas**; 2º a igualdad de
+   letras, **quien conserve más tiempo restante**; 3º si todo coincide, **empate**.
+5. **Normalización extrema** — La validación convierte a **minúsculas**, elimina **tildes** y
+   borra **todo carácter no alfanumérico** (espacios, apóstrofos, guiones): `"Nunu & Willump"`
+   → `nunuwillump`, `"Kog'Maw"` → `kogmaw`. Un fallo tipográfico es fallo, no un "casi".
+6. **Desconexiones** — Si **Presence** detecta la caída de un jugador, la **partida se pausa**
+   (el reloj se detiene y no se procesan respuestas) hasta que vuelva o se abandone.
+7. **Idioma del contenido** — Los datos se extraen de **Data Dragon con locale `es_ES`**: lore
+   y nombres de habilidades en español oficial.
+8. **Ordering del seed** — En el **Sprint 1** se crea una semilla mínima de prueba (**26
+   preguntas, una por letra** del abecedario) para poder testear El Rosco en el **Sprint 4**;
+   la integración masiva con Riot queda para el **Sprint 5**.
+
+#### Restricciones Técnicas
+
+- Sin matchmaking público por ahora: solo **salas privadas por código** de 6 letras.
+- Todo el contenido (preguntas y categorías) se precarga en **PostgreSQL**; nada de consultas a Riot en plena partida.
 
 #### Sprints de Implementación
 
-- [ ] **Sprint 1: Infraestructura y Lobby (REST).** Migración SQL para `game_rooms` (id, room_code, host, guest, status) y `rosco_questions`. Endpoints en FastAPI para crear sala y unirse por código de 6 letras. Normalizador de texto (ignorar tildes/caps).
-- [ ] **Sprint 2: Conexión Realtime (Frontend).** UI del Lobby. Conexión de React al canal `room:{code}` de Supabase. Sincronización de presencia (Host avisa cuando entra el Guest).
-- [ ] **Sprint 3: Sistema de Draft y Minijuegos.** Máquina de estados en la DB (`lobby` -> `drafting` -> `minigames`). Sistema de selección de 2 categorías alternando turnos. Motor de conversión de puntos a segundos para balancear la economía de tiempo.
-- [ ] **Sprint 4: El Rosco (Core Game).** Gestión del estado alfabético (A-Z, Pasapalabra, Acierto, Fallo) mediante broadcasts de Supabase. Cálculo del jugador inicial basado en el rendimiento previo. Condiciones de victoria y empate.
-- [ ] **Sprint 5: Seed de Contenido (DataDragon).** Script Python para extraer campeones, habilidades, lore y fechas desde la API estática de Riot e inyectar cientos de preguntas base en PostgreSQL.
+- [ ] **Sprint 1: Infraestructura y Lobby (REST).** Migración SQL para `game_rooms` (id, room_code, host, guest, status) y `rosco_questions`. Endpoints en FastAPI para crear sala y unirse por código de 6 letras. Normalizador de texto (regla 5) + **semilla mínima de 26 preguntas** (regla 8).
+- [ ] **Sprint 2: Conexión Realtime (Frontend).** UI del Lobby. Conexión de React al canal `room:{code}` de Supabase. Sincronización de presencia (Host avisa cuando entra el Guest) y **pausa por desconexión** (regla 6).
+- [ ] **Sprint 3: Sistema de Draft y Minijuegos.** Máquina de estados en la DB (`lobby` -> `drafting` -> `minigames`). Sistema de selección de 2 categorías alternando turnos. Motor de conversión de puntos a segundos que alimenta el banco de tiempo (regla 3).
+- [ ] **Sprint 4: El Rosco (Core Game).** Estado alfabético (A-Z, Pasapalabra, Acierto, Fallo) mediante broadcasts de Supabase con **validación estricta en backend** (regla 1). Turnos "a la contra" (regla 2), banco de 100s y primer jugador según el ganador de minijuegos (regla 3), tiebreaker de victoria/empate (regla 4) y normalización extrema (regla 5). Probado contra la semilla de 26 letras.
+- [ ] **Sprint 5: Seed de Contenido (DataDragon).** Script Python que extrae campeones, habilidades, lore y fechas desde la API estática de Riot con locale `es_ES` (regla 7) e inyecta cientos de preguntas base en PostgreSQL.
 
 ### Ideas Congeladas (Prioridad Nula)
 
