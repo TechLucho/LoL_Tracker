@@ -6,6 +6,22 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ---
 
+> **Cierre v2.1 — Onboarding y sesión (2026-09-13):** Riot ID vinculado por usuario y primer
+> flujo de arranque real. **P0:** `user_settings` gana `riot_id`/`riot_region` (migración 014,
+> aplicada a la DB de Supabase) y todo el pipeline lee del `CurrentUserId` — `/api/sync`, la
+> captura de LP y `RiotService` ya no tocan el `RIOT_ID` del `.env`; `_SyncState` es por
+> `user_id` y el `409` de sync en curso solo bloquea al mismo usuario. **P1:** endpoint
+> `PUT /api/settings/riot` (valida formato `Nombre#TAG` y región contra `ROUTING_MAP`),
+> onboarding `RiotOnboarding.tsx` con el guard `RequireLinked` (sin `riot_id` el Dashboard
+> queda oculto y solo se ve el formulario; al vincular se monta el Layout y el auto-sync
+> inicial arranca solo) e interceptor 401 global en el client axios (`signOut` local +
+> `queryClient.clear()` + toast "Sesión expirada" + redirect a `/login` conservando la ruta
+> previa; los 401 simultáneos se colapsan en uno). QA en verde: **91 pytest + 40 vitest +
+> oxlint + build** (commits `e2ab253` y `a2fc6d8`). Pendiente para cerrar la v2.1: panel de
+> configuración para re-vincular Riot ID/región desde `/settings`.
+
+---
+
 > **Cierre v2.0 (2026-09-12):** cierre de la migración SaaS multi-tenant tras la auditoría
 > técnica completa. Auth delegado 100% a **Supabase Auth**: registro/login en la SPA, tokens de
 > sesión JWT verificados en el backend por algoritmo dinámico — HS256 con `SUPABASE_JWT_SECRET`
@@ -249,18 +265,55 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ---
 
+## Completado (v2.1)
+
+> Archivado 2026-09-13 (P0 + P1 del roadmap de la auditoría v2.0 / onboarding): Riot ID por
+> usuario, sync concurrente y manejo global de sesión expirada. QA en verde: 91 pytest + 40
+> vitest + oxlint + build (commits `e2ab253` P0 y `a2fc6d8` P1).
+
+- [x] **Migración multi-usuario y concurrencia**: `user_settings` gana `riot_id`/`riot_region`
+  (migración 014, aplicada a Supabase) y el pipeline (sync, captura de LP, `RiotService`) lee
+  del `CurrentUserId`, desacoplándolo del `RIOT_ID` global del `.env`; `_SyncState` pasa de
+  global a dict por `user_id`, así el `409` de "sync en curso" solo bloquea al mismo usuario.
+- [x] **Flujo de Onboarding (Wizard obligatorio)**: `PUT /api/settings/riot` (valida formato
+  `Nombre#TAG` y región contra `ROUTING_MAP`) + `RiotOnboarding.tsx` a pantalla completa; el
+  guard `RequireLinked` oculta el Dashboard hasta vincular y el auto-sync inicial arranca solo.
+- [x] **Manejo de Sesión Expirada**: interceptor 401 global en el client axios →
+  `supabase.auth.signOut()` (scope local, sin red) + `queryClient.clear()` + toast "Sesión
+  expirada" + redirect a `/login` conservando la ruta previa; los 401 en ráfaga se colapsan.
+
+---
+
 ## Pendiente (Backlog / Features futuras)
 
 ### Despliegue
 
 - [ ] **Despliegue formalizado**: no hay Dockerfile/compose/fly.toml/render.yaml — hoy vive solo en la maquina local. Contenerizar backend+frontend antes de usarlo fuera de casa
 
-### Roadmap v2.1 (hoja de ruta de la auditoría v2.0 / onboarding)
+### Heredado de v2.1 (pendiente de cerrar)
 
-- [ ] **P0 — Vincular Riot ID por usuario**: `user_settings` gana `riot_id`/`riot_region`; `/api/sync`, la captura de LP y `RiotService` leen del usuario (`CurrentUserId`) en vez del `RIOT_ID` del `.env`. Es la pieza que habilita el onboarding real (hoy el sync sigue siendo global).
-- [ ] **P0 — Sync multi-usuario**: `_SyncState` global → estado por `user_id`; el `409` de "sync en curso" solo bloquea al mismo usuario, no a los demás.
-- [ ] **P1 — Sesión expirada end-to-end**: interceptor axios ante `401` → `supabase.auth.signOut()` + toast "Sesión expirada" + redirect a `/login` conservando `state.from` (el `retry: false` en 4xx ya está aplicado).
-- [ ] **P1 — Panel de configuración completo**: editar Riot ID/región desde la UI, estado de conexión (`/health`) y verificación de email en el flujo de registro.
+- [ ] **Panel de configuración completo**: re-vincular Riot ID/región desde la UI (hoy solo existe en el onboarding de primer arranque), estado de conexión (`/health`) y verificación de email en el flujo de registro.
+
+### Roadmap v2.2 — Multijugador: El Rosco
+
+> **Concepto:** minijuego 1v1 en tiempo real construido sobre Supabase Realtime. Dos jugadores
+> compiten en partidas privadas: se miden en minijuegos de trivia que otorgan segundos extra y
+> cierran con **El Rosco**, la ronda alfabética que decide al ganador.
+
+- **Objetivo:** minijuego 1v1 en tiempo real usando Supabase Realtime.
+- **Flujo:** Lobby por código → Fase de Draft (elección de minijuegos) → Minijuegos (acumular segundos extras) → El Rosco final.
+- **Reglas Técnicas:**
+  - Validación estricta de texto ignorando mayúsculas y tildes, pero **sin tolerancia a fallos tipográficos** (una tecla errónea es fallo, no un "casi").
+  - Sin matchmaking público por ahora: solo **salas privadas por código** de 6 letras.
+  - Todo el contenido (preguntas y categorías) se precarga en **PostgreSQL**; nada de consultas a Riot en plena partida.
+
+#### Sprints de Implementación
+
+- [ ] **Sprint 1: Infraestructura y Lobby (REST).** Migración SQL para `game_rooms` (id, room_code, host, guest, status) y `rosco_questions`. Endpoints en FastAPI para crear sala y unirse por código de 6 letras. Normalizador de texto (ignorar tildes/caps).
+- [ ] **Sprint 2: Conexión Realtime (Frontend).** UI del Lobby. Conexión de React al canal `room:{code}` de Supabase. Sincronización de presencia (Host avisa cuando entra el Guest).
+- [ ] **Sprint 3: Sistema de Draft y Minijuegos.** Máquina de estados en la DB (`lobby` -> `drafting` -> `minigames`). Sistema de selección de 2 categorías alternando turnos. Motor de conversión de puntos a segundos para balancear la economía de tiempo.
+- [ ] **Sprint 4: El Rosco (Core Game).** Gestión del estado alfabético (A-Z, Pasapalabra, Acierto, Fallo) mediante broadcasts de Supabase. Cálculo del jugador inicial basado en el rendimiento previo. Condiciones de victoria y empate.
+- [ ] **Sprint 5: Seed de Contenido (DataDragon).** Script Python para extraer campeones, habilidades, lore y fechas desde la API estática de Riot e inyectar cientos de preguntas base en PostgreSQL.
 
 ### Ideas Congeladas (Prioridad Nula)
 
