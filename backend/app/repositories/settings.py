@@ -70,3 +70,26 @@ async def replace(
             target_vision_score,
         ),
     )
+
+
+async def update_riot(
+    user_id: str, riot_id: str | None, riot_region: str | None = "EUW1"
+) -> dict[str, Any]:
+    """Vincula (o desvincula, con `riot_id=None`) la cuenta Riot del usuario.
+
+    Actualiza las columnas de la migración 014. UPSERT para que funcione aunque la fila
+    del usuario no exista todavía. La región se normaliza a mayúsculas al escribir: las
+    claves de `ROUTING_MAP` (config.py) vienen en 'EUW1', 'LA1'...
+    """
+    return await db.fetch_one(  # type: ignore[return-value]
+        """
+        INSERT INTO user_settings (user_id, riot_id, riot_region, updated_at)
+        VALUES (%s, %s, %s, now())
+        ON CONFLICT (user_id) DO UPDATE SET
+            riot_id     = EXCLUDED.riot_id,
+            riot_region = EXCLUDED.riot_region,
+            updated_at  = now()
+        RETURNING *
+        """,
+        (user_id, riot_id, (riot_region or "EUW1").upper()),
+    )

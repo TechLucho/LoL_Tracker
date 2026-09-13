@@ -11,16 +11,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from backend.app.config import Settings, get_settings
-from backend.app.services.riot import RiotService
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
-
-
-def get_riot_service(settings: SettingsDep) -> RiotService:
-    return RiotService(settings)
-
-
-RiotServiceDep = Annotated[RiotService, Depends(get_riot_service)]
 
 
 _bearer_scheme = HTTPBearer(auto_error=False)

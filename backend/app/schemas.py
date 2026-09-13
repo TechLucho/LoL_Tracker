@@ -534,6 +534,7 @@ class UserSettings(BaseModel):
     regions: list[str] = Field(default_factory=list)
     champion_pool_max: int = CHAMPION_POOL_MAX
     display_timezone: str = "Europe/Madrid"
+    # Vinculación Riot del usuario (migración 014): persistida en user_settings, no en el .env.
     riot_id: str = ""
     riot_region: str = "EUW1"
 
@@ -582,7 +583,7 @@ class ConfigOptions(BaseModel):
     regions: list[str]
     champion_pool_max: int
     display_timezone: str
-    riot_id: str = Field(description="Riot ID por defecto, desde el .env (no es un secreto)")
+    riot_id: str = Field(description="Riot ID vinculado del usuario (migración 014; no es un secreto)")
     riot_region: str
 
 

@@ -1042,7 +1042,7 @@
           "sync"
         ],
         "summary": "Sync",
-        "description": "Encola la sincronizaci\u00f3n y responde al instante (202).\n\nLa validaci\u00f3n (Riot ID, colas) sigue siendo s\u00edncrona: los errores de petici\u00f3n se reportan\naqu\u00ed, no en el polling. Los fallos de Riot/DB viajan despu\u00e9s por `/status`.",
+        "description": "Encola la sincronizaci\u00f3n del usuario logueado y responde al instante (202).\n\nLa validaci\u00f3n (Riot ID vinculado, colas) sigue siendo s\u00edncrona: los errores de petici\u00f3n se\nreportan aqu\u00ed, no en el polling. Los fallos de Riot/DB viajan despu\u00e9s por `/status`. El Riot\nID y la regi\u00f3n se leen de `user_settings` (migraci\u00f3n 014), no del .env.",
         "operationId": "sync_api_sync_post",
         "security": [
           {
@@ -1050,24 +1050,6 @@
           }
         ],
         "parameters": [
-          {
-            "name": "riot_id",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Por defecto, el RIOT_ID del .env",
-              "title": "Riot Id"
-            },
-            "description": "Por defecto, el RIOT_ID del .env"
-          },
           {
             "name": "limit",
             "in": "query",
@@ -1123,7 +1105,7 @@
           "sync"
         ],
         "summary": "Sync Status",
-        "description": "Estado del sync para el polling del frontend (idle/processing/success/partial/error).",
+        "description": "Estado del sync del usuario para el polling del frontend (idle/processing/success/partial/error).\n\nCada usuario consulta SU propio estado (el dict `_states` est\u00e1 aislado por user_id).",
         "operationId": "sync_status_api_sync_status_get",
         "responses": {
           "200": {

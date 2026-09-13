@@ -15,9 +15,11 @@ from typing import Literal
 import httpx
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 
-from backend.app.deps import CurrentUserId, RiotServiceDep, SettingsDep
+from backend.app.config import ROUTING_MAP
+from backend.app.deps import CurrentUserId, SettingsDep
 from backend.app.repositories import lp as lp_repo
 from backend.app.repositories import matches as repo
+from backend.app.repositories import settings as settings_repo
 from backend.app.repositories import sync_runs
 from backend.app.schemas import LpCapture, SyncAccepted, SyncError, SyncResult, SyncStatus
 from backend.app.services.riot import FailedMatch, RiotDegradedError, RiotService, RiotServiceError
@@ -32,9 +34,9 @@ SYNC_CHECKPOINT_BATCH = 5
 
 
 class _SyncState:
-    """Estado del sync en curso / último terminado.
+    """Estado del sync en curso / último terminado, PARA UN USUARIO.
 
-    App mono-usuario y mono-proceso: no necesita Redis ni tabla de jobs; un objeto en memoria
+    App mono-proceso: no necesita Redis ni tabla de jobs; un objeto en memoria por usuario
     es suficiente y sobrevive mientras viva el proceso de uvicorn.
     """
 
@@ -46,7 +48,45 @@ class _SyncState:
         self.error: str | None = None
 
 
-_state = _SyncState()
+# Estado por usuario (v2.1, P0): user_id (str UUID) -> _SyncState. Antes había un único
+# `_SyncState` global: un sync concurrente de OTRO usuario bloqueaba a todos. Aislarlo por
+# user_id también aísla el 409: cada usuario sólo choca con su PROPIO sync en vuelo.
+_states: dict[str, _SyncState] = {}
+
+
+def _user_state(user_id: str) -> _SyncState:
+    """Devuelve (creando si no existe) el estado del sync de `user_id`."""
+    state = _states.get(user_id)
+    if state is None:
+        state = _SyncState()
+        _states[user_id] = state
+    return state
+
+
+async def _load_riot_target(user_id: str, api_key: str) -> tuple[str, RiotService]:
+    """Lee el Riot ID y la región VINCULADOS del usuario desde user_settings (migración 014).
+
+    Sustituye a `RIOT_ID`/`RIOT_REGION` del .env: el sync ya no depende de un Riot ID global.
+    Devuelve (riot_id, RiotService construido con la región del usuario). 400 con instrucciones
+    si el usuario aún no vinculó su cuenta Riot.
+    """
+    row = await settings_repo.get(user_id)
+    target = (row.get("riot_id") or "").strip()
+    if not target:
+        raise HTTPException(
+            400,
+            "Tu cuenta de Riot no está vinculada. Añade tu Riot ID (Nombre#Tag) en la "
+            "configuración antes de sincronizar.",
+        )
+
+    region = (row.get("riot_region") or "EUW1").upper()
+    if region not in ROUTING_MAP:
+        raise HTTPException(
+            400,
+            f"Región Riot desconocida en tu configuración: {region}. "
+            f"Válidas: {', '.join(sorted(ROUTING_MAP))}",
+        )
+    return target, RiotService(api_key, region)
 
 
 async def _capture_ranked_lp(user_id: str, riot: RiotService, riot_id: str) -> LpCapture | None:
@@ -142,8 +182,9 @@ async def _run_sync(riot: RiotService, target: str, limit: int, queue_ids: list[
     Tilt Alert.
 
     Persiste el resultado final en sync_runs (tabla de auditoría, migración 006). El
-    _SyncState en memoria se sigue actualizando para el polling rápido del frontend.
+    _SyncState del usuario en memoria se sigue actualizando para el polling rápido del frontend.
     """
+    state = _user_state(user_id)
     inserted = 0
     error_msg: str | None = None
     losing_streak = False
@@ -194,11 +235,11 @@ async def _run_sync(riot: RiotService, target: str, limit: int, queue_ids: list[
         if degraded:
             # No es un 500: el sync "funcionó" hasta donde Riot dejó. Lo que quedó guardado
             # persiste y el frontend avisa de que hay que reintentar más tarde.
-            _state.result = SyncResult(
+            state.result = SyncResult(
                 fetched=fetched, inserted=inserted, skipped=fetched - inserted,
                 errors=sync_errors, degraded_api=True,
             )
-            _state.status = "partial"
+            state.status = "partial"
         else:
             # Auto-tracker de LP: sólo tiene sentido si entraron partidas nuevas de Solo/Duo.
             lp_captured = None
@@ -213,7 +254,7 @@ async def _run_sync(riot: RiotService, target: str, limit: int, queue_ids: list[
             if losing_streak:
                 log.warning("Tilt Alert: %s lleva 3+ derrotas consecutivas", target)
 
-            _state.result = SyncResult(
+            state.result = SyncResult(
                 fetched=fetched,
                 inserted=inserted,
                 skipped=fetched - inserted,
@@ -221,54 +262,51 @@ async def _run_sync(riot: RiotService, target: str, limit: int, queue_ids: list[
                 lp_captured=lp_captured,
                 losing_streak_warning=losing_streak,
             )
-            _state.status = "success"
+            state.status = "success"
     except RiotServiceError as exc:
         log.error("Sync falló: %s", exc)
         error_msg = str(exc)
-        _state.error = error_msg
-        _state.status = "error"
+        state.error = error_msg
+        state.status = "error"
     except Exception as exc:  # noqa: BLE001
         log.exception("Sync falló con excepción inesperada")
         error_msg = f"Error inesperado: {exc}"
-        _state.error = error_msg
-        _state.status = "error"
+        state.error = error_msg
+        state.status = "error"
     finally:
-        _state.finished_at = datetime.now(UTC)
+        state.finished_at = datetime.now(UTC)
         await sync_runs.finish_run(
             run_id,
-            status=_state.status,
-            finished_at=_state.finished_at,
+            status=state.status,
+            finished_at=state.finished_at,
             matches_added=inserted,
             error_message=error_msg,
         )
         if discord_webhook_url:
-            await _notify_discord(discord_webhook_url, _state.status, inserted, losing_streak)
+            await _notify_discord(discord_webhook_url, state.status, inserted, losing_streak)
 
 
 @router.post("", response_model=SyncAccepted, status_code=202)
 async def sync(
     background_tasks: BackgroundTasks,
     user_id: CurrentUserId,
-    riot: RiotServiceDep,
     settings: SettingsDep,
-    riot_id: str | None = Query(None, description="Por defecto, el RIOT_ID del .env"),
     limit: int = Query(10, ge=1, le=100),
     queues: str = Query(
         ",".join(str(q) for q in DEFAULT_QUEUES),
         description="IDs de cola separados por coma (420=Solo/Duo, 400=Normal Draft). Default: ambos.",
     ),
 ) -> SyncAccepted:
-    """Encola la sincronización y responde al instante (202).
+    """Encola la sincronización del usuario logueado y responde al instante (202).
 
-    La validación (Riot ID, colas) sigue siendo síncrona: los errores de petición se reportan
-    aquí, no en el polling. Los fallos de Riot/DB viajan después por `/status`.
+    La validación (Riot ID vinculado, colas) sigue siendo síncrona: los errores de petición se
+    reportan aquí, no en el polling. Los fallos de Riot/DB viajan después por `/status`. El Riot
+    ID y la región se leen de `user_settings` (migración 014), no del .env.
     """
-    if _state.status == "processing":
-        raise HTTPException(409, "Ya hay una sincronización en curso.")
-
-    target = riot_id or settings.riot_id
-    if not target:
-        raise HTTPException(422, "Falta el Riot ID (ni en la query ni en RIOT_ID del .env).")
+    uid = str(user_id)
+    state = _user_state(uid)
+    if state.status == "processing":
+        raise HTTPException(409, "Ya hay una sincronización en curso para tu cuenta.")
 
     queue_ids: list[int] = []
     for part in queues.split(","):
@@ -278,21 +316,23 @@ async def sync(
     if not queue_ids:
         queue_ids = list(DEFAULT_QUEUES)
 
-    _state.started_at = datetime.now(UTC)
-    _state.finished_at = None
-    _state.result = None
-    _state.error = None
+    state.started_at = datetime.now(UTC)
+    state.finished_at = None
+    state.result = None
+    state.error = None
     # Guard cerrado: el estado se marca "processing" ANTES de esperar nada (no hay await entre
     # el guard del 409 y esta línea), así dos POST simultáneos nunca atraviesan el guard a la
-    # vez (race auditado en v1.6: el viejo orden permitía lanzar dos _run_sync). Si start_run
-    # falla (p.ej. la DB está caída), se restaura "idle" y el sync no queda pegado en 409.
-    _state.status = "processing"
+    # vez (race auditado en v1.6: el viejo orden permitía lanzar dos _run_sync). La lectura de
+    # credenciales y `start_run` van DESPUÉS; si cualquiera falla (sin vincular o DB caída), se
+    # restaura "idle" y el sync no queda pegado en 409.
+    state.status = "processing"
     try:
-        run_id = await sync_runs.start_run(user_id, _state.started_at)
+        target, riot = await _load_riot_target(uid, settings.riot_api_key)
+        run_id = await sync_runs.start_run(uid, state.started_at)
     except Exception:
-        _state.status = "idle"
+        state.status = "idle"
         raise
-    background_tasks.add_task(_run_sync, riot, target, limit, queue_ids, user_id=user_id,
+    background_tasks.add_task(_run_sync, riot, target, limit, queue_ids, user_id=uid,
                               run_id=run_id, discord_webhook_url=settings.discord_webhook_url)
 
     return SyncAccepted(
@@ -302,12 +342,16 @@ async def sync(
 
 
 @router.get("/status", response_model=SyncStatus)
-async def sync_status() -> SyncStatus:
-    """Estado del sync para el polling del frontend (idle/processing/success/partial/error)."""
+async def sync_status(user_id: CurrentUserId) -> SyncStatus:
+    """Estado del sync del usuario para el polling del frontend (idle/processing/success/partial/error).
+
+    Cada usuario consulta SU propio estado (el dict `_states` está aislado por user_id).
+    """
+    state = _user_state(str(user_id))
     return SyncStatus(
-        status=_state.status,
-        started_at=_state.started_at,
-        finished_at=_state.finished_at,
-        result=_state.result,
-        error=_state.error,
+        status=state.status,
+        started_at=state.started_at,
+        finished_at=state.finished_at,
+        result=state.result,
+        error=state.error,
     )

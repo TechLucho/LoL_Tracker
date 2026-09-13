@@ -38,8 +38,10 @@ async def get_config(user_id: CurrentUserId) -> UserSettings:
         regions=sorted(ROUTING_MAP.keys()),
         champion_pool_max=CHAMPION_POOL_MAX,
         display_timezone=settings.display_timezone,
-        riot_id=settings.riot_id,
-        riot_region=settings.riot_region,
+        # v2.1 (P0): el Riot ID/región son POR USUARIO (migración 014), no del .env. Si la
+        # fila aún no tiene vinculación, se reporta vacío para que la UI invite a vincular.
+        riot_id=(row.get("riot_id") or "").strip(),
+        riot_region=(row.get("riot_region") or "EUW1").upper(),
     )
 
 

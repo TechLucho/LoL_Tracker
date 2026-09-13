@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 import pytest
 
 from backend.app import db
+from backend.app.repositories import settings as settings_repo
 from backend.app.repositories import sync_runs
 from backend.app.services.riot import RiotDegradedError
 
@@ -21,6 +22,8 @@ pytestmark = pytest.mark.integration
 
 # v2.0: start_run/`_run_sync` llevan `user_id` (FK a auth.users de la migración 013).
 USER = "00000000-0000-0000-0000-000000000001"
+# v2.1 (P0): el sync necesita el Riot ID VINCULADO del usuario (migración 014).
+RIOT_ID = "Test#EUW"
 
 
 class _DegradedRiot:
@@ -35,21 +38,20 @@ def test_sync_degradado_cierra_en_partial():
     from backend.app.routers import sync as sync_router
 
     async def _scenario() -> None:
-        sync_router._state.status = "idle"
-        sync_router._state.result = None
-        sync_router._state.error = None
+        sync_router._states.clear()
 
         started = datetime.now(UTC)
         run_id = await sync_runs.start_run(USER, started)
         await sync_router._run_sync(
-            _DegradedRiot(), "Test#EUW", 10, [420, 400], user_id=USER, run_id=run_id
+            _DegradedRiot(), RIOT_ID, 10, [420, 400], user_id=USER, run_id=run_id
         )
 
         # Estado en memoria para el polling: 'partial', no 'error' ni 'success'.
-        assert sync_router._state.status == "partial"
-        assert sync_router._state.error is None
-        assert sync_router._state.result is not None
-        assert sync_router._state.result.degraded_api is True
+        state = sync_router._states[USER]
+        assert state.status == "partial"
+        assert state.error is None
+        assert state.result is not None
+        assert state.result.degraded_api is True
 
         # Auditoría: el run cerró como 'partial' (CHECK de la migración 012 lo permite).
         runs = await sync_runs.recent_runs(USER, limit=1)
@@ -63,6 +65,9 @@ def test_sync_degradado_cierra_en_partial():
             await db.execute(
                 "INSERT INTO auth.users (id) VALUES (%s) ON CONFLICT (id) DO NOTHING", (USER,)
             )
+            # Riot ID VINCULADO del usuario de prueba (migración 014): sin esto el sync
+            # respondería 400 en el endpoint real; aquí ejercitamos `_run_sync` directo.
+            await settings_repo.update_riot(USER, RIOT_ID, "EUW1")
             await _scenario()
         finally:
             await db.close_pool()

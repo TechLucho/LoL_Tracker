@@ -30,7 +30,7 @@ from typing import Any
 from fastapi.concurrency import run_in_threadpool
 from riotwatcher import ApiError, LolWatcher, RiotWatcher
 
-from backend.app.config import Settings
+from backend.app.config import ROUTING_MAP
 from backend.app.schemas import RATING_VERSION
 
 log = logging.getLogger(__name__)
@@ -168,16 +168,26 @@ _DEFAULT_PROFILE = _RoleProfile(cs_target=7.0, kp_target=0.50, dpm_target=550)
 
 
 class RiotService:
-    def __init__(self, settings: Settings):
-        self._settings = settings
+    def __init__(self, riot_api_key: str, region: str):
+        # v2.1 (P0): el servicio se construye POR USUARIO con su región (leída de
+        # user_settings), no desde un Settings global. `region` es la plataforma Riot
+        # ('EUW1', 'LA1'...), de la que se deriva la ruta continental para Account-V1 y
+        # Match-V5, y la plataforma para Summoner-V4/League-V4/Mastery.
+        region = (region or "").strip().upper()
+        route = ROUTING_MAP.get(region)
+        if route is None:
+            raise RiotServiceError(
+                f"Región Riot desconocida: {region}. Válidas: {', '.join(sorted(ROUTING_MAP))}",
+                retryable=False,
+            )
         # riotwatcher trae un BasicRateLimiter por defecto que lee las cabeceras X-Rate-Limit y
         # duerme proactivamente; su limitador de aplicación es atributo de clase, así que el
         # estado se comparte entre ambos watchers y entre instancias del proceso.
-        self._lol = LolWatcher(settings.riot_api_key)
-        self._riot = RiotWatcher(settings.riot_api_key)
-        self._route = settings.continental_route
+        self._lol = LolWatcher(riot_api_key)
+        self._riot = RiotWatcher(riot_api_key)
+        self._route = route
         # Summoner-V4 y League-V4 se enrutan por PLATAFORMA (EUW1...), no por continente.
-        self._platform = settings.riot_region
+        self._platform = region
 
     # ------------------------------------------------------------------ reintentos
 

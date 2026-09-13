@@ -225,7 +225,10 @@ async def _scout_locked(
 
     # ── Cache miss: la llamada real a Riot ─────────────────────────────────────
     try:
-        entries = await RiotService(get_settings()).fetch_champion_mastery(puuid)
+        settings = get_settings()
+        entries = await RiotService(
+            settings.riot_api_key, settings.riot_region
+        ).fetch_champion_mastery(puuid)
     except RiotServiceError as exc:
         if exc.status == 404:
             log.info("Riot sin maestrías para %s (cuenta sin partidas o muy reciente)", opponent_name)

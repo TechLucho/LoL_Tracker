@@ -474,10 +474,11 @@ export interface paths {
         put?: never;
         /**
          * Sync
-         * @description Encola la sincronización y responde al instante (202).
+         * @description Encola la sincronización del usuario logueado y responde al instante (202).
          *
-         *     La validación (Riot ID, colas) sigue siendo síncrona: los errores de petición se reportan
-         *     aquí, no en el polling. Los fallos de Riot/DB viajan después por `/status`.
+         *     La validación (Riot ID vinculado, colas) sigue siendo síncrona: los errores de petición se
+         *     reportan aquí, no en el polling. Los fallos de Riot/DB viajan después por `/status`. El Riot
+         *     ID y la región se leen de `user_settings` (migración 014), no del .env.
          */
         post: operations["sync_api_sync_post"];
         delete?: never;
@@ -495,7 +496,9 @@ export interface paths {
         };
         /**
          * Sync Status
-         * @description Estado del sync para el polling del frontend (idle/processing/success/partial/error).
+         * @description Estado del sync del usuario para el polling del frontend (idle/processing/success/partial/error).
+         *
+         *     Cada usuario consulta SU propio estado (el dict `_states` está aislado por user_id).
          */
         get: operations["sync_status_api_sync_status_get"];
         put?: never;
@@ -2402,8 +2405,6 @@ export interface operations {
     sync_api_sync_post: {
         parameters: {
             query?: {
-                /** @description Por defecto, el RIOT_ID del .env */
-                riot_id?: string | null;
                 limit?: number;
                 /** @description IDs de cola separados por coma (420=Solo/Duo, 400=Normal Draft). Default: ambos. */
                 queues?: string;
