@@ -303,25 +303,38 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 - **Objetivo:** minijuego 1v1 en tiempo real usando Supabase Realtime.
 - **Flujo:** Lobby por código → Fase de Draft (elección de minijuegos) → Minijuegos (acumular segundos extras) → El Rosco final.
 
-#### Reglas de Negocio (cerradas 2026-09-13)
+#### Reglas de Negocio (cerradas 2026-09-13 · casos límite resueltos)
 
-1. **Autoridad (anti-trampas)** — Validación estricta en el **backend**. El frontend envía cada
-   respuesta al servidor (REST); el backend valida contra la pregunta oficial, calcula
-   aciertos/fallos y emite el broadcast por **Realtime**. Los broadcasts del cliente nunca son
-   de confianza.
-2. **Turnos del Rosco** — Clásico "a la contra": un jugador arranca en la **A** y sigue hasta
-   que falla o dice "pasapalabra". Su reloj se congela y arranca el turno del rival en la letra
-   en la que se quedó.
-3. **Economía y Reloj** — Banco de tiempo base de **100 segundos**. Los minijuegos suman
-   segundos extra. Quien gane los minijuegos gana el derecho a empezar el Rosco. Si el tiempo
-   llega a **0**, termina el turno de ese jugador.
+1. **Autoridad (anti-trampas) y fuente de verdad** — Validación estricta en el **backend**, que
+   es el **árbitro y dueño absoluto del estado**. El frontend envía cada respuesta al servidor
+   (REST); el backend valida contra la pregunta oficial, calcula aciertos/fallos y emite el
+   broadcast por **Realtime**. El estado vivo de la partida (letras pendientes, tiempo restante,
+   turno actual) vive en **memoria en FastAPI** (`dict[room_code, GameState]`); el frontend es
+   "tonto": solo envía acciones y pinta la UI según los eventos del servidor. La DB
+   (`game_rooms`) persiste el emparejamiento y el resultado final, **no** el estado en vivo.
+   Los broadcasts del cliente nunca son de confianza.
+2. **Turnos del Rosco (múltiples vueltas)** — Clásico "a la contra" con **múltiples vueltas**
+   como en el programa real. Un jugador arranca en la **A**; si acierta, avanza a la siguiente
+   letra; si **falla o dice "pasapalabra"**, la letra queda en estado **pendiente** (o
+   **fallada**), su reloj se congela y cede el turno al rival, que arranca donde este se quedó.
+   Al completar la vuelta (Z), su siguiente turno retoma la **primera letra pendiente** e itera
+   hasta agotar su tiempo o responder todas las letras.
+3. **Economía y Reloj** — Banco de tiempo **estrictamente individual**: cada jugador arranca con
+   un banco base de **100 segundos** al que se suman exclusivamente los segundos que **él mismo**
+   acumuló en los minijuegos. El reloj es un **contador continuo** (recurso estratégico): decrece
+   en tiempo real mientras sea tu turno; un **acierto no lo detiene** y pasas automáticamente a
+   la siguiente letra; solo se congela ante **fallo** o **pasapalabra**. Quien gane los
+   minijuegos gana el derecho a empezar el Rosco. Si el tiempo llega a **0**, termina el turno de
+   ese jugador.
 4. **Empates (tiebreaker)** — 1º gana quien tenga **más letras acertadas**; 2º a igualdad de
    letras, **quien conserve más tiempo restante**; 3º si todo coincide, **empate**.
 5. **Normalización extrema** — La validación convierte a **minúsculas**, elimina **tildes** y
    borra **todo carácter no alfanumérico** (espacios, apóstrofos, guiones): `"Nunu & Willump"`
    → `nunuwillump`, `"Kog'Maw"` → `kogmaw`. Un fallo tipográfico es fallo, no un "casi".
 6. **Desconexiones** — Si **Presence** detecta la caída de un jugador, la **partida se pausa**
-   (el reloj se detiene y no se procesan respuestas) hasta que vuelva o se abandone.
+   (reloj detenido, sin procesar respuestas) con un **grace period estricto de 60 segundos**: si
+   no se reconecta a tiempo, **pierde por abandono (forfeit)**. Si el host desaparece
+   definitivamente, la sala se cierra y **expulsa al invitado**.
 7. **Idioma del contenido** — Los datos se extraen de **Data Dragon con locale `es_ES`**: lore
    y nombres de habilidades en español oficial.
 8. **Ordering del seed** — En el **Sprint 1** se crea una semilla mínima de prueba (**26
@@ -336,9 +349,9 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 #### Sprints de Implementación
 
 - [ ] **Sprint 1: Infraestructura y Lobby (REST).** Migración SQL para `game_rooms` (id, room_code, host, guest, status) y `rosco_questions`. Endpoints en FastAPI para crear sala y unirse por código de 6 letras. Normalizador de texto (regla 5) + **semilla mínima de 26 preguntas** (regla 8).
-- [ ] **Sprint 2: Conexión Realtime (Frontend).** UI del Lobby. Conexión de React al canal `room:{code}` de Supabase. Sincronización de presencia (Host avisa cuando entra el Guest) y **pausa por desconexión** (regla 6).
+- [ ] **Sprint 2: Conexión Realtime (Frontend).** UI del Lobby. Conexión de React al canal `room:{code}` de Supabase. Sincronización de presencia (Host avisa cuando entra el Guest) y **pausa por desconexión con grace period de 60s → forfeit** (regla 6).
 - [ ] **Sprint 3: Sistema de Draft y Minijuegos.** Máquina de estados en la DB (`lobby` -> `drafting` -> `minigames`). Sistema de selección de 2 categorías alternando turnos. Motor de conversión de puntos a segundos que alimenta el banco de tiempo (regla 3).
-- [ ] **Sprint 4: El Rosco (Core Game).** Estado alfabético (A-Z, Pasapalabra, Acierto, Fallo) mediante broadcasts de Supabase con **validación estricta en backend** (regla 1). Turnos "a la contra" (regla 2), banco de 100s y primer jugador según el ganador de minijuegos (regla 3), tiebreaker de victoria/empate (regla 4) y normalización extrema (regla 5). Probado contra la semilla de 26 letras.
+- [ ] **Sprint 4: El Rosco (Core Game).** Estado alfabético (A-Z, Pasapalabra, Acierto, Fallo) mediante broadcasts de Supabase con **validación estricta en backend y estado vivo en memoria** (`dict[room_code, GameState]`, regla 1). Turnos "a la contra" con múltiples vueltas (regla 2), banco individual de 100s y contador continuo (regla 3), tiebreaker de victoria/empate (regla 4) y normalización extrema (regla 5). Probado contra la semilla de 26 letras.
 - [ ] **Sprint 5: Seed de Contenido (DataDragon).** Script Python que extrae campeones, habilidades, lore y fechas desde la API estática de Riot con locale `es_ES` (regla 7) e inyecta cientos de preguntas base en PostgreSQL.
 
 ### Ideas Congeladas (Prioridad Nula)
