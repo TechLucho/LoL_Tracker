@@ -57,6 +57,7 @@ def test_openapi_expone_todos_los_endpoints(client):
         "/api/scout/nemesis",
         "/api/scout/matchups",
         "/api/config",
+        "/api/settings/riot",
         "/api/datadragon/version",
         "/api/metadata/champions",
         "/api/metadata/items",

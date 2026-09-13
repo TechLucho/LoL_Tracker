@@ -1,5 +1,7 @@
 import axios from 'axios'
+import { toast } from 'sonner'
 import { supabase } from '../lib/supabase'
+import { queryClient } from '../lib/queryClient'
 import type { MatchReviewUpdate } from '../data/types'
 import type {
   BackendMatch,
@@ -24,6 +26,7 @@ import type {
   SessionFatigue,
   ScoutOpponent,
   MetaVerdictResponse,
+  RiotLinkRequest,
 } from './generated'
 // Re-export generated types that are used by other modules.
 export type {
@@ -69,6 +72,41 @@ api.interceptors.request.use(async (config) => {
   }
   return config
 })
+
+// ───────────────────────── 401 global: sesión caducada/revocada ─────────────────────────
+// Al detectar un 401 (token expirado, revocado o sin sesión) se cierra la sesión de Supabase,
+// se vacía la caché de TanStack Query (nada de datos del usuario anterior en el caché) y se
+// avisa. El redirect NO vive aquí: `supabase.auth.signOut()` dispara `onAuthStateChange` y el
+// AuthProvider pone la sesión a null, con lo que RequireAuth redirige a /login conservando la
+// ruta previa en `state.from`. Los 401 simultáneos (varias queries en vuelo) se colapsan en uno.
+
+let handlingUnauthorized = false
+
+function handleUnauthorized(): void {
+  if (handlingUnauthorized) return
+  handlingUnauthorized = true
+  queryClient.clear()
+  toast.error('🕐 Sesión expirada. Vuelve a iniciar sesión.')
+  // `scope: 'local'` a propósito: un revoke en servidor (scope global) hace red y puede fallar
+  // dejando al usuario atrapado en un bucle de 401. Aquí el token ya es inválido — sólo hay
+  // que limpiar la sesión local; el onAuthStateChange del provider tira del logout.
+  void supabase.auth.signOut({ scope: 'local' }).catch(() => {})
+}
+
+// El guard se rearma con cada login: si la nueva sesión vuelve a caducar, el aviso se repite.
+supabase.auth.onAuthStateChange((event) => {
+  if (event === 'SIGNED_IN') handlingUnauthorized = false
+})
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      handleUnauthorized()
+    }
+    return Promise.reject(error)
+  },
+)
 
 export async function getMatches(queueType: string, limit = 50, offset = 0): Promise<BackendMatch[]> {
   const params: Record<string, string | number> = { limit, offset }
@@ -122,6 +160,11 @@ export async function getSettings(): Promise<UserSettings> {
 
 export async function updateSettings(payload: UserSettingsUpdate): Promise<UserSettings> {
   const { data } = await api.put<UserSettings>('/config', payload)
+  return data
+}
+
+export async function linkRiot(payload: RiotLinkRequest): Promise<UserSettings> {
+  const { data } = await api.put<UserSettings>('/settings/riot', payload)
   return data
 }
 

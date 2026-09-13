@@ -6,6 +6,7 @@ export type {
   BackendParticipant,
   MatchUpdate as MatchReviewUpdate,
   UserSettingsUpdate,
+  RiotLinkRequest,
   TrendPoint,
   WeeklyReport,
   WeeklyTopChampion,

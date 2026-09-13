@@ -12,6 +12,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from backend.app.config import ROUTING_MAP
+
 # Valores canónicos de `impact_rating`. Se exponen en /api/config para que el frontend no los
 # duplique (en Streamlit estaban hardcodeados dos veces, y las dos listas podían divergir).
 IMPACT_RATINGS = (
@@ -570,6 +572,39 @@ class UserSettingsUpdate(BaseModel):
             seen.add(champion.lower())
             cleaned.append(champion)
         return cleaned
+
+
+class RiotLinkRequest(BaseModel):
+    """Cuerpo de PUT /api/settings/riot: vincula la cuenta Riot del usuario.
+
+    El Riot ID es el `GameName#TAG` que Riot usa para resolver el PUUID en el sync. La
+    validación (formato + región conocida) vive en el servidor: el onboarding de la v2.1
+    sólo envía `{riot_id, region}` y no valida nada por su cuenta.
+    """
+
+    riot_id: str = Field(min_length=1, description="Riot ID, formato 'Nombre#TAG'")
+    region: str = Field(default="EUW1", description="Región de plataforma (ROUTING_MAP)")
+
+    @field_validator("riot_id")
+    @classmethod
+    def _validate_riot_id(cls, value: str) -> str:
+        stripped = value.strip()
+        if "#" not in stripped:
+            raise ValueError("Formato inválido, usa 'Nombre#TAG'")
+        game_name, tag_line = (part.strip() for part in stripped.split("#", 1))
+        if not game_name or not tag_line:
+            raise ValueError("GameName y TAG no pueden estar vacíos")
+        return stripped
+
+    @field_validator("region")
+    @classmethod
+    def _validate_region(cls, value: str) -> str:
+        region = value.strip().upper()
+        if region not in ROUTING_MAP:
+            raise ValueError(
+                f"Región desconocida: {value!r}. Válidas: {', '.join(sorted(ROUTING_MAP))}"
+            )
+        return region
 
 
 class ConfigOptions(BaseModel):

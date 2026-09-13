@@ -52,6 +52,7 @@ export type MatchupNotesUpdate = components['schemas']['MatchupNotesUpdate']
 
 export type UserSettings = components['schemas']['UserSettings']
 export type UserSettingsUpdate = components['schemas']['UserSettingsUpdate']
+export type RiotLinkRequest = components['schemas']['RiotLinkRequest']
 
 export type ChampionRoleSummary = components['schemas']['ChampionRoleSummary']
 export type SessionBlock = components['schemas']['SessionBlock']

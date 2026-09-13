@@ -463,6 +463,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/settings/riot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Link Riot
+         * @description Vincula (o re-vincula) el Riot ID del usuario.
+         *
+         *     Mismo patrón de respuesta que PUT /api/config: devuelve la fila resultante ya
+         *     normalizada (el validators del schema limpia `riot_id` y pasa `region` a mayúsculas).
+         */
+        put: operations["link_riot_api_settings_riot_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/sync": {
         parameters: {
             query?: never;
@@ -1326,6 +1349,27 @@ export interface components {
              * @default false
              */
             dropped: boolean;
+        };
+        /**
+         * RiotLinkRequest
+         * @description Cuerpo de PUT /api/settings/riot: vincula la cuenta Riot del usuario.
+         *
+         *     El Riot ID es el `GameName#TAG` que Riot usa para resolver el PUUID en el sync. La
+         *     validación (formato + región conocida) vive en el servidor: el onboarding de la v2.1
+         *     sólo envía `{riot_id, region}` y no valida nada por su cuenta.
+         */
+        RiotLinkRequest: {
+            /**
+             * Riot Id
+             * @description Riot ID, formato 'Nombre#TAG'
+             */
+            riot_id: string;
+            /**
+             * Region
+             * @description Región de plataforma (ROUTING_MAP)
+             * @default EUW1
+             */
+            region: string;
         };
         /** ScoutMasteryChampion */
         ScoutMasteryChampion: {
@@ -2389,6 +2433,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Match"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    link_riot_api_settings_riot_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RiotLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserSettings"];
                 };
             };
             /** @description Validation Error */
