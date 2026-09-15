@@ -1,6 +1,7 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI agents working with code in this repository. It evolves with the
+project; when a fact here stops being true, update it instead of working around it.
 
 ## What this is
 
@@ -37,6 +38,8 @@ frontend/
     api/client.ts    # axios instance
 legacy/streamlit/    # DEAD monolith (app.py, database.py, riot_client.py, old scripts)
 data/                # lol_tracker.db = legacy SQLite, already migrated to Supabase
+AGENTS.md            # this file: agent guidance (repo root)
+DESIGN.md            # authoritative frontend stylesheet reference (repo root)
 ```
 
 ## Commands
@@ -137,6 +140,9 @@ plus participant data stored as **JSONB inside `matches`** (see `004_participant
   react-router-dom v7 (**HashRouter**), sonner (toasts), lucide-react (icons).
 - **Tailwind v4 is CSS-first**: design tokens and custom animations live in `frontend/src/index.css`
   (`@theme`, `@keyframes`). There is **no `tailwind.config.js`** — don't create one.
+- **`DESIGN.md` (repo root) is the authoritative stylesheet reference**: tokens, palette, type scale,
+  spacing/rounding conventions, canonical component classes (buttons, cards, inputs, pills, toggles)
+  and color-scheme logic. Consult it before changing any UI styling.
 - All 6 pages are `React.lazy()`-loaded; the `<Suspense>` lives in `Layout.tsx` around the `<Outlet>`
   so the sidebar stays visible while a chunk loads. The content wrapper is keyed by pathname to
   replay the fade-in on every navigation.

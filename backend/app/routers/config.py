@@ -32,16 +32,18 @@ async def get_config(user_id: CurrentUserId) -> UserSettings:
     """
     settings = get_settings()
     row = await repo.get(user_id)
+    # `row` (migración 014) ya trae riot_id/riot_region: pasar argumentos explícitos JUNTO a
+    # `**row` duplica keyword args y explota con TypeError. Se construye el dict limpio y se
+    # desempaqueta una sola vez.
+    row_dict = dict(row)
+    row_dict["riot_region"] = (row_dict.get("riot_region") or "EUW1").upper()
+    row_dict["riot_id"] = (row_dict.get("riot_id") or "").strip()
     return UserSettings(
-        **row,
+        **row_dict,
         impact_ratings=list(IMPACT_RATINGS),
         regions=sorted(ROUTING_MAP.keys()),
         champion_pool_max=CHAMPION_POOL_MAX,
         display_timezone=settings.display_timezone,
-        # v2.1 (P0): el Riot ID/región son POR USUARIO (migración 014), no del .env. Si la
-        # fila aún no tiene vinculación, se reporta vacío para que la UI invite a vincular.
-        riot_id=(row.get("riot_id") or "").strip(),
-        riot_region=(row.get("riot_region") or "EUW1").upper(),
     )
 
 
@@ -61,7 +63,12 @@ async def update_config(user_id: CurrentUserId, payload: UserSettingsUpdate) -> 
         target_kp_percent=payload.target_kp_percent,
         target_vision_score=payload.target_vision_score,
     )
-    return UserSettings(**row)
+    # RETURNING * incluye riot_id/riot_region (migración 014): normalizar igual que en GET
+    # para que NULL ('euw1' en minúsculas) no rompa UserSettings.
+    row_dict = dict(row)
+    row_dict["riot_region"] = (row_dict.get("riot_region") or "EUW1").upper()
+    row_dict["riot_id"] = (row_dict.get("riot_id") or "").strip()
+    return UserSettings(**row_dict)
 
 
 @router.get("/api/datadragon/version")

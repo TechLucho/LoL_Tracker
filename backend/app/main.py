@@ -24,7 +24,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app import db
 from backend.app.config import get_settings
-from backend.app.deps import get_current_user
+from backend.app.deps import get_current_user, warm_jwks_cache
 from backend.app.observability import (
     observability_middleware,
     setup_logging,
@@ -104,6 +104,10 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         # Arrancar en modo degradado a propósito: así /health puede explicar qué falta en vez de
         # que el proceso muera sin dejar rastro útil.
         log.error("No se pudo abrir el pool: %s", exc)
+    try:
+        await warm_jwks_cache(settings.supabase_url)
+    except Exception:  # noqa: BLE001
+        log.debug("warm_jwks_cache falló sin impacto (se reintentará en el primer request)")
     try:
         yield
     finally:

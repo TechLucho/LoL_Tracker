@@ -119,6 +119,11 @@ async def get_current_user(
             # Los tokens de sesión de Supabase llevan `aud: "authenticated"`; validarlo de forma
             # estricta (a diferencia de `verify_aud: False`, que ignoraba el claim por completo).
             audience="authenticated",
+            # Clock skew: el reloj de la máquina local puede ir ligeramente por detrás del de
+            # Supabase, y entonces un token recién emitido falla con "The token is not yet valid
+            # (iat)". Un margen de 60s (estándar de la industria) absorbe iat/exp/nbf sin reloj
+            # sincronizado.
+            leeway=60,
         )
     except jwt.ExpiredSignatureError:
         log.info("401 auth: token expirado (user=%s)", credentials.credentials[:20])

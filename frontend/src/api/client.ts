@@ -104,6 +104,25 @@ function handleUnauthorized(): void {
   void supabase.auth.signOut({ scope: 'local' }).catch(() => {})
 }
 
+// Singleflight para refrescar la sesión: los 401 concurrentes comparten UN solo
+// `refreshSession()` (el refresh_token de Supabase es de un solo uso — dos refrescos en
+// paralelo invalidarían el segundo). La promesa devuelve el nuevo access_token o null si el
+// refresh falló (sesión realmente revocada).
+let refreshInFlight: Promise<string | null> | null = null
+
+function refreshSessionToken(): Promise<string | null> {
+  if (!refreshInFlight) {
+    refreshInFlight = supabase.auth
+      .refreshSession()
+      .then(({ data }) => data.session?.access_token ?? null)
+      .catch(() => null)
+      .finally(() => {
+        refreshInFlight = null
+      })
+  }
+  return refreshInFlight
+}
+
 // El guard se rearma con cada login: si la nueva sesión vuelve a caducar, el aviso se repite.
 // Además se refresca `activeToken` en los eventos de auth para cerrar la ventana en la que un
 // 401 stale podría llegar justo tras el re-login, antes de que una petición nueva lo actualice.
@@ -122,7 +141,7 @@ supabase.auth.onAuthStateChange((event, session) => {
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (axios.isAxiosError(error) && error.response?.status === 401 && error.config) {
       // Comparar el token de la petición fallida con el token de la sesión actual. Sólo se
       // considera 401 real el que rechaza el token vigente: un request stale (en vuelo de una
@@ -133,6 +152,22 @@ api.interceptors.response.use(
       const failedToken = typeof raw === 'string' ? raw.replace(/^Bearer\s+/i, '') : null
 
       if (activeToken && failedToken === activeToken) {
+        const config = error.config as typeof error.config & { __lolTrackerRetried?: boolean }
+
+        // Un 401 CON token vigente puede ser transitorio: el token expiró segundos antes de
+        // que el refresh automático de Supabase (timer) se ejecutara, o el arranque en frío
+        // del PyJWKClient del backend tardó en validar. Antes de dar la sesión por muerta se
+        // refresca la sesión y se reintenta UNA vez con el token fresco.
+        if (!config.__lolTrackerRetried) {
+          config.__lolTrackerRetried = true
+          const newToken = await refreshSessionToken()
+          if (newToken) {
+            config.headers.set('Authorization', `Bearer ${newToken}`)
+            // El request interceptor re-lee la sesión y actualiza activeToken; el retry sale
+            // con el token nuevo. Si vuelve a fallar con 401, cae en el handleUnauthorized.
+            return api(config)
+          }
+        }
         handleUnauthorized()
       }
     }
