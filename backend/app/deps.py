@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Annotated
 from uuid import UUID
 
@@ -11,6 +12,8 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from backend.app.config import Settings, get_settings
+
+log = logging.getLogger(__name__)
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 
@@ -32,6 +35,34 @@ def _get_jwks_client(supabase_url: str) -> jwt.PyJWKClient:
         client = jwt.PyJWKClient(uri, timeout=_JWKS_FETCH_TIMEOUT_S)
         _jwks_clients[uri] = client
     return client
+
+
+def _token_header(token: str) -> dict:
+    """Header JWT decodificado de forma tolerante; {} si no es JSON válido."""
+    try:
+        return jwt.get_unverified_header(token)
+    except jwt.InvalidTokenError:
+        return {}
+
+
+def _token_alg(token: str) -> str:
+    return str(_token_header(token).get("alg", "?"))
+
+
+def _token_kid(token: str) -> str:
+    return str(_token_header(token).get("kid", "?"))
+
+
+async def warm_jwks_cache(supabase_url: str) -> None:
+    """Descarga la JWKS en el arranque (best-effort) para que el primer 401 real no coincida
+    con el cold-start del PyJWKClient (urllib síncrono con timeout de 5s). Si falla, el primer
+    request autenticado reintentará la descarga — degrada, no rompe."""
+    client = _get_jwks_client(supabase_url)
+    try:
+        await asyncio.to_thread(client.get_signing_keys)
+        log.info("JWKS descargada y cacheada en arranque (%s)", supabase_url)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("JWKS no disponible en arranque (se reintentará por request): %s", exc)
 
 
 async def _resolve_signing_key(token: str, settings: Settings) -> str:
@@ -85,16 +116,24 @@ async def get_current_user(
             # Según el algoritmo con el que venga firmado el token: HS256 (sesión antigua o
             # secreto compartido) y ES256/RS256 (sesiones firmadas con la JWKS de Supabase).
             algorithms=["HS256", "ES256", "RS256"],
-            # Sin exigir `aud` (PyJWT lo validaría por defecto y rechazaría tokens sin ese claim).
-            options={"verify_aud": False},
+            # Los tokens de sesión de Supabase llevan `aud: "authenticated"`; validarlo de forma
+            # estricta (a diferencia de `verify_aud: False`, que ignoraba el claim por completo).
+            audience="authenticated",
         )
     except jwt.ExpiredSignatureError:
+        log.info("401 auth: token expirado (user=%s)", credentials.credentials[:20])
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token expirado.",
             headers={"WWW-Authenticate": "Bearer"},
         ) from None
-    except jwt.InvalidTokenError:
+    except jwt.InvalidTokenError as exc:
+        # Loggea el error REAL de Python (InvalidSignatureError, InvalidAudienceError,
+        # DecodeError...): con un 401 basta para el cliente, pero "token inválido" sin el
+        # motivo deja a operación adivinando si el problema es firma, aud o formato.
+        log.warning("401 auth: token inválido (alg=%s, kid=%s) - Error real: %s",
+                    _token_alg(credentials.credentials), _token_kid(credentials.credentials),
+                    exc)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token inválido.",
@@ -103,6 +142,9 @@ async def get_current_user(
     except jwt.PyJWKError:
         # La JWKS no se pudo descargar o no hay clave para el kid: imposible verificar. Sigue
         # siendo un 401 para el cliente (sin detalle que filtre) pero loggeado al detalle.
+        log.error("401 auth: no se pudo verificar contra la JWKS (alg=%s, kid=%s, url=%s)",
+                  _token_alg(credentials.credentials), _token_kid(credentials.credentials),
+                  settings.supabase_url)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="No se pudo verificar la firma del token.",
