@@ -59,16 +59,21 @@ export const api = axios.create({
 
 // Auth: cada petición lleva el token de sesión de Supabase. Se obtiene la sesión en cada
 // llamada a propósito (no al arrancar): así el interceptor se entera al instante de logins y
-// logout sin reiniciar la SPA.
+// logout sin reiniciar la SPA. Se trackea `activeToken` para detectar 401s stale en la
+// respuesta (requests en vuelo de una sesión anterior que resuelven tras re-login).
 api.interceptors.request.use(async (config) => {
   try {
     const { data } = await supabase.auth.getSession()
     if (data.session?.access_token) {
       config.headers.set('Authorization', `Bearer ${data.session.access_token}`)
+      activeToken = data.session.access_token
+    } else {
+      activeToken = null
     }
   } catch {
     // Sin Supabase configurado la sesión es nula: la petición sale sin token y el backend
     // responde 401 — nunca rompe el interceptor.
+    activeToken = null
   }
   return config
 })
@@ -79,8 +84,14 @@ api.interceptors.request.use(async (config) => {
 // avisa. El redirect NO vive aquí: `supabase.auth.signOut()` dispara `onAuthStateChange` y el
 // AuthProvider pone la sesión a null, con lo que RequireAuth redirige a /login conservando la
 // ruta previa en `state.from`. Los 401 simultáneos (varias queries en vuelo) se colapsan en uno.
+// Detección de stale: `queryClient.clear()` NO cancela HTTP requests en vuelo; cuando uno de
+// esos requests stale responde 401 tras un re-login, comparamos el token de la petición con
+// `activeToken` (el token actual) para ignorarlo y no matar la sesión fresca.
 
 let handlingUnauthorized = false
+// Token usado por el request más reciente. Permite detectar 401s "stale" de una sesión anterior
+// que llegan después de que el usuario haya iniciado sesión con un token nuevo.
+let activeToken: string | null = null
 
 function handleUnauthorized(): void {
   if (handlingUnauthorized) return
@@ -94,15 +105,36 @@ function handleUnauthorized(): void {
 }
 
 // El guard se rearma con cada login: si la nueva sesión vuelve a caducar, el aviso se repite.
-supabase.auth.onAuthStateChange((event) => {
-  if (event === 'SIGNED_IN') handlingUnauthorized = false
+// Además se refresca `activeToken` en los eventos de auth para cerrar la ventana en la que un
+// 401 stale podría llegar justo tras el re-login, antes de que una petición nueva lo actualice.
+// `INITIAL_SESSION` y `TOKEN_REFRESHED` también actualizan el token vigente: tras un refresh
+// de Supabase el token anterior es inválido en el servidor y un 401 así no debe tratarse como
+// caducidad de sesión.
+supabase.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+    handlingUnauthorized = false
+    activeToken = session?.access_token ?? null
+  }
+  if (event === 'SIGNED_OUT') {
+    activeToken = null
+  }
 })
 
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (axios.isAxiosError(error) && error.response?.status === 401) {
-      handleUnauthorized()
+    if (axios.isAxiosError(error) && error.response?.status === 401 && error.config) {
+      // Comparar el token de la petición fallida con el token de la sesión actual. Sólo se
+      // considera 401 real el que rechaza el token vigente: un request stale (en vuelo de una
+      // sesión anterior, o enviado sin token mientras ya no hay sesión) se ignora para no
+      // matar la sesión fresca ni duplicar el toast de expiración.
+      const raw = error.config.headers?.get?.('Authorization')
+        ?? error.config.headers?.['Authorization']
+      const failedToken = typeof raw === 'string' ? raw.replace(/^Bearer\s+/i, '') : null
+
+      if (activeToken && failedToken === activeToken) {
+        handleUnauthorized()
+      }
     }
     return Promise.reject(error)
   },
