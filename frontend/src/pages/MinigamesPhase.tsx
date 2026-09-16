@@ -111,22 +111,30 @@ export default function MinigamesPhase({ room, role, live, onLive }: MinigamesPh
       </section>
 
       <section className="rounded-xl border border-hairline bg-surface-1 p-6">
-        <button
-          type="button"
-          disabled={advanceMutation.isPending}
-          onClick={() => advanceMutation.mutate()}
-          className="flex w-full items-center justify-center gap-2 rounded-full bg-accent-primary px-6 py-2.5 text-sm font-bold text-white shadow-[0_0_16px_rgba(168,85,247,0.4)] transition-all hover:bg-accent-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-text-mute disabled:shadow-none"
-        >
-          {advanceMutation.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Trophy className="h-4 w-4" />
-          )}
-          {advanceMutation.isPending ? 'Avanzando…' : 'Terminar Minijuegos → El Rosco'}
-        </button>
-        <p className="mt-3 text-center text-xs text-text-mute">
-          El Rosco (la ronda alfabética final) llega en el Sprint 4.
-        </p>
+        {role === 'host' ? (
+          <>
+            <button
+              type="button"
+              disabled={advanceMutation.isPending}
+              onClick={() => advanceMutation.mutate()}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-accent-primary px-6 py-2.5 text-sm font-bold text-white shadow-[0_0_16px_rgba(168,85,247,0.4)] transition-all hover:bg-accent-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-text-mute disabled:shadow-none"
+            >
+              {advanceMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trophy className="h-4 w-4" />
+              )}
+              {advanceMutation.isPending ? 'Avanzando…' : 'Terminar Minijuegos → El Rosco'}
+            </button>
+            <p className="mt-3 text-center text-xs text-text-mute">
+              El Rosco (la ronda alfabética final) llega en el Sprint 4.
+            </p>
+          </>
+        ) : (
+          <p className="text-center text-sm text-text-body">
+            ⏳ Esperando a que el Host inicie El Rosco…
+          </p>
+        )}
       </section>
     </div>
   )

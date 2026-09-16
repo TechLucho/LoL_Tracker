@@ -131,24 +131,32 @@ export default function DraftingPhase({ room, role, live, onLive }: DraftingPhas
       )}
 
       <section className="rounded-xl border border-hairline bg-surface-1 p-6">
-        <button
-          type="button"
-          disabled={!draftComplete || advanceMutation.isPending}
-          onClick={() => advanceMutation.mutate()}
-          className="flex w-full items-center justify-center gap-2 rounded-full bg-accent-primary px-6 py-2.5 text-sm font-bold text-white shadow-[0_0_16px_rgba(168,85,247,0.4)] transition-all hover:bg-accent-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-text-mute disabled:shadow-none"
-        >
-          {advanceMutation.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Rocket className="h-4 w-4" />
-          )}
-          {advanceMutation.isPending ? 'Avanzando…' : 'Comenzar Minijuegos'}
-        </button>
-        <p className="mt-3 text-center text-xs text-text-mute">
-          {draftComplete
-            ? 'Se habilita con ambas categorías elegidas. Al pulsarlo, ambos pasaréis a la fase de minijuegos.'
-            : 'Se habilita cuando Tú y el rival hayáis elegido vuestra categoría.'}
-        </p>
+        {role === 'host' ? (
+          <>
+            <button
+              type="button"
+              disabled={!draftComplete || advanceMutation.isPending}
+              onClick={() => advanceMutation.mutate()}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-accent-primary px-6 py-2.5 text-sm font-bold text-white shadow-[0_0_16px_rgba(168,85,247,0.4)] transition-all hover:bg-accent-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-text-mute disabled:shadow-none"
+            >
+              {advanceMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Rocket className="h-4 w-4" />
+              )}
+              {advanceMutation.isPending ? 'Avanzando…' : 'Comenzar Minijuegos'}
+            </button>
+            <p className="mt-3 text-center text-xs text-text-mute">
+              {draftComplete
+                ? 'Se habilita con ambas categorías elegidas. Al pulsarlo, ambos pasaréis a la fase de minijuegos.'
+                : 'Se habilita cuando Tú y el rival hayáis elegido vuestra categoría.'}
+            </p>
+          </>
+        ) : (
+          <p className="text-center text-sm text-text-body">
+            ⏳ Esperando a que el Host inicie los minijuegos…
+          </p>
+        )}
       </section>
     </div>
   )
