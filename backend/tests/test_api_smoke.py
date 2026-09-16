@@ -39,10 +39,8 @@ def test_openapi_expone_todos_los_endpoints(client):
         "/health",
         "/api/health",
         "/api/matches",
-        "/api/matches/{game_id}",
         "/api/matches/{game_id}/scout-opponent",
         "/api/sync",
-        "/api/stats/summary",
         "/api/stats/champions",
         "/api/stats/champion-summary",
         "/api/stats/session-fatigue",
@@ -53,11 +51,8 @@ def test_openapi_expone_todos_los_endpoints(client):
         "/api/stats/trends",
         "/api/stats/laning",
         "/api/stats/weekly",
-        "/api/scout/nemesis",
-        "/api/scout/matchups",
         "/api/config",
         "/api/settings/riot",
-        "/api/datadragon/version",
         "/api/metadata/champions",
         "/api/metadata/items",
         "/api/metadata/spells",
@@ -70,20 +65,6 @@ def test_champions_incluye_winrate_y_kda_ratio(client):
     schema = client.get("/openapi.json").json()["components"]["schemas"]["ChampionStats"]
     assert "winrate" in schema["properties"]
     assert "kda_ratio" in schema["properties"]
-
-
-def test_summary_devuelve_numeros_no_strings(client):
-    """El monolito devolvía la KDA como "5.0 / 2.0 / 10.0" y la UI la re-parseaba: origen del
-    bug de app.py:128. El contrato ahora es numérico."""
-    props = client.get("/openapi.json").json()["components"]["schemas"]["StatsSummary"]["properties"]
-    for campo in ("avg_kills", "avg_deaths", "avg_assists", "kda_ratio", "winrate"):
-        assert props[campo]["type"] == "number", f"{campo} debería ser numérico"
-    assert "kda" not in props, "No debe haber un campo KDA pre-formateado"
-
-
-def test_matchups_exige_algun_filtro(client, auth_headers):
-    r = client.get("/api/scout/matchups", headers=auth_headers)
-    assert r.status_code == 422
 
 
 def test_patch_sin_campos_es_rechazado(client, auth_headers):

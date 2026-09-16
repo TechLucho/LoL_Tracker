@@ -14,7 +14,6 @@ from backend.app.services.baselines import (
     enrich_match_row,
     expected_stats_for,
     baseline_for,
-    serialize_baselines,
 )
 
 
@@ -87,11 +86,3 @@ def test_enrich_match_row_adjunta_expected_por_participante():
         {"game_duration_minutes": 10, "participants": [{"team_position": None}]}
     )
     assert rol_unknown_row["participants"][0]["expected_stats"] == expected_stats_for(None, 10)
-
-
-def test_serialize_baselines_incluye_todos_los_roles_y_default():
-    """GET /api/stats/baselines responde los 5 roles + el perfil neutro 'default'."""
-    data = serialize_baselines()
-    assert set(data) == {"TOP", "MIDDLE", "BOTTOM", "JUNGLE", "UTILITY", "default"}
-    assert data["default"]["cs_per_min"] == 7.0
-    assert 0.0 <= data["UTILITY"]["kill_participation"] <= 1.0

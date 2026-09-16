@@ -30,14 +30,6 @@ async def list_matches(
     return [_serialize(row) for row in rows]
 
 
-@router.get("/{game_id}", response_model=Match)
-async def get_match(user_id: CurrentUserId, game_id: str) -> Match:
-    row = await repo.get_by_id(user_id, game_id)
-    if row is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Partida {game_id} no encontrada")
-    return _serialize(row)
-
-
 @router.patch("/{game_id}", response_model=Match)
 async def update_match(user_id: CurrentUserId, game_id: str, payload: MatchUpdate) -> Match:
     """Actualiza sólo los campos presentes en el body.

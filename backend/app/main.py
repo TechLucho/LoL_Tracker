@@ -37,7 +37,6 @@ from backend.app.routers import (
     matchup_notes,
     metadata,
     metrics,
-    scout,
     settings as settings_router,
     stats,
     sync,
@@ -181,7 +180,6 @@ app.include_router(health.router, prefix="/api", dependencies=_protected)
 app.include_router(matches.router, dependencies=_protected)
 app.include_router(stats.router, dependencies=_protected)
 app.include_router(matchup_notes.router, dependencies=_protected)
-app.include_router(scout.router, dependencies=_protected)
 app.include_router(settings_router.router, dependencies=_protected)
 app.include_router(sync.router, dependencies=_protected)
 app.include_router(config.router, dependencies=_protected)

@@ -96,10 +96,10 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 - [x] `GET /api/stats/champions` — rendimiento agregado por campeon con DPM REAL
 - [x] `GET /api/stats/lp-trend` — LP acumulado con SQL window function + parametro `?queue=`
 - [x] `GET /api/stats/heatmap` — winrate por dia x bloque horario (4 bloques de 6h)
-- [x] `GET /api/stats/summary` — metricas agregadas (KDA, CS/min, winrate)
+- [x] ~~`GET /api/stats/summary`~~ — eliminado en purga v2.1 (endpoints y schemas huérfanos)
 - [x] `GET /api/config` / `PUT /api/config` — configuracion persistente
 - [x] `PATCH /api/matches/{game_id}` — campos subjetivos (LP, tilt, impact, notes, VOD); toda lectura tolera los cinco a `None`
-- [x] `GET /api/constitution/status` — motor de reglas anti-tilt contra la config persistida
+- [x] ~~`GET /api/constitution/status`~~ — eliminado en la fase de poda (views + backend constitution)
 - [x] **Filtro anti-remake**: <300s excluidos de stats agregadas; La Constitucion valora solo Solo/Duo >=5 min; scout tambien filtrado
 - [x] **Auto-tracker de LP (League-V4)**: al cerrar sync con partidas nuevas captura LP Solo/Duo → `lp_snapshots` (migracion 005); delta neto escrito como `lp_change` de la ultima ranked sin review manual
 - [x] `GET /health` (abierto) + alias autenticado `GET /api/health` — DB + validez Riot key + warnings
@@ -131,8 +131,8 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 #### Paginas
 - [x] Dashboard (`/`) — Matches table + Form Check + Performance Notes + Records + Champions + LP Trend
-- [x] Champion Pool (`/pool`) — iconos Data Dragon, winrate bar, KDA, CS/min, DPM real
-- [x] La Constitucion (`/constitution`) — banner de veredicto, 4 reglas, stats bar, boton de panico
+- [x] ~~Champion Pool (`/pool`)~~ — eliminado en la fase de poda; widget `ChampionsList` en Dashboard
+- [x] ~~La Constitucion (`/constitution`)~~ — eliminado en la fase de poda (views + backend constitution)
 - [x] Horarios / Heatmap (`/heatmap`) — grid 7x4, colores por winrate, tooltips, mejor/peor horario
 - [x] Configuracion (`/settings`) — Champion Pool (max 3) + OKRs (CS/min, max deaths)
 
@@ -151,7 +151,7 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 - [x] Deep-linking: `?queue=` sincronizado bidireccionalmente via `useSearchParams`
 
 #### Hooks
-- [x] `useMatches`, `useSyncMatches`, `useUpdateMatchReview`, `useLpTrend`, `useChampionStats`, `useHeatmapStats`, `useConstitution`, `useSettings`/`useUpdateSettings`, `useHealth`
+- [x] `useMatches`, `useSyncMatches`, `useUpdateMatchReview`, `useLpTrend`, `useChampionStats`, `useHeatmapStats`, ~~`useConstitution`~~, `useSettings`/`useUpdateSettings`, `useHealth`
 
 ### Infraestructura & QA
 

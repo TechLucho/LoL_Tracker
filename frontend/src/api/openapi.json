@@ -137,51 +137,6 @@
       }
     },
     "/api/matches/{game_id}": {
-      "get": {
-        "tags": [
-          "matches"
-        ],
-        "summary": "Get Match",
-        "operationId": "get_match_api_matches__game_id__get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "game_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Game Id"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Match"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      },
       "patch": {
         "tags": [
           "matches"
@@ -285,33 +240,6 @@
             }
           }
         }
-      }
-    },
-    "/api/stats/summary": {
-      "get": {
-        "tags": [
-          "stats"
-        ],
-        "summary": "Summary",
-        "description": "Promedios como n\u00fameros. El monolito devolv\u00eda la KDA como el string \"5.0 / 2.0 / 10.0\",\nque la UI re-parseaba con `.split('/')` \u2014 origen del bug de `app.py:128`.",
-        "operationId": "summary_api_stats_summary_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StatsSummary"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
       }
     },
     "/api/stats/champions": {
@@ -739,37 +667,6 @@
         }
       }
     },
-    "/api/stats/baselines": {
-      "get": {
-        "tags": [
-          "stats"
-        ],
-        "summary": "Baselines",
-        "description": "L\u00edneas base por rol: lo 'normal' de CS/min, DPM, KP% y visi\u00f3n para comparar en Full Stats.\n\nLas mismas cifras que usa el rating (`_ROLE_PROFILES` en riot.py); incluye `\"default\"` para\nroles desconocidos (ARAM, remakes).",
-        "operationId": "baselines_api_stats_baselines_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "$ref": "#/components/schemas/BaselineStats"
-                  },
-                  "type": "object",
-                  "title": "Response Baselines Api Stats Baselines Get"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
     "/api/matchup-notes/{user_champion}/{enemy_champion}": {
       "get": {
         "tags": [
@@ -875,150 +772,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MatchupNotes"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/scout/nemesis": {
-      "get": {
-        "tags": [
-          "scout"
-        ],
-        "summary": "Nemesis",
-        "operationId": "nemesis_api_scout_nemesis_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "min_games",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "minimum": 1,
-              "default": 2,
-              "title": "Min Games"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "maximum": 20,
-              "minimum": 1,
-              "default": 5,
-              "title": "Limit"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Nemesis"
-                  },
-                  "title": "Response Nemesis Api Scout Nemesis Get"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/scout/matchups": {
-      "get": {
-        "tags": [
-          "scout"
-        ],
-        "summary": "Matchups",
-        "description": "Busca por campe\u00f3n propio, enemigo o ambos.\n\nAmbos filtros usan `ILIKE`: en Streamlit la b\u00fasqueda con los dos campos era case-sensitive y\nla de s\u00f3lo-enemigo no, as\u00ed que \"jax\" funcionaba en un caso y no en el otro. Adem\u00e1s, buscar\ns\u00f3lo por campe\u00f3n propio aqu\u00ed s\u00ed devuelve resultados (antes el input no hac\u00eda nada).",
-        "operationId": "matchups_api_scout_matchups_get",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "champion",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Campe\u00f3n propio (subcadena, case-insensitive)",
-              "title": "Champion"
-            },
-            "description": "Campe\u00f3n propio (subcadena, case-insensitive)"
-          },
-          {
-            "name": "enemy",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Campe\u00f3n enemigo (subcadena, case-insensitive)",
-              "title": "Enemy"
-            },
-            "description": "Campe\u00f3n enemigo (subcadena, case-insensitive)"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Match"
-                  },
-                  "title": "Response Matchups Api Scout Matchups Get"
                 }
               }
             }
@@ -1245,37 +998,6 @@
         ]
       }
     },
-    "/api/datadragon/version": {
-      "get": {
-        "tags": [
-          "config"
-        ],
-        "summary": "Get Datadragon Version",
-        "description": "Parche actual de Data Dragon. El frontend lo usa para URLs de iconos.\n\nResuelve din\u00e1micamente el hardcodeo de `current_patch = \"14.24.1\"` (app.py:530).\nCach\u00e9 de 1h en el backend.",
-        "operationId": "get_datadragon_version_api_datadragon_version_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object",
-                  "title": "Response Get Datadragon Version Api Datadragon Version Get"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
     "/api/metadata/champions": {
       "get": {
         "tags": [
@@ -1386,38 +1108,6 @@
   },
   "components": {
     "schemas": {
-      "BaselineStats": {
-        "properties": {
-          "cs_per_min": {
-            "type": "number",
-            "title": "Cs Per Min"
-          },
-          "dpm": {
-            "type": "number",
-            "title": "Dpm"
-          },
-          "kill_participation": {
-            "type": "number",
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Kill Participation",
-            "description": "Ratio 0-1"
-          },
-          "vision_per_min": {
-            "type": "number",
-            "title": "Vision Per Min"
-          }
-        },
-        "type": "object",
-        "required": [
-          "cs_per_min",
-          "dpm",
-          "kill_participation",
-          "vision_per_min"
-        ],
-        "title": "BaselineStats",
-        "description": "L\u00ednea base de un rol: lo 'normal' contra lo que se compara a cada participante."
-      },
       "ChampionMeta": {
         "properties": {
           "id": {
@@ -2363,44 +2053,6 @@
         ],
         "title": "MetricsSnapshot"
       },
-      "Nemesis": {
-        "properties": {
-          "enemy_champion": {
-            "type": "string",
-            "title": "Enemy Champion"
-          },
-          "games": {
-            "type": "integer",
-            "title": "Games"
-          },
-          "wins": {
-            "type": "integer",
-            "title": "Wins"
-          },
-          "winrate": {
-            "type": "number",
-            "title": "Winrate"
-          },
-          "avg_deaths": {
-            "type": "number",
-            "title": "Avg Deaths"
-          },
-          "avg_cs_min": {
-            "type": "number",
-            "title": "Avg Cs Min"
-          }
-        },
-        "type": "object",
-        "required": [
-          "enemy_champion",
-          "games",
-          "wins",
-          "winrate",
-          "avg_deaths",
-          "avg_cs_min"
-        ],
-        "title": "Nemesis"
-      },
       "Participant": {
         "properties": {
           "champion_name": {
@@ -2977,54 +2629,6 @@
           "spells"
         ],
         "title": "SpellsIndex"
-      },
-      "StatsSummary": {
-        "properties": {
-          "total_games": {
-            "type": "integer",
-            "title": "Total Games"
-          },
-          "total_wins": {
-            "type": "integer",
-            "title": "Total Wins"
-          },
-          "winrate": {
-            "type": "number",
-            "title": "Winrate"
-          },
-          "avg_kills": {
-            "type": "number",
-            "title": "Avg Kills"
-          },
-          "avg_deaths": {
-            "type": "number",
-            "title": "Avg Deaths"
-          },
-          "avg_assists": {
-            "type": "number",
-            "title": "Avg Assists"
-          },
-          "kda_ratio": {
-            "type": "number",
-            "title": "Kda Ratio"
-          },
-          "avg_cs_min": {
-            "type": "number",
-            "title": "Avg Cs Min"
-          }
-        },
-        "type": "object",
-        "required": [
-          "total_games",
-          "total_wins",
-          "winrate",
-          "avg_kills",
-          "avg_deaths",
-          "avg_assists",
-          "kda_ratio",
-          "avg_cs_min"
-        ],
-        "title": "StatsSummary"
       },
       "SyncAccepted": {
         "properties": {

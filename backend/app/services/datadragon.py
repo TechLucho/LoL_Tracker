@@ -4,8 +4,8 @@ PROBLEMA: `current_patch = "14.24.1"` estaba hardcodeado en `app.py:530` para la
 iconos de Data Dragon. Los campeones nuevos daban 404 porque el parche era de finales de 2024.
 
 SOLUCIÓN: consultar `https://ddragon.leagueoflegends.com/api/versions.json` (devuelve un array
-de strings, el primero es el más reciente) y cachear el resultado. El endpoint `/api/datadragon/version`
-expone el parche actual para que el frontend no lo duplique.
+de strings, el primero es el más reciente) y cachear el resultado. El parche se consume
+internamente por los endpoints de alerta de parche y veredicto del meta.
 
 Hub de metadatos (Sprint 2): además de la versión, se descargan campeones, objetos y hechizos
 del parche vigente y se sirven ya recortados (id -> nombre, descripción limpia, URL de imagen).

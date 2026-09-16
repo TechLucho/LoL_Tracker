@@ -58,8 +58,6 @@ export type ChampionRoleSummary = components['schemas']['ChampionRoleSummary']
 export type SessionBlock = components['schemas']['SessionBlock']
 export type SessionFatigue = components['schemas']['SessionFatigue']
 
-export type BaselineStats = components['schemas']['BaselineStats']
-
 export type ScoutMasteryChampion = components['schemas']['ScoutMasteryChampion']
 export type ScoutOpponent = components['schemas']['ScoutOpponent']
 export type MetaVerdict = components['schemas']['MetaVerdict']

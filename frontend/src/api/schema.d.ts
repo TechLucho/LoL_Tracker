@@ -62,8 +62,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Match */
-        get: operations["get_match_api_matches__game_id__get"];
+        get?: never;
         put?: never;
         post?: never;
         delete?: never;
@@ -96,27 +95,6 @@ export interface paths {
          *     trae una `note` explicando por qué (rival sin maestrías, rol sin asignar...).
          */
         get: operations["scout_opponent_api_matches__game_id__scout_opponent_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/stats/summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Summary
-         * @description Promedios como números. El monolito devolvía la KDA como el string "5.0 / 2.0 / 10.0",
-         *     que la UI re-parseaba con `.split('/')` — origen del bug de `app.py:128`.
-         */
-        get: operations["summary_api_stats_summary_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -375,29 +353,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/stats/baselines": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Baselines
-         * @description Líneas base por rol: lo 'normal' de CS/min, DPM, KP% y visión para comparar en Full Stats.
-         *
-         *     Las mismas cifras que usa el rating (`_ROLE_PROFILES` en riot.py); incluye `"default"` para
-         *     roles desconocidos (ARAM, remakes).
-         */
-        get: operations["baselines_api_stats_baselines_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/matchup-notes/{user_champion}/{enemy_champion}": {
         parameters: {
             query?: never;
@@ -415,47 +370,6 @@ export interface paths {
          * @description Guarda/reemplaza las notas del cruce (PUT semantics).
          */
         put: operations["put_notes_api_matchup_notes__user_champion___enemy_champion__put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/scout/nemesis": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Nemesis */
-        get: operations["nemesis_api_scout_nemesis_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/scout/matchups": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Matchups
-         * @description Busca por campeón propio, enemigo o ambos.
-         *
-         *     Ambos filtros usan `ILIKE`: en Streamlit la búsqueda con los dos campos era case-sensitive y
-         *     la de sólo-enemigo no, así que "jax" funcionaba en un caso y no en el otro. Además, buscar
-         *     sólo por campeón propio aquí sí devuelve resultados (antes el input no hacía nada).
-         */
-        get: operations["matchups_api_scout_matchups_get"];
-        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -562,29 +476,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/datadragon/version": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Datadragon Version
-         * @description Parche actual de Data Dragon. El frontend lo usa para URLs de iconos.
-         *
-         *     Resuelve dinámicamente el hardcodeo de `current_patch = "14.24.1"` (app.py:530).
-         *     Caché de 1h en el backend.
-         */
-        get: operations["get_datadragon_version_api_datadragon_version_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/metadata/champions": {
         parameters: {
             query?: never;
@@ -667,23 +558,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /**
-         * BaselineStats
-         * @description Línea base de un rol: lo 'normal' contra lo que se compara a cada participante.
-         */
-        BaselineStats: {
-            /** Cs Per Min */
-            cs_per_min: number;
-            /** Dpm */
-            dpm: number;
-            /**
-             * Kill Participation
-             * @description Ratio 0-1
-             */
-            kill_participation: number;
-            /** Vision Per Min */
-            vision_per_min: number;
-        };
         /** ChampionMeta */
         ChampionMeta: {
             /**
@@ -1143,21 +1017,6 @@ export interface components {
             /** Endpoints */
             endpoints: components["schemas"]["EndpointMetric"][];
         };
-        /** Nemesis */
-        Nemesis: {
-            /** Enemy Champion */
-            enemy_champion: string;
-            /** Games */
-            games: number;
-            /** Wins */
-            wins: number;
-            /** Winrate */
-            winrate: number;
-            /** Avg Deaths */
-            avg_deaths: number;
-            /** Avg Cs Min */
-            avg_cs_min: number;
-        };
         /**
          * Participant
          * @description Un jugador dentro de una partida (10 por match).
@@ -1501,25 +1360,6 @@ export interface components {
             spells: {
                 [key: string]: components["schemas"]["SpellMeta"];
             };
-        };
-        /** StatsSummary */
-        StatsSummary: {
-            /** Total Games */
-            total_games: number;
-            /** Total Wins */
-            total_wins: number;
-            /** Winrate */
-            winrate: number;
-            /** Avg Kills */
-            avg_kills: number;
-            /** Avg Deaths */
-            avg_deaths: number;
-            /** Avg Assists */
-            avg_assists: number;
-            /** Kda Ratio */
-            kda_ratio: number;
-            /** Avg Cs Min */
-            avg_cs_min: number;
         };
         /**
          * SyncAccepted
@@ -1888,37 +1728,6 @@ export interface operations {
             };
         };
     };
-    get_match_api_matches__game_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                game_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Match"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     update_match_api_matches__game_id__patch: {
         parameters: {
             query?: never;
@@ -1981,26 +1790,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    summary_api_stats_summary_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["StatsSummary"];
                 };
             };
         };
@@ -2273,28 +2062,6 @@ export interface operations {
             };
         };
     };
-    baselines_api_stats_baselines_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: components["schemas"]["BaselineStats"];
-                    };
-                };
-            };
-        };
-    };
     get_notes_api_matchup_notes__user_champion___enemy_champion__get: {
         parameters: {
             query?: never;
@@ -2350,72 +2117,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MatchupNotes"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    nemesis_api_scout_nemesis_get: {
-        parameters: {
-            query?: {
-                min_games?: number;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Nemesis"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    matchups_api_scout_matchups_get: {
-        parameters: {
-            query?: {
-                /** @description Campeón propio (subcadena, case-insensitive) */
-                champion?: string | null;
-                /** @description Campeón enemigo (subcadena, case-insensitive) */
-                enemy?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Match"][];
                 };
             };
             /** @description Validation Error */
@@ -2564,28 +2265,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_datadragon_version_api_datadragon_version_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
                 };
             };
         };

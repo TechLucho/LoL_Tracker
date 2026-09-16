@@ -127,7 +127,7 @@ def test_insert_many_es_idempotente():
     async def s() -> tuple[int, int, int]:
         primera = await matches_repo.insert_many(USER, rows)
         segunda = await matches_repo.insert_many(USER, rows)
-        total = await matches_repo.count(USER)
+        total = len(await matches_repo.list_recent(USER, limit=100))
         return primera, segunda, total
 
     assert run_scenario(s) == (2, 0, 2)
@@ -384,22 +384,17 @@ def test_aislamiento_entre_usuarios():
         await matches_repo.insert_many(USER, mina)
         await matches_repo.insert_many(OTHER_USER, suya)
 
-        # count: cada uno ve sólo sus partidas.
-        assert await matches_repo.count(USER) == 2
-        assert await matches_repo.count(OTHER_USER) == 1
-
-        # list_recent: la partida del otro usuario no colisiona ni se mezcla.
+        # list_recent: cada uno ve sólo sus partidas.
         ids_mios = [m["game_id"] for m in await matches_repo.list_recent(USER, limit=50)]
         assert all(m["game_id"] in ids_mios for m in mina)
         assert suya[0]["game_id"] not in ids_mios
 
+        ids_del_otro = [m["game_id"] for m in await matches_repo.list_recent(OTHER_USER, limit=50)]
+        assert len(ids_del_otro) == 1
+
         # last_results: ventana de La Constitución de USER sin filas ajenas.
         ventana = await matches_repo.last_results(USER, limit=3)
         assert len(ventana) == 2
-
-        # nemesis: el rival del otro usuario no es nemesis de USER.
-        enemigos = await scout.nemesis(USER, min_games=2, limit=5)
-        assert [e["enemy_champion"] for e in enemigos] == ["Darius"]
 
         return {}
 

@@ -87,15 +87,6 @@ class ParticipantExpectedStats(BaseModel):
     vision_score: float = Field(description="Visión total esperada = visión/min × duración real")
 
 
-class BaselineStats(BaseModel):
-    """Línea base de un rol: lo 'normal' contra lo que se compara a cada participante."""
-
-    cs_per_min: float
-    dpm: float
-    kill_participation: float = Field(ge=0.0, le=1.0, description="Ratio 0-1")
-    vision_per_min: float
-
-
 class Match(BaseModel):
     """Una partida. Los campos objetivos vienen de Riot; los subjetivos los rellena el usuario."""
 
@@ -209,17 +200,6 @@ class MetaVerdict(BaseModel):
 class MetaVerdictResponse(BaseModel):
     current_patch: str = Field(description="Parche de Riot normalizado a 'X.Y' con el que se separaron los datos")
     verdicts: list[MetaVerdict]
-
-
-class StatsSummary(BaseModel):
-    total_games: int
-    total_wins: int
-    winrate: float
-    avg_kills: float
-    avg_deaths: float
-    avg_assists: float
-    kda_ratio: float
-    avg_cs_min: float
 
 
 class ChampionStats(BaseModel):
@@ -399,15 +379,6 @@ class WeeklyReport(BaseModel):
     avg_kda: float = 0.0
     most_played: WeeklyTopChampion | None = None
     best_match: WeeklyBestMatch | None = None
-
-
-class Nemesis(BaseModel):
-    enemy_champion: str
-    games: int
-    wins: int
-    winrate: float
-    avg_deaths: float
-    avg_cs_min: float
 
 
 class MatchupStats(BaseModel):

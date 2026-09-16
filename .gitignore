@@ -1,6 +1,7 @@
 # Archivos temporales de Python (Basura)
 __pycache__/
 *.pyc
+.pytest_cache/
 
 # Base de Datos
 data/*.db
@@ -14,9 +15,3 @@ data/*.db
 
 # Backups de Supabase (contienen datos reales)
 backups/
-
-# Playwright
-frontend/test-results/
-frontend/playwright-report/
-frontend/blob-report/
-frontend/.playwright/

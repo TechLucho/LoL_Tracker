@@ -78,23 +78,3 @@ def enrich_match_row(row: dict) -> dict:
         for p in participants
     ]
     return {**row, "participants": enriched}
-
-
-def serialize_baselines() -> dict[str, dict[str, float]]:
-    """Mapa plano rol → baseline para GET /api/stats/baselines (incluye el perfil neutro)."""
-    per_role = {
-        role: {
-            "cs_per_min": b.cs_per_min,
-            "dpm": b.dpm,
-            "kill_participation": b.kill_participation,
-            "vision_per_min": b.vision_per_min,
-        }
-        for role, b in ROLE_BASELINES.items()
-    }
-    per_role["default"] = {
-        "cs_per_min": DEFAULT_BASELINE.cs_per_min,
-        "dpm": DEFAULT_BASELINE.dpm,
-        "kill_participation": DEFAULT_BASELINE.kill_participation,
-        "vision_per_min": DEFAULT_BASELINE.vision_per_min,
-    }
-    return per_role

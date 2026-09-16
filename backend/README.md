@@ -37,7 +37,7 @@ del repo**, no desde `backend/` (los imports son `backend.app.*`).
 | `app/db.py` | Pool async único por proceso (`AsyncConnectionPool`) |
 | `app/schemas.py` | Contrato de la API (Pydantic) |
 | `app/repositories/` | Todo el SQL. Nada de SQL fuera de aquí |
-| `app/services/` | Riot API y lógica de dominio (La Constitución) |
+| `app/services/` | Riot API y lógica de dominio (rating, datadragon) |
 | `app/routers/` | Endpoints HTTP. Sin SQL ni reglas de negocio |
 | `migrations/` | Esquema versionado, fuera del runtime |
 | `scripts/` | Utilidades operativas (migración del SQLite legacy) |
@@ -48,10 +48,8 @@ del repo**, no desde `backend/` (los imports son `backend.app.*`).
 | --- | --- | --- |
 | `GET` | `/health` | Sin auth. Diagnostica credenciales de DB y dev key caducada |
 | `GET` | `/api/matches` | `?limit=&offset=` |
-| `GET` | `/api/matches/{game_id}` | |
 | `PATCH` | `/api/matches/{game_id}` | Campos subjetivos. `null` explícito **borra**; omitir **no toca** |
 | `POST` | `/api/sync` | Devuelve `{fetched, inserted, skipped, errors[]}` |
-| `GET` | `/api/stats/summary` | Promedios **numéricos**, no strings formateados |
 | `GET` | `/api/stats/champions` | Incluye `winrate` y `kda_ratio` calculados en SQL |
 | `GET` | `/api/stats/champion-summary` | Winrate/KDA por (campeón, rol, cola) con `HAVING` ≥ 3 partidas |
 | `GET` | `/api/stats/session-fatigue` | Últimas 5 vs. anteriores 5: detecta autopilot (caída ≥20pp WR / −2 KDA) |
@@ -63,8 +61,6 @@ del repo**, no desde `backend/` (los imports son `backend.app.*`).
 | `GET` | `/api/stats/weekly` | Resumen de la última semana (partidas, winrate, top campeón) |
 | `GET` | `/api/stats/meta-verdict` | Winrate por (tú vs enemigo) del parche actual contra el histórico: marca `meta_shift` (favorable ≥55% antes, <50% ahora, mín. 3 partidas del parche) |
 | `GET` | `/api/matches/{game_id}/scout-opponent` | 3 campeones más jugados del rival de línea (Champion Mastery de Riot), con caché 24h en `scout_cache` |
-| `GET` | `/api/scout/nemesis` | `?min_games=&limit=` |
-| `GET` | `/api/scout/matchups` | `?champion=&enemy=`, ambos `ILIKE` |
 
 ## Decisiones de diseño
 
@@ -73,10 +69,6 @@ datos en un `try/except` que convertía cualquier error en "no hay datos"; así 
 invisibles durante meses dos bugs que rompían pantallas enteras. Aquí los errores suben con su
 status HTTP real. La única excepción deliberada es `/health`, que debe poder reportar fallos sin
 fallar él mismo.
-
-**Los bugs de la Tab 3 y del KDA no se "arreglan": desaparecen por diseño.** `winrate` y
-`kda_ratio` se calculan en SQL, y `summary` devuelve números en vez del string `"5.0 / 2.0 / 10.0"`
-que la UI tenía que re-parsear.
 
 **Un solo vocabulario.** El servicio de Riot emite ya los nombres de columna finales (`champion`,
 `control_wards`), eliminando el renombrado silencioso `champion_name` → `champion` que era la

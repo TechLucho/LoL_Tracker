@@ -1,13 +1,12 @@
-"""Configuración del usuario y metadatos del frontend.
+"""Configuración del usuario.
 
 - GET /api/config  → config completa (canónica + persistida del usuario)
 - PUT /api/config  → actualiza champion pool y OKRs
-- GET /api/datadragon/version → parche actual de Data Dragon
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter
 
 from backend.app.config import ROUTING_MAP, get_settings
 from backend.app.deps import CurrentUserId
@@ -18,7 +17,6 @@ from backend.app.schemas import (
     UserSettings,
     UserSettingsUpdate,
 )
-from backend.app.services import datadragon
 
 router = APIRouter(tags=["config"])
 
@@ -69,21 +67,3 @@ async def update_config(user_id: CurrentUserId, payload: UserSettingsUpdate) -> 
     row_dict["riot_region"] = (row_dict.get("riot_region") or "EUW1").upper()
     row_dict["riot_id"] = (row_dict.get("riot_id") or "").strip()
     return UserSettings(**row_dict)
-
-
-@router.get("/api/datadragon/version")
-async def get_datadragon_version() -> dict[str, str]:
-    """Parche actual de Data Dragon. El frontend lo usa para URLs de iconos.
-
-    Resuelve dinámicamente el hardcodeo de `current_patch = "14.24.1"` (app.py:530).
-    Caché de 1h en el backend.
-    """
-    try:
-        patch = await datadragon.get_current_patch()
-    except Exception as exc:
-        # Sin fallback hardcodeado a propósito: mentir con un parche viejo da 404s silenciosos.
-        raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE,
-            "Data Dragon no disponible y sin caché previa",
-        ) from exc
-    return {"patch": patch}

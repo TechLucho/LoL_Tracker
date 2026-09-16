@@ -1,4 +1,4 @@
-"""Métricas agregadas: resumen, champion pool, heatmap y tendencia de LP."""
+"""Métricas agregadas: champion pool, heatmap y tendencia de LP."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ from fastapi import APIRouter, HTTPException, status
 from backend.app.deps import CurrentUserId, SettingsDep
 from backend.app.repositories import stats as repo
 from backend.app.schemas import (
-    BaselineStats,
     ChampionRoleSummary,
     ChampionStats,
     HeatmapCell,
@@ -19,21 +18,12 @@ from backend.app.schemas import (
     PatchAlert,
     PatchChampionInfo,
     SessionFatigue,
-    StatsSummary,
     TrendPoint,
     WeeklyReport,
 )
-from backend.app.services.baselines import serialize_baselines
 from backend.app.services import datadragon
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
-
-
-@router.get("/summary", response_model=StatsSummary)
-async def summary(user_id: CurrentUserId) -> StatsSummary:
-    """Promedios como números. El monolito devolvía la KDA como el string "5.0 / 2.0 / 10.0",
-    que la UI re-parseaba con `.split('/')` — origen del bug de `app.py:128`."""
-    return StatsSummary(**await repo.summary(user_id))
 
 
 @router.get("/champions", response_model=list[ChampionStats])
@@ -176,13 +166,3 @@ async def matchup_stats(user_id: CurrentUserId, user_champion: str, enemy_champi
     """
     row = await repo.matchup(user_id, user_champion, enemy_champion)
     return MatchupStats(user_champion=user_champion, enemy_champion=enemy_champion, **row)
-
-
-@router.get("/baselines", response_model=dict[str, BaselineStats])
-async def baselines() -> dict[str, dict[str, float]]:
-    """Líneas base por rol: lo 'normal' de CS/min, DPM, KP% y visión para comparar en Full Stats.
-
-    Las mismas cifras que usa el rating (`_ROLE_PROFILES` en riot.py); incluye `"default"` para
-    roles desconocidos (ARAM, remakes).
-    """
-    return serialize_baselines()

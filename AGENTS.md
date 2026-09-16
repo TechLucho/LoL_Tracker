@@ -113,7 +113,7 @@ booting** — that is by design (the Streamlit monolith used to degrade silently
   then fetches match details per match. Retries use exponential backoff and respect `Retry-After`;
   failures are reported per-match in `SyncResult` instead of being swallowed.
 - **Data Dragon patch** is resolved dynamically (1h cache) — there is no hardcoded patch string
-  anywhere. `GET /api/datadragon/version` exposes it.
+  anywhere. It is consumed internally by `patch-alert` and `meta-verdict` stats endpoints.
 
 ## Data layer
 
