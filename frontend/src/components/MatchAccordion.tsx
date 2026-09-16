@@ -102,7 +102,7 @@ function PlayerRow({
       {/* Col 2: Jugador (Riot ID) */}
       <div className="min-w-0">
         <span
-          className={`block truncate text-sm font-semibold ${isYou ? 'text-accent-primary' : 'text-gray-200'}`}
+          className={`block truncate text-sm font-semibold ${isYou ? 'text-accent-primary' : 'text-text-ink'}`}
           title={player.player_name}
         >
           {player.player_name}

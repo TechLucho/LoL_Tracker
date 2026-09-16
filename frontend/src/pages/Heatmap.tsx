@@ -31,7 +31,7 @@ function cellColor(wr: number, games: number): string {
 }
 
 function cellTextColor(wr: number, games: number): string {
-  if (games === 0) return 'text-gray-700'
+  if (games === 0) return 'text-text-mute/50'
   if (wr >= 60) return 'text-emerald-100'
   if (wr >= 50) return 'text-emerald-200'
   if (wr >= 40) return 'text-red-200'

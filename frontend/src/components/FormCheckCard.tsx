@@ -13,7 +13,7 @@ function MetricRow({ metric }: { metric: FormCheckMetric }) {
   const absDelta = Math.abs(deltaPct).toFixed(0)
 
   return (
-    <div className="flex items-center justify-between border-b border-white/5 py-2 last:border-0">
+    <div className="flex items-center justify-between border-b border-hairline/50 py-2 last:border-0">
       <span className="text-xs font-medium text-text-body">{metric.name}</span>
       <div className="flex items-center gap-2">
         <span className="font-mono text-xs text-text-mute line-through">

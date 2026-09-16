@@ -215,11 +215,11 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
             {groupByDay(matches).map((group) => (
               <div key={group.day}>
                 {/* Separador de sesión: fecha a la izquierda, balance a la derecha. */}
-                <div className="flex items-center justify-between bg-white/5 px-4 py-2.5">
+                <div className="flex items-center justify-between bg-surface-2 px-4 py-2.5">
                   <span className="text-xs font-bold uppercase tracking-wider text-text-body">
                     {formatDayLabel(group.day)}
                   </span>
-                  <span className="font-mono text-xs font-bold text-gray-200">
+                  <span className="font-mono text-xs font-bold text-text-ink">
                     {group.wins}V - {group.losses}D
                   </span>
                 </div>
@@ -242,8 +242,8 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
                       setExpandedId(isExpanded ? null : m.game_id)
                     }
                   }}
-                  className={`${ROW_GRID} cursor-pointer border-b border-hairline/50 px-4 py-3 transition-colors hover:bg-white/[0.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-inset ${
-                    isExpanded ? 'bg-white/[0.03]' : ''
+                  className={`${ROW_GRID} cursor-pointer border-b border-hairline/50 px-4 py-3 transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-inset ${
+                    isExpanded ? 'bg-surface-2' : ''
                   } bg-gradient-to-r ${
                     m.win
                       ? 'from-emerald-500/[0.09] via-emerald-500/[0.03] to-transparent'
