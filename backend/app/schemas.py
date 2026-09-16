@@ -143,7 +143,7 @@ class MatchUpdate(BaseModel):
 class ScoutMasteryChampion(BaseModel):
     champion: str = Field(description="Nombre visible del campeón ('Lee Sin')")
     champion_key: str = Field(description="Id numérico de Data Dragon ('103')")
-    mastery_level: int = Field(ge=0, le=7, description="Nivel de maestría (1-7)")
+    mastery_level: int = Field(ge=0, description="Nivel de maestría (sin tope: Riot eliminó el cap de 7 en 2026)")
     points: int = Field(ge=0, description="Puntos de maestría acumulados")
 
 

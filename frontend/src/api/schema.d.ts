@@ -1227,7 +1227,7 @@ export interface components {
             champion_key: string;
             /**
              * Mastery Level
-             * @description Nivel de maestría (1-7)
+             * @description Nivel de maestría (sin tope: Riot eliminó el cap de 7 en 2026)
              */
             mastery_level: number;
             /**

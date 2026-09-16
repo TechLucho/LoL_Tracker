@@ -17,6 +17,8 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
+from pydantic import ValidationError
+
 from backend.app.config import get_settings
 from backend.app.repositories import scout as scout_repo
 from backend.app.schemas import ScoutMasteryChampion, ScoutOpponent
@@ -205,7 +207,20 @@ async def _scout_locked(
     payload, cached_at, error = await scout_repo.get_scout_cache(puuid)
 
     # ── Éxito cacheado (TTL 24 h) ─────────────────────────────────────────────
-    if payload is not None and scout_repo.cache_is_fresh(cached_at, now):
+    # La caché puede llevar payloads escritos por schemas anteriores (pre-2026 Riot con
+    # `championLevel` 1-7; hoy es un nivel sin tope). Validar contra el modelo actual: si un
+    # payload no encaja, se trata como cache miss y se recarga de Riot, sobrescribiéndolo.
+    cached_champions: list[ScoutMasteryChampion] | None = None
+    if payload is not None:
+        try:
+            cached_champions = [ScoutMasteryChampion(**row) for row in payload]
+        except ValidationError:
+            log.warning(
+                "Escout de %s: payload de caché inválido (%d filas) — recargando de Riot",
+                opponent_name, len(payload),
+            )
+
+    if cached_champions is not None and scout_repo.cache_is_fresh(cached_at, now):
         log.info("Escout de %s servido desde caché (game %s)", opponent_name, game_id)
         return ScoutOpponent(
             game_id=game_id,
@@ -213,7 +228,7 @@ async def _scout_locked(
             opponent_name=opponent_name,
             opponent_champion=opponent_champion,
             opponent_role=opponent_role,
-            top_champions=[ScoutMasteryChampion(**row) for row in payload],
+            top_champions=cached_champions,
             cached=True,
             cached_at=cached_at,
         )

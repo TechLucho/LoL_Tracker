@@ -6,6 +6,10 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ---
 
+> **Cierre v2.2 (2026-09-16):** Auditoría, rediseño global y estabilización. Ejecutada "La Gran Purga" eliminando más de 1,000 líneas de código muerto (vistas `/pool`, `/constitution` y endpoints huérfanos). Rediseño completo del frontend aplicando el nuevo `DESIGN.md` (tipografía mono-eyebrow, botones pill neón, tarjetas surface-1). Fixes críticos resueltos: error 500 en Trends por casteo numérico en Postgres y error 500 en Scout por el nuevo nivel de maestría sin tope de Riot. QA en verde (71 pytest + 40 vitest). Todo listo para iniciar el Sprint 1 del multijugador (El Rosco).
+
+---
+
 > **Cierre v2.1 — Onboarding y sesión (2026-09-13):** Riot ID vinculado por usuario y primer
 > flujo de arranque real. **P0:** `user_settings` gana `riot_id`/`riot_region` (migración 014,
 > aplicada a la DB de Supabase) y todo el pipeline lee del `CurrentUserId` — `/api/sync`, la
@@ -286,22 +290,18 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ## Pendiente (Backlog / Features futuras)
 
-### Plan de Acción Inmediato (Próxima Sesión)
+### Plan de Acción Inmediato
 
-- [ ] **Fase 0: Auditoría Completa y Poda Extrema.** Escanear todo el árbol de rutas (React)
-      y routers (FastAPI) para detectar y eliminar vistas/endpoints muertos o redundantes.
-      Específicamente: eliminar la vista `/pool` (ya existe en el Dashboard), eliminar
-      `/constitution`, limpiar el `Layout` y borrar cualquier background task o lógica de
-      backend exclusiva de estas vistas.
-- [ ] **Fase 1: UI Core - Estilizar Onboarding y Configuración (Cierre v2.1).** Aplicar las
-      nuevas reglas del `DESIGN.md` a `RiotOnboarding.tsx` (botones *pill* con neón, tarjetas
-      `surface-1`, bordes *hairline*, tipografía monoespaciada). Refactorizar la vista
-      `/settings` integrando la re-vinculación del Riot ID y el indicador de `/health`.
-- [ ] **Fase 2: Base de Datos - Migraciones del Rosco (Inicio v2.2).** Crear y aplicar la
-      migración SQL `015_games_rosco.sql` con las tablas `game_rooms` y `rosco_questions`.
-- [ ] **Fase 3: Backend - Lógica del Lobby.** Implementar endpoints `POST /api/games/rooms`
-      y `/join` por código en FastAPI. Crear la función estricta `normalize_answer` y añadir
-      un script semilla con las primeras 26 preguntas de prueba.
+- [x] **Fase 0: Auditoría Completa y Poda Extrema.** Eliminadas las vistas muertas `/pool` y
+      `/constitution`, el motor duplicado de La Constitución (`services/constitution.py`,
+      `GET /api/stats/constitution`) y las rutas huérfanas de `router/api.py` en la purga
+      v1.1. En la purga v2.2 se eliminaron más tipos/schemas y endpoints y se regeneró el
+      contrato OpenAPI (commits `bab12ad`, `d8b756d`).
+- [x] **Fase 1: UI Core - Estilizar Onboarding y Configuración (Cierre v2.1).** Aplicadas las
+      nuevas reglas del `DESIGN.md` a `RiotOnboarding.tsx` (botones pill con neón, tarjetas
+      `surface-1`, bordes `hairline`, tipografía monoespaciada) y refactorizada la vista
+      `/settings` integrando la re-vinculación del Riot ID y el indicador de `/health`
+      (commit `7861fab`).
 
 ### Despliegue
 
@@ -309,12 +309,11 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ### Heredado de v2.1 (pendiente de cerrar)
 
-- ~~[ ] **Panel de configuración completo**~~ — englobado en la **Fase 1** del Plan de Acción
-      Inmediato: re-vincular Riot ID/región desde la UI (hoy solo existe en el onboarding de
-      primer arranque), estado de conexión (`/health`) y verificación de email en el flujo de
-      registro.
+- [x] **Panel de configuración completo** — resuelto en la **Fase 1**: re-vincular Riot
+      ID/región desde la UI (hoy también en el onboarding), estado de conexión (`/health`) con
+      indicador en Settings y verificación de email en el flujo de registro.
 
-### Roadmap v2.2 — Multijugador: El Rosco
+### Roadmap v2.3 — Multijugador: El Rosco
 
 > **Concepto:** minijuego 1v1 en tiempo real construido sobre Supabase Realtime. Dos jugadores
 > compiten en partidas privadas: se miden en minijuegos de trivia que otorgan segundos extra y

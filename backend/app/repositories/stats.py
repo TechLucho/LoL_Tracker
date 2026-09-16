@@ -405,8 +405,8 @@ async def kpi_trend(user_id: str, limit: int = 50) -> list[dict[str, Any]]:
             date                                            AS timestamp,
             COALESCE(ROUND(cs_min::numeric, 2), 0)          AS cs_min,
             COALESCE(ROUND(
-                (me->>'total_damage')::numeric
-                / GREATEST(game_duration_minutes, 1)
+                ((me->>'total_damage')::numeric
+                / GREATEST(game_duration_minutes, 1))::numeric
             , 0), 0)                                        AS dpm,
             ROUND((kills::numeric + assists::numeric) / GREATEST(deaths, 1), 2) AS kda,
             (

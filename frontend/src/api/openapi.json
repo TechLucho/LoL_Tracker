@@ -2398,10 +2398,9 @@
           },
           "mastery_level": {
             "type": "integer",
-            "maximum": 7.0,
             "minimum": 0.0,
             "title": "Mastery Level",
-            "description": "Nivel de maestr\u00eda (1-7)"
+            "description": "Nivel de maestr\u00eda (sin tope: Riot elimin\u00f3 el cap de 7 en 2026)"
           },
           "points": {
             "type": "integer",
