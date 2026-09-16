@@ -306,6 +306,20 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
       desde la UI (hoy también en el onboarding), estado de conexión (`/health`) con indicador
       en Settings y verificación de email en el flujo de registro.
 
+### Fixes de backend
+
+- [x] **Fix Trends 500 — ROUND(double precision):** `kpi_trend` en `repositories/stats.py`
+      dividía `numeric / float8` (daño real / duración) para calcular DPM y luego pasaba el
+      resultado a `ROUND()`. Postgres no admite `ROUND(double precision, integer)` — solo
+      `ROUND(numeric, integer)`. Solución: cast explícito del resultado de la división a
+      `::numeric` antes de redondear. Endpoint `GET /api/stats/trends` restaurado a 200.
+- [x] **Fix Scout 500 — mastery_level sin tope:** Riot eliminó el cap de nivel 7 en Champion
+      Mastery en 2026 — `championLevel` ahora es un entero sin tope (1.2M pts ≈ lvl 113). El
+      schema Pydantic lo validaba con `le=7`, rechazando toda respuesta de Riot. Solución:
+      eliminar `le=7` (queda `ge=0`), regenerar contrato OpenAPI y añadir lectura tolerante de
+      caché (`try/except ValidationError`) para payloads de schemas anteriores. Endpoint
+      `GET /api/matches/{game_id}/scout-opponent` restaurado a 200.
+
 ---
 
 ## Pendiente (Backlog / Features futuras)
