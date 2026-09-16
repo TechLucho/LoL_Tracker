@@ -11,8 +11,8 @@ import Login from './pages/Login'
 // Code-splitting: cada página viaja en su propio chunk y sólo se descarga al navegar.
 // Nota: DiarioPage fue descartado por decisión de diseño (2026-08-23), junto con el
 // concepto de "Sesión" con límites rígidos diarios — app más ligera, menos restrictiva.
-// ScoutPage retirado del nav (2026-08-24): el backend (/api/scout/*) sigue vivo y probado,
-// pero sin UI real era un ítem de navegación vacío. Vuelve cuando tenga tarjetas de verdad.
+// ScoutPage retirado del nav junto al backend /api/scout/* (purga 2026-09):
+// sólo queda /api/matches/{game_id}/scout-opponent, consumido desde el Match Accordion.
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const HeatmapPage = lazy(() => import('./pages/Heatmap'))
 const SettingsPage = lazy(() => import('./pages/Settings'))

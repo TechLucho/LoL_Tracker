@@ -8,9 +8,6 @@ export type {
   UserSettingsUpdate,
   RiotLinkRequest,
   TrendPoint,
-  WeeklyReport,
-  WeeklyTopChampion,
-  WeeklyBestMatch,
 } from '../api/generated'
 
 // ──────────────── Tipos exclusivos del frontend ────────────────

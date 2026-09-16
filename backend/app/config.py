@@ -43,7 +43,6 @@ class Settings(BaseSettings):
 
     # --- Riot ---
     riot_api_key: str = Field(min_length=10)
-    riot_id: str = ""
     riot_region: str = "EUW1"
 
     # --- Supabase / Postgres ---
@@ -81,10 +80,6 @@ class Settings(BaseSettings):
         if v not in ROUTING_MAP:
             raise ValueError(f"Región desconocida: {v}. Válidas: {', '.join(sorted(ROUTING_MAP))}")
         return v
-
-    @property
-    def continental_route(self) -> str:
-        return ROUTING_MAP[self.riot_region]
 
     @property
     def dsn(self) -> str:

@@ -28,7 +28,6 @@ jobs:
 
     env:
       RIOT_API_KEY: RGAPI-placeholder-for-ci
-      RIOT_ID: Test#EUW
       RIOT_REGION: EUW1
       DB_HOST: localhost
       DB_NAME: testdb

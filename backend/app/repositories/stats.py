@@ -3,7 +3,7 @@
 Tres correcciones de raíz frente al monolito:
   1. `champion_performance` calcula `winrate` y `kda_ratio` (la UI las pedía y la query nunca las
      devolvía -> KeyError permanente en la Tab 3).
-  2. `summary` devuelve promedios numéricos en vez de un string "K / D / A" que había que re-parsear.
+  2. Los agregados son promedios numéricos, nunca strings "K / D / A" que había que re-parsear.
   3. `avg_dpm` usa el daño REAL a campeones guardado en el JSONB `participants`; la fórmula legacy
      que lo estimaba desde kills/assists/CS mentía sistemáticamente al alza.
 """
@@ -23,31 +23,6 @@ _WINRATE = "SUM(CASE WHEN win THEN 1 ELSE 0 END)::numeric / COUNT(*) * 100"
 # legacy con duración NULL (pre-migración del monolito) se conservan a propósito: duración
 # desconocida no equivale a remake, y excluirlas borraría el historial antiguo de los paneles.
 _NOT_A_REMAKE = "(game_duration_minutes IS NULL OR game_duration_minutes >= 5)"
-
-
-async def summary(user_id: str) -> dict[str, Any]:
-    row = await db.fetch_one(
-        f"""
-        SELECT
-            COUNT(*)                                   AS total_games,
-            COALESCE(SUM(CASE WHEN win THEN 1 ELSE 0 END), 0) AS total_wins,
-            COALESCE(ROUND({_WINRATE}, 1), 0)          AS winrate,
-            COALESCE(ROUND(AVG(kills)::numeric, 2), 0) AS avg_kills,
-            COALESCE(ROUND(AVG(deaths)::numeric, 2), 0) AS avg_deaths,
-            COALESCE(ROUND(AVG(assists)::numeric, 2), 0) AS avg_assists,
-            COALESCE(ROUND({_KDA_RATIO}, 2), 0)        AS kda_ratio,
-            COALESCE(ROUND(AVG(cs_min)::numeric, 2), 0) AS avg_cs_min
-        FROM matches
-        WHERE user_id = %s AND {_NOT_A_REMAKE}
-        """,
-        (user_id,),
-    )
-    # Con la tabla vacía, COUNT(*) es 0 y los COALESCE dejan el resto en 0: nunca None.
-    return row or {
-        "total_games": 0, "total_wins": 0, "winrate": 0.0,
-        "avg_kills": 0.0, "avg_deaths": 0.0, "avg_assists": 0.0,
-        "kda_ratio": 0.0, "avg_cs_min": 0.0,
-    }
 
 
 # Daño por minuto REAL del propio usuario: se localiza su participante dentro del JSONB

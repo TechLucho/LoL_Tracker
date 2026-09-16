@@ -21,7 +21,6 @@ import logging
 import time
 import uuid
 from collections import deque
-from collections.abc import Awaitable, Callable
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 

@@ -578,21 +578,6 @@ class RiotLinkRequest(BaseModel):
         return region
 
 
-class ConfigOptions(BaseModel):
-    """Valores canónicos que el frontend necesita y que NO debe duplicar.
-
-    En Streamlit la lista de `impact_rating` estaba escrita a mano en dos sitios distintos (el
-    formulario post-partida y el de edición), con el riesgo de que divergieran.
-    """
-
-    impact_ratings: list[str]
-    regions: list[str]
-    champion_pool_max: int
-    display_timezone: str
-    riot_id: str = Field(description="Riot ID vinculado del usuario (migración 014; no es un secreto)")
-    riot_region: str
-
-
 # ───────────────────────────── metadatos (Data Dragon) ────────────────────────────
 
 # Diccionarios "limpios": el JSON crudo de Data Dragon ronda 1-8 MB con stats, tags y HTML;

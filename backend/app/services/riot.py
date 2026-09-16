@@ -638,7 +638,7 @@ class RiotService:
     @staticmethod
     def _enemy_laner(info: dict[str, Any], me: dict[str, Any]) -> str:
         """Rival directo = mismo `teamPosition`, equipo contrario. 'Unknown' en remakes y
-        partidas sin rol asignado (valor que `nemesis()` filtra explícitamente)."""
+        partidas sin rol asignado (el frontend lo trata como no-escouteable)."""
         role = me.get("teamPosition")
         if not role or role == "Invalid":
             return "Unknown"

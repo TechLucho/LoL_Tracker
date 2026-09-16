@@ -46,7 +46,6 @@ export type {
   TrendPoint,
   WeeklyReport,
   SessionFatigue,
-  ScoutMasteryChampion,
   ScoutOpponent,
   MetaVerdict,
   MetaVerdictResponse,

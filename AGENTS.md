@@ -82,8 +82,7 @@ booting** — that is by design (the Streamlit monolith used to degrade silently
 | Variable | Purpose |
 | --- | --- |
 | `RIOT_API_KEY` | Riot key. Dev keys (`RGAPI-…`) expire every 24h; `/health` reports when one is a dev key. |
-| `RIOT_ID` | Default Riot ID, `Name#TAG`. |
-| `RIOT_REGION` | Platform id (`EUW1`, `LA1`, …). Validated against `ROUTING_MAP` in `config.py`. |
+| `RIOT_REGION` | Platform id (`EUW1`, `LA1`, …). Validated against `ROUTING_MAP` in `config.py`. The user's Riot ID/region themselves live in `user_settings` (migration 014), not in env. |
 | `DB_HOST` `DB_NAME` `DB_USER` `DB_PASSWORD` `DB_PORT` | Supabase Postgres (pooler host). `DB_USER` must be `postgres.<project-ref>`. |
 | `DISPLAY_TIMEZONE` | Zone used to interpret heatmap hours. Defaults to `Europe/Madrid`. |
 | `SUPABASE_JWT_SECRET` | HS256 JWT gateway secret from Supabase (Settings › API › JWT Settings). Used to decode the session token's `sub` claim. Default `super-secret-jwt-token-for-testing-only` is test/CI-only — set the real one in production. |

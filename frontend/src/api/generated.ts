@@ -20,16 +20,12 @@ export type BackendMatch = components['schemas']['Match']
 export type BackendParticipant = components['schemas']['Participant']
 export type MatchUpdate = components['schemas']['MatchUpdate']
 
-export type SyncResult = components['schemas']['SyncResult']
 export type SyncAccepted = components['schemas']['SyncAccepted']
 export type SyncStatus = components['schemas']['SyncStatus']
-export type LpCapture = components['schemas']['LpCapture']
 
 export type HealthStatus = components['schemas']['HealthStatus']
 
 export type ChampionMeta = components['schemas']['ChampionMeta']
-export type ItemMeta = components['schemas']['ItemMeta']
-export type SpellMeta = components['schemas']['SpellMeta']
 export type ChampionsIndex = components['schemas']['ChampionsIndex']
 export type ItemsIndex = components['schemas']['ItemsIndex']
 export type SpellsIndex = components['schemas']['SpellsIndex']
@@ -55,7 +51,6 @@ export type UserSettingsUpdate = components['schemas']['UserSettingsUpdate']
 export type RiotLinkRequest = components['schemas']['RiotLinkRequest']
 
 export type ChampionRoleSummary = components['schemas']['ChampionRoleSummary']
-export type SessionBlock = components['schemas']['SessionBlock']
 export type SessionFatigue = components['schemas']['SessionFatigue']
 
 export type ScoutMasteryChampion = components['schemas']['ScoutMasteryChampion']

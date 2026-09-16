@@ -304,38 +304,6 @@ def test_laning_summary_sin_partidas_con_datos_reporta_cero():
     assert result == {"avg_gd15": None, "avg_xpd15": None, "avg_csd15": None, "games_analyzed": 0}
 
 
-# ─────────────────────────── scout.nemesis ───────────────────────────
-
-
-def test_nemesis_orden_exclusiones_y_antiremake():
-    darius_1 = row(enemy="Darius", win=False, date="2026-08-01 18:00:00")
-    darius_2 = row(enemy="Darius", win=False, date="2026-08-02 18:00:00")
-    garen_w = row(enemy="Garen", win=True, date="2026-08-03 18:00:00")
-    garen_l = row(enemy="Garen", win=False, date="2026-08-04 18:00:00")
-    morde_remake = row(enemy="Mordekaiser", win=False, duration=2.0, date="2026-08-05 18:00:00")
-    unknown_1 = row(enemy="Unknown", win=False, date="2026-08-06 18:00:00")
-    unknown_2 = row(enemy="Unknown", win=False, date="2026-08-07 18:00:00")
-
-    async def s():
-        await matches_repo.insert_many(
-            USER,
-            [darius_1, darius_2, garen_w, garen_l, morde_remake, unknown_1, unknown_2],
-        )
-        return await scout.nemesis(USER, min_games=2, limit=5)
-
-    enemigos = run_scenario(s)
-
-    nombres = [e["enemy_champion"] for e in enemigos]
-    # 'Darius' primero (0% wr), 'Garen' segundo (50%). 'Unknown' excluido por nombre y el
-    # remake contra Mordekaiser no cuenta: con 1 partida real queda bajo min_games=2.
-    assert nombres == ["Darius", "Garen"]
-    assert float(enemigos[0]["winrate"]) == 0.0
-    assert float(enemigos[1]["winrate"]) == 50.0
-
-
-# ─────────────────────────── scout_cache (positiva + negativa) ───────────────────────────
-
-
 def test_scout_cache_roundtrip_positivo_y_negativo():
     """La caché del escout persiste payload y error por separado, y el upsert por puuid es coherente."""
 

@@ -70,13 +70,6 @@ async def get_by_id(user_id: str, game_id: str) -> dict[str, Any] | None:
     )
 
 
-async def count(user_id: str) -> int:
-    row = await db.fetch_one(
-        "SELECT COUNT(*) AS n FROM matches WHERE user_id = %s", (user_id,)
-    )
-    return int(row["n"]) if row else 0
-
-
 async def insert_many(user_id: str, matches: list[dict[str, Any]]) -> int:
     """Inserta partidas nuevas de forma idempotente. Devuelve cuántas eran realmente nuevas.
 

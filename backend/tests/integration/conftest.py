@@ -1,7 +1,7 @@
 """Tests de integración de repositories/ contra Postgres REAL.
 
 La auditoría crítica señalaba que ninguna query SQL estaba cubierta por CI: aquí se ejercitan
-`insert_many`, `list_recent`, `last_results`, `champion_performance`, `lp_trend` y `nemesis`
+`insert_many`, `list_recent`, `last_results`, `champion_performance` y `lp_trend`
 contra un Postgres de verdad con el esquema de `backend/migrations/*.sql` ya aplicado.
 
 Requisitos:
