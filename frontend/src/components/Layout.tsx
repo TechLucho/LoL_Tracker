@@ -43,8 +43,8 @@ function SidebarContent({ onNavigate, onClose }: { onNavigate?: () => void; onCl
         className={({ isActive }) =>
           `flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-xs font-medium transition-colors ${
             isActive
-              ? 'bg-accent-purple/15 text-accent-purple'
-              : 'text-text-secondary hover:bg-card-hover hover:text-text-primary'
+              ? 'bg-accent-primary/10 text-accent-primary'
+              : 'text-text-mute hover:bg-surface-2 hover:text-text-ink'
           }`
         }
       >
@@ -56,7 +56,7 @@ function SidebarContent({ onNavigate, onClose }: { onNavigate?: () => void; onCl
 
   return (
     <>
-      <div className="flex items-center gap-2 border-b border-border px-4 py-4">
+      <div className="flex items-center gap-2 border-b border-hairline px-4 py-4">
         <span className="text-lg">⚔️</span>
         <h1 className="text-sm font-bold tracking-tight">LoL Tracker</h1>
         {onClose && (
@@ -64,7 +64,7 @@ function SidebarContent({ onNavigate, onClose }: { onNavigate?: () => void; onCl
             type="button"
             onClick={onClose}
             aria-label="Cerrar menú"
-            className="ml-auto rounded-lg p-2 text-text-secondary transition-colors hover:bg-card-hover hover:text-text-primary"
+            className="ml-auto rounded-lg p-2 text-text-body transition-colors hover:bg-surface-2 hover:text-text-ink"
           >
             <X className="h-4 w-4" />
           </button>
@@ -73,9 +73,9 @@ function SidebarContent({ onNavigate, onClose }: { onNavigate?: () => void; onCl
 
       <nav className="flex flex-1 flex-col gap-1 p-3">{navItems.map(renderLink)}</nav>
 
-      <div className="mt-auto border-t border-border p-3">
+      <div className="mt-auto border-t border-hairline p-3">
         {bottomItems.map(renderLink)}
-        <p className="mt-2 px-3 text-[10px] text-text-muted">v2.0 — FastAPI + React</p>
+        <p className="mt-2 px-3 text-xs text-text-mute">v2.0 — FastAPI + React</p>
       </div>
     </>
   )
@@ -110,17 +110,17 @@ export default function Layout() {
   }, [startAutoSync])
 
   return (
-    <div className="flex h-screen flex-col bg-background text-text-primary">
+    <div className="flex h-screen flex-col bg-canvas text-text-ink">
       <HealthBanner />
 
       {/* Header móvil (<lg): hamburguesa + título. En escritorio lo sustituye el sidebar. */}
-      <header className="flex items-center gap-3 border-b border-border bg-card px-4 py-3 lg:hidden">
+      <header className="flex items-center gap-3 border-b border-hairline bg-canvas px-4 py-3 lg:hidden">
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
           aria-label="Abrir menú de navegación"
           aria-expanded={drawerOpen}
-          className="rounded-lg p-2.5 text-text-secondary transition-colors hover:bg-card-hover hover:text-text-primary"
+          className="rounded-lg p-2.5 text-text-body transition-colors hover:bg-surface-2 hover:text-text-ink"
         >
           <Menu className="h-5 w-5" />
         </button>
@@ -132,7 +132,7 @@ export default function Layout() {
           min-h-0 permite que main haga overflow-y dentro del flex column. */}
       <div className="flex min-h-0 flex-1">
         {/* Sidebar de escritorio (≥lg) */}
-        <aside className="hidden h-full w-56 shrink-0 flex-col border-r border-border bg-card lg:flex">
+        <aside className="hidden h-full w-56 shrink-0 flex-col border-r border-hairline bg-canvas lg:flex">
           <SidebarContent />
         </aside>
 
@@ -148,7 +148,7 @@ export default function Layout() {
         <aside
           inert={!drawerOpen}
           aria-label="Navegación"
-          className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-card shadow-xl shadow-black/40 transition-transform duration-200 ease-out lg:hidden ${
+          className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-hairline bg-canvas shadow-xl shadow-black/40 transition-transform duration-200 ease-out lg:hidden ${
             drawerOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >

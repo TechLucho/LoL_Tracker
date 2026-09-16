@@ -25,7 +25,7 @@ function ChampionAvatar({ champion, size }: { champion: string; size: 'lg' | 'md
       src={info.url}
       alt={champion}
       title={info.name}
-      className={`rounded-xl border border-gray-700 ${
+      className={`rounded-xl border border-hairline ${
         size === 'lg' ? 'h-16 w-16' : 'h-12 w-12'
       }`}
       onError={(e) => {
@@ -50,10 +50,10 @@ function BigStatCard({
   valueClass?: string
 }) {
   return (
-    <div className={`rounded-xl border p-5 ${accent ?? 'border-gray-800 bg-[#14141C]'}`}>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{label}</p>
+    <div className={`rounded-xl border p-5 ${accent ?? 'border-hairline bg-surface-1'}`}>
+      <p className="text-xs font-bold uppercase tracking-widest text-text-mute">{label}</p>
       <p className={`mt-2 font-mono text-4xl font-black leading-none ${valueClass}`}>{value}</p>
-      {sub && <p className="mt-2 text-xs text-gray-500">{sub}</p>}
+      {sub && <p className="mt-2 text-xs text-text-mute">{sub}</p>}
     </div>
   )
 }
@@ -64,10 +64,10 @@ export default function WeeklyPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="flex items-center gap-2 text-lg font-black uppercase tracking-wider text-purple-400">
+        <h2 className="flex items-center gap-2 text-lg font-black uppercase tracking-wider text-accent-primary">
           <Calendar className="h-5 w-5" /> Reporte Semanal
         </h2>
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-text-mute">
           Tu rendimiento de los últimos 7 días, de un vistazo.
         </p>
       </div>
@@ -75,7 +75,7 @@ export default function WeeklyPage() {
       {isLoading && (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="shimmer h-32 rounded-xl bg-gray-800/30" />
+            <div key={i} className="shimmer h-32 rounded-xl bg-surface-2/30" />
           ))}
         </div>
       )}
@@ -84,15 +84,15 @@ export default function WeeklyPage() {
         <div className="flex flex-col items-center justify-center py-16">
           <AlertTriangle className="h-8 w-8 text-red-500/50" />
           <p className="mt-3 text-sm text-red-400">Error al cargar el reporte semanal</p>
-          <p className="mt-1 text-xs text-gray-500">Asegúrate de que el backend esté corriendo.</p>
+          <p className="mt-1 text-xs text-text-mute">Asegúrate de que el backend esté corriendo.</p>
         </div>
       )}
 
       {!isLoading && !isError && data && data.total_games === 0 && (
         <div className="flex flex-col items-center justify-center py-16">
-          <CalendarX className="h-8 w-8 text-gray-600" />
-          <p className="mt-3 text-sm font-medium text-gray-300">No hay actividad reciente</p>
-          <p className="mt-1 text-xs text-gray-500">
+          <CalendarX className="h-8 w-8 text-text-mute" />
+          <p className="mt-3 text-sm font-medium text-text-body">No hay actividad reciente</p>
+          <p className="mt-1 text-xs text-text-mute">
             Juega algunas partidas esta semana para generar tu reporte.
           </p>
         </div>
@@ -101,8 +101,8 @@ export default function WeeklyPage() {
       {!isLoading && !isError && data && data.total_games > 0 && (
         <>
           {/* Periodo */}
-          <div className="flex items-center gap-2 rounded-xl border border-gray-800 bg-[#14141C] px-4 py-3">
-            <Calendar className="h-4 w-4 text-purple-400" />
+          <div className="flex items-center gap-2 rounded-xl border border-hairline bg-surface-1 px-4 py-3">
+            <Calendar className="h-4 w-4 text-accent-primary" />
             <span className="text-sm font-bold text-white">Semana del {formatPeriod(data.period_start, data.period_end)}</span>
           </div>
 
@@ -113,7 +113,7 @@ export default function WeeklyPage() {
               value={`${data.winrate.toFixed(0)}%`}
               sub={`${data.wins}V – ${data.losses}D`}
               valueClass={winrateColor(data.winrate)}
-              accent="border-purple-500/30 bg-purple-500/5"
+              accent="border-accent-primary/30 bg-accent-primary/5"
             />
             <BigStatCard
               label="Partidas"
@@ -136,16 +136,16 @@ export default function WeeklyPage() {
           {/* Campeón más jugado + Mejor partida */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {data.most_played && (
-              <div className="flex items-center gap-4 rounded-xl border border-gray-800 bg-[#14141C] p-5">
+              <div className="flex items-center gap-4 rounded-xl border border-hairline bg-surface-1 p-6">
                 <ChampionAvatar champion={data.most_played.champion} size="lg" />
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500">
+                  <p className="text-xs font-bold uppercase tracking-widest text-text-mute">
                     🏆 Campeón más jugado
                   </p>
                   <p className="mt-1 truncate text-lg font-black text-white">
                     {data.most_played.champion}
                   </p>
-                  <p className="mt-1 text-xs text-gray-400">
+                  <p className="mt-1 text-xs text-text-mute">
                     {data.most_played.games} partidas · {data.most_played.wins}V -
                     {data.most_played.games - data.most_played.wins}D
                   </p>
@@ -157,15 +157,15 @@ export default function WeeklyPage() {
               <div className="flex items-center gap-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5">
                 <ChampionAvatar champion={data.best_match.champion} size="lg" />
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">
+                  <p className="text-xs font-bold uppercase tracking-widest text-emerald-400">
                     <Trophy className="mr-1 inline h-3.5 w-3.5" /> Mejor partida
                   </p>
                   <p className="mt-1 truncate text-lg font-black text-white">
                     {data.best_match.champion}
                   </p>
-                  <p className="mt-1 font-mono text-xs text-gray-300">
+                  <p className="mt-1 font-mono text-xs text-text-body">
                     KDA {data.best_match.kills}/{data.best_match.deaths}/{data.best_match.assists}
-                    <span className="mx-1 text-gray-600">·</span>
+                    <span className="mx-1 text-text-mute">·</span>
                     <span className="font-bold text-emerald-400">
                       Rating {data.best_match.rating.toFixed(1)}
                     </span>
@@ -175,7 +175,7 @@ export default function WeeklyPage() {
             )}
           </div>
 
-          <div className="flex items-center justify-center gap-2 rounded-xl border border-gray-800 bg-[#14141C] px-4 py-3 text-[10px] text-gray-500">
+          <div className="flex items-center justify-center gap-2 rounded-xl border border-hairline bg-surface-1 px-4 py-3 text-xs text-text-mute">
             <Medal className="h-3.5 w-3.5" />
             El rating de la mejor partida usa la puntuación objetiva 0-100 calculada por el backend.
           </div>

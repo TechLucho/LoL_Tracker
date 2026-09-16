@@ -36,23 +36,23 @@ export default function LaningRadarCard() {
   const { data, isLoading, isError } = useLaningStats(50)
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-[#14141C] p-4">
+    <div className="rounded-xl border border-hairline bg-surface-1 p-6">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-xs font-bold uppercase tracking-widest text-amber-400">
           🔺 Triángulo del Laning
         </h3>
-        <span className="font-mono text-xs font-bold text-gray-400">
+        <span className="font-mono text-xs font-bold text-text-mute">
           {data ? `${data.games_analyzed} partidas` : '—'}
         </span>
       </div>
 
       {isLoading ? (
-        <div className="h-44 animate-pulse rounded-lg bg-gray-800/30" />
+        <div className="h-44 animate-pulse rounded-lg bg-surface-2/30" />
       ) : isError || !data || data.games_analyzed === 0 ? (
         <div className="flex h-44 flex-col items-center justify-center px-6 text-center">
-          <Radar className="h-6 w-6 text-gray-600" />
-          <p className="mt-2 text-xs font-medium text-gray-300">Sin datos de laning todavía</p>
-          <p className="mt-1 text-[10px] text-gray-500">
+          <Radar className="h-6 w-6 text-text-mute" />
+          <p className="mt-2 text-xs font-medium text-text-body">Sin datos de laning todavía</p>
+          <p className="mt-1 text-xs text-text-mute">
             Se añaden al sincronizar partidas de 15+ minutos con rival de línea (Timeline de
             Riot). Al hacerlo, este triángulo medirá tu early game.
           </p>
@@ -96,7 +96,7 @@ function ChartBody({ data }: { data: LaningSummary }) {
 function Readout({ data }: { data: LaningSummary }) {
   return (
     <>
-      <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-gray-500">
+      <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-mute">
         {LANING_METRICS.map((m: LaningMetric) => {
           const raw = data[m.key]
           const positive = raw != null && raw > 0
@@ -107,7 +107,7 @@ function Readout({ data }: { data: LaningSummary }) {
               <span>{m.emoji} {m.label}:</span>{' '}
               <span
                 className={`font-mono font-bold ${
-                  positive ? 'text-emerald-400' : negative ? 'text-red-400' : 'text-gray-400'
+                  positive ? 'text-emerald-400' : negative ? 'text-red-400' : 'text-text-mute'
                 }`}
               >
                 {signed(raw, m.fixed)}
@@ -115,10 +115,10 @@ function Readout({ data }: { data: LaningSummary }) {
             </span>
           )
         })}
-        <span className="text-gray-600">·</span>
+        <span className="text-text-mute">·</span>
         <span>0 = duelo parejo a los 15:00</span>
       </p>
-      <p className="mt-1 text-[10px] leading-relaxed text-gray-600">
+      <p className="mt-1 text-xs leading-relaxed text-text-mute">
         Cada vértice compara tu minuto 15 contra tu rival directo (misma línea, otro equipo): pegado al centro pierdes la lane, hacia fuera la ganas.
       </p>
     </>

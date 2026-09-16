@@ -17,8 +17,8 @@ export default function RiotOnboarding() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="shimmer h-6 w-48 rounded bg-card" />
+      <div className="flex min-h-screen items-center justify-center bg-canvas">
+        <div className="shimmer h-6 w-48 rounded bg-surface-1" />
       </div>
     )
   }
@@ -47,14 +47,17 @@ export default function RiotOnboarding() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md space-y-5 rounded-xl border border-border bg-card p-6">
+    <div className="flex min-h-screen items-center justify-center bg-canvas px-4">
+      <div className="w-full max-w-md space-y-5 rounded-xl border border-hairline bg-surface-1 p-6">
         <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-lg font-bold text-text-primary">
-            <Swords className="h-5 w-5 text-accent-purple" />
+          <p className="text-xs font-mono font-bold uppercase tracking-widest text-accent-primary/80">
+            Paso 1 · Vinculación
+          </p>
+          <h1 className="flex items-center gap-2 text-lg font-bold text-text-ink">
+            <Swords className="h-5 w-5 text-accent-primary" />
             Vincula tu cuenta de Riot
           </h1>
-          <p className="text-sm text-text-muted">
+          <p className="text-sm text-text-mute">
             Necesitamos tu Riot ID para sincronizar tus partidas clasificatorias y calcular tus
             estadísticas. Sin esto, la app no puede mostrar tus datos.
           </p>
@@ -62,8 +65,8 @@ export default function RiotOnboarding() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-text-secondary">
-              Riot ID <span className="text-text-muted">(Nombre#TAG)</span>
+            <span className="mb-1 block text-xs font-medium text-text-body">
+              Riot ID <span className="text-text-mute">(Nombre#TAG)</span>
             </span>
             <input
               type="text"
@@ -71,16 +74,16 @@ export default function RiotOnboarding() {
               value={riotId}
               onChange={(e) => setRiotId(e.target.value)}
               placeholder="Lucho#EUW"
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary placeholder-text-muted outline-none transition-colors focus:border-accent-purple/50"
+              className="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-text-ink placeholder-text-mute outline-none transition-colors focus:border-accent-primary/50"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-text-secondary">Región</span>
+            <span className="mb-1 block text-xs font-medium text-text-body">Región</span>
             <select
               value={region}
               onChange={(e) => setRegion(e.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary outline-none transition-colors focus:border-accent-purple/50"
+              className="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-text-ink outline-none transition-colors focus:border-accent-primary/50"
             >
               {regions.map((r) => (
                 <option key={r} value={r}>
@@ -93,7 +96,7 @@ export default function RiotOnboarding() {
           <button
             type="submit"
             disabled={linkMutation.isPending}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent-purple px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-accent-purple/20 transition-all hover:bg-accent-purple-dim active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500"
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-accent-primary px-6 py-3 text-sm font-bold text-white shadow-[0_0_24px_rgba(168,85,247,0.35)] transition-all hover:bg-accent-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-text-mute"
           >
             <Swords className={`h-3.5 w-3.5 ${linkMutation.isPending ? 'animate-spin' : ''}`} />
             {linkMutation.isPending ? 'Vinculando...' : 'Vincular cuenta'}

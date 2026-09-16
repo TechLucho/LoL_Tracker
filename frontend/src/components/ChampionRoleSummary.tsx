@@ -30,17 +30,17 @@ export default function ChampionRoleSummary({ rows, isLoading = false }: Props) 
   const icons = useIcons()
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-[#14141C] p-4">
-      <h3 className="mb-3 text-xs font-bold uppercase tracking-widest text-purple-400">
+    <div className="rounded-xl border border-hairline bg-surface-1 p-6">
+      <h3 className="mb-3 text-xs font-mono font-bold uppercase tracking-widest text-accent-primary">
         📊 Resumen por Rol
       </h3>
 
-      {isLoading && <div className="shimmer h-32 rounded-lg bg-gray-800/30" />}
+      {isLoading && <div className="shimmer h-32 rounded-lg bg-surface-2/30" />}
 
       {!isLoading && rows.length === 0 && (
         <div className="flex flex-col items-center gap-1.5 py-4">
-          <MapPin className="h-5 w-5 text-gray-600" />
-          <p className="text-[11px] text-gray-500">
+          <MapPin className="h-5 w-5 text-text-mute" />
+          <p className="text-xs text-text-mute">
             Sin combinaciones con ≥3 partidas para desglosar.
           </p>
         </div>
@@ -53,13 +53,13 @@ export default function ChampionRoleSummary({ rows, isLoading = false }: Props) 
             return (
               <div
                 key={`${r.champion}-${r.role}-${r.queue_id}`}
-                className="flex items-center gap-2.5 rounded-lg border border-gray-800/50 bg-[#0D0D12] px-2.5 py-2 transition-colors hover:bg-[#1A1A24]"
+                className="flex items-center gap-2.5 rounded-lg border border-hairline/50 bg-canvas px-2.5 py-2 transition-colors hover:bg-surface-2"
               >
                 <img
                   src={champIcon.url}
                   alt={r.champion}
                   title={champIcon.name}
-                  className="h-7 w-7 rounded-md border border-gray-700"
+                  className="h-7 w-7 rounded-md border border-hairline"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = DDragon.champion('Teemo')
                   }}
@@ -75,14 +75,14 @@ export default function ChampionRoleSummary({ rows, isLoading = false }: Props) 
                           ? 'text-emerald-400'
                           : r.winrate < 50
                             ? 'text-red-400'
-                            : 'text-gray-400'
+                            : 'text-text-mute'
                       }`}
                     >
                       {r.winrate.toFixed(1)}%
                     </span>
                   </div>
-                  <div className="mt-0.5 flex items-center gap-1.5 text-[9px] text-gray-500">
-                    <span className="rounded bg-gray-800 px-1 py-0.5 text-[8px] font-semibold uppercase text-gray-400">
+                  <div className="mt-0.5 flex items-center gap-1.5 text-xs text-text-mute">
+                    <span className="rounded bg-surface-2 px-1 py-0.5 text-xs font-semibold uppercase text-text-mute">
                       {ROLE_LABELS[r.role] ?? r.role}
                     </span>
                     <span>{QUEUE_NAMES[r.queue_id] ?? `Q${r.queue_id}`}</span>
@@ -96,7 +96,7 @@ export default function ChampionRoleSummary({ rows, isLoading = false }: Props) 
             )
           })}
           {rows.length > 8 && (
-            <p className="text-center text-[9px] text-gray-600">
+            <p className="text-center text-xs text-text-mute">
               +{rows.length - 8} combinaciones más
             </p>
           )}

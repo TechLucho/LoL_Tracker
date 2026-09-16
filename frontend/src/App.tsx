@@ -28,8 +28,8 @@ function RequireAuth() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="shimmer h-6 w-48 rounded bg-card" />
+      <div className="flex h-screen items-center justify-center bg-canvas">
+        <div className="shimmer h-6 w-48 rounded bg-surface-1" />
       </div>
     )
   }
@@ -49,8 +49,8 @@ function RequireLinked() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="shimmer h-6 w-48 rounded bg-card" />
+      <div className="flex h-screen items-center justify-center bg-canvas">
+        <div className="shimmer h-6 w-48 rounded bg-surface-1" />
       </div>
     )
   }

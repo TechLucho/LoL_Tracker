@@ -70,42 +70,42 @@ function formatDayLabel(day: string): string {
 
 function SkeletonRow() {
   return (
-    <div className={`${ROW_GRID} border-b border-gray-800/50 px-4 py-3`}>
+    <div className={`${ROW_GRID} border-b border-hairline/50 px-4 py-3`}>
       <div className="flex items-center gap-1">
-        <div className="shimmer h-10 w-10 rounded-lg bg-gray-800" />
+        <div className="shimmer h-10 w-10 rounded-lg bg-surface-2" />
         <div className="space-y-1">
-          <div className="shimmer h-2 w-3 rounded bg-gray-800/60" />
-          <div className="shimmer h-2 w-3 rounded bg-gray-800/60" />
+          <div className="shimmer h-2 w-3 rounded bg-surface-2/60" />
+          <div className="shimmer h-2 w-3 rounded bg-surface-2/60" />
         </div>
       </div>
       <div className="space-y-1.5">
-        <div className="shimmer h-3 w-16 rounded bg-gray-800" />
-        <div className="shimmer h-2 w-28 rounded bg-gray-800/60" />
+        <div className="shimmer h-3 w-16 rounded bg-surface-2" />
+        <div className="shimmer h-2 w-28 rounded bg-surface-2/60" />
       </div>
-      <div className="shimmer mx-auto h-4 w-16 rounded bg-gray-800" />
+      <div className="shimmer mx-auto h-4 w-16 rounded bg-surface-2" />
       <div className="space-y-1">
-        <div className="shimmer mx-auto h-3 w-12 rounded bg-gray-800" />
-        <div className="shimmer mx-auto h-2 w-10 rounded bg-gray-800/60" />
-      </div>
-      <div className="space-y-1">
-        <div className="shimmer mx-auto h-3 w-8 rounded bg-gray-800" />
-        <div className="shimmer mx-auto h-2 w-10 rounded bg-gray-800/60" />
+        <div className="shimmer mx-auto h-3 w-12 rounded bg-surface-2" />
+        <div className="shimmer mx-auto h-2 w-10 rounded bg-surface-2/60" />
       </div>
       <div className="space-y-1">
-        <div className="shimmer mx-auto h-3 w-6 rounded bg-gray-800" />
-        <div className="shimmer mx-auto h-2 w-6 rounded bg-gray-800/60" />
+        <div className="shimmer mx-auto h-3 w-8 rounded bg-surface-2" />
+        <div className="shimmer mx-auto h-2 w-10 rounded bg-surface-2/60" />
       </div>
       <div className="space-y-1">
-        <div className="shimmer mx-auto h-3 w-8 rounded bg-gray-800" />
-        <div className="shimmer mx-auto h-2 w-6 rounded bg-gray-800/60" />
+        <div className="shimmer mx-auto h-3 w-6 rounded bg-surface-2" />
+        <div className="shimmer mx-auto h-2 w-6 rounded bg-surface-2/60" />
+      </div>
+      <div className="space-y-1">
+        <div className="shimmer mx-auto h-3 w-8 rounded bg-surface-2" />
+        <div className="shimmer mx-auto h-2 w-6 rounded bg-surface-2/60" />
       </div>
       <div>
-        <div className="shimmer mx-auto h-6 w-10 rounded bg-gray-800" />
-        <div className="shimmer mx-auto mt-1 h-1.5 w-8 rounded bg-gray-800/60" />
+        <div className="shimmer mx-auto h-6 w-10 rounded bg-surface-2" />
+        <div className="shimmer mx-auto mt-1 h-1.5 w-8 rounded bg-surface-2/60" />
       </div>
       <div>
-        <div className="shimmer mx-auto h-3 w-6 rounded bg-gray-800" />
-        <div className="shimmer mx-auto mt-1 h-1.5 w-4 rounded bg-gray-800/60" />
+        <div className="shimmer mx-auto h-3 w-6 rounded bg-surface-2" />
+        <div className="shimmer mx-auto mt-1 h-1.5 w-4 rounded bg-surface-2/60" />
       </div>
     </div>
   )
@@ -131,22 +131,22 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
   const icons = useIcons()
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-[#14141C]">
+    <div className="rounded-xl border border-hairline bg-surface-1">
       {/* Header with filter pills + sync button */}
-      <div className="flex items-center justify-between border-b border-gray-800 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-hairline px-4 py-3">
         <div className="flex items-center gap-3">
-          <h3 className="text-sm font-bold uppercase tracking-widest text-purple-400">
+          <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-accent-primary">
             ⚔️ Matches
           </h3>
-          <div className="flex gap-1 rounded-lg bg-[#0A0A10] p-0.5">
+          <div className="flex gap-1 rounded-lg bg-canvas p-0.5">
             {FILTER_OPTIONS.map((opt) => (
               <button
                 key={opt.key}
                 onClick={() => onFilterChange(opt.key)}
-                className={`rounded-md px-3 py-2 text-[11px] font-semibold transition-colors ${
+                className={`rounded-md px-3 py-2 text-xs font-semibold transition-colors ${
                   queueFilter === opt.key
-                    ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
-                    : 'text-gray-500 hover:text-gray-300'
+                    ? 'bg-accent-primary text-white shadow-[0_0_24px_rgba(168,85,247,0.35)]'
+                    : 'text-text-mute hover:text-text-body'
                 }`}
               >
                 {opt.label}
@@ -157,15 +157,15 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
 
         <div className="flex items-center gap-3">
           {!isLoading && (
-            <span className="text-[11px] text-gray-500">{matches.length} matches</span>
+            <span className="text-xs text-text-mute">{matches.length} matches</span>
           )}
           <button
             onClick={onSync}
             disabled={isSyncing}
-            className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[11px] font-bold uppercase tracking-wider transition-all active:scale-95 ${
+            className={`flex items-center gap-1.5 rounded-full px-5 py-2 text-xs font-bold uppercase tracking-wider transition-all active:scale-95 ${
               isSyncing
-                ? 'cursor-not-allowed bg-gray-800 text-gray-500'
-                : 'bg-purple-500 text-white shadow-lg shadow-purple-500/20 hover:bg-purple-400'
+                ? 'cursor-not-allowed bg-surface-2 text-text-mute'
+                : 'bg-accent-primary text-white shadow-[0_0_24px_rgba(168,85,247,0.35)] hover:bg-accent-primary/90'
             }`}
           >
             <RefreshCw className={`h-3 w-3 ${isSyncing ? 'animate-spin' : ''}`} />
@@ -190,16 +190,16 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
         <div className="flex flex-col items-center justify-center py-12">
           <span className="text-lg">⚠️</span>
           <p className="mt-2 text-base font-medium text-red-400">Failed to load matches</p>
-          <p className="mt-1 text-sm text-gray-500">Make sure the backend is running on localhost:8000</p>
+          <p className="mt-1 text-sm text-text-mute">Make sure the backend is running on localhost:8000</p>
         </div>
       )}
 
       {/* Empty state */}
       {!isLoading && !isError && matches.length === 0 && (
         <div className="flex flex-col items-center justify-center py-12">
-          <Gamepad2 className="h-8 w-8 text-gray-600" />
-          <p className="mt-3 text-base font-medium text-gray-300">No matches found</p>
-          <p className="mt-1 text-sm text-gray-500">
+          <Gamepad2 className="h-8 w-8 text-text-mute" />
+          <p className="mt-3 text-base font-medium text-text-body">No matches found</p>
+          <p className="mt-1 text-sm text-text-mute">
             {queueFilter !== 'all'
               ? `No ${queueFilter} matches yet. Try "All Matches".`
               : 'Click "Sync" to download your latest matches from Riot.'}
@@ -216,7 +216,7 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
               <div key={group.day}>
                 {/* Separador de sesión: fecha a la izquierda, balance a la derecha. */}
                 <div className="flex items-center justify-between bg-white/5 px-4 py-2.5">
-                  <span className="text-xs font-bold uppercase tracking-wider text-gray-300">
+                  <span className="text-xs font-bold uppercase tracking-wider text-text-body">
                     {formatDayLabel(group.day)}
                   </span>
                   <span className="font-mono text-xs font-bold text-gray-200">
@@ -242,7 +242,7 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
                       setExpandedId(isExpanded ? null : m.game_id)
                     }
                   }}
-                  className={`${ROW_GRID} cursor-pointer border-b border-gray-800/50 px-4 py-3 transition-colors hover:bg-white/[0.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-inset ${
+                  className={`${ROW_GRID} cursor-pointer border-b border-hairline/50 px-4 py-3 transition-colors hover:bg-white/[0.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-inset ${
                     isExpanded ? 'bg-white/[0.03]' : ''
                   } bg-gradient-to-r ${
                     m.win
@@ -256,7 +256,7 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
                       src={champIcon.url}
                       alt={m.champion}
                       title={champIcon.name}
-                      className="h-10 w-10 rounded-lg border border-gray-700"
+                      className="h-10 w-10 rounded-lg border border-hairline"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = DDragon.champion('Teemo')
                       }}
@@ -267,7 +267,7 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
                           src={spell1.url}
                           alt={spell1.name}
                           title={spell1.name}
-                          className="h-[14px] w-[14px] rounded-sm border border-gray-700"
+                          className="h-[14px] w-[14px] rounded-sm border border-hairline"
                         />
                       )}
                       {spell2 && (
@@ -275,7 +275,7 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
                           src={spell2.url}
                           alt={spell2.name}
                           title={spell2.name}
-                          className="h-[14px] w-[14px] rounded-sm border border-gray-700"
+                          className="h-[14px] w-[14px] rounded-sm border border-hairline"
                         />
                       )}
                     </div>
@@ -284,15 +284,15 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
                   {/* Champion Info */}
                   <div className="min-w-0">
                     <span className="block truncate text-base font-bold text-white">{m.champion}</span>
-                    <p className="truncate text-[11px] text-gray-500">
+                    <p className="truncate text-xs text-text-mute">
                       {m.role} · {m.duration_display} · {m.time_ago}
-                      {queueLabel && <> · <span className="text-gray-600">{queueLabel}</span></>}
+                      {queueLabel && <> · <span className="text-text-mute">{queueLabel}</span></>}
                     </p>
                   </div>
 
                   {/* Win/Loss Badge */}
                   <div className="text-center">
-                    <span className={`inline-block rounded px-2 py-0.5 text-[11px] font-black uppercase tracking-wider ${
+                    <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-black uppercase tracking-wider ${
                       m.win
                         ? 'bg-emerald-500/20 text-emerald-400'
                         : 'bg-red-500/20 text-red-400'
@@ -306,8 +306,8 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
                     <span className="font-mono text-base font-bold text-white">
                       {m.kills}/{m.deaths}/{m.assists}
                     </span>
-                    <p className={`font-mono text-[11px] font-bold ${
-                      m.kda_ratio >= 5 ? 'text-emerald-400' : m.kda_ratio >= 3 ? 'text-gray-300' : m.kda_ratio >= 2 ? 'text-yellow-400' : 'text-red-400'
+                    <p className={`font-mono text-xs font-bold ${
+                      m.kda_ratio >= 5 ? 'text-emerald-400' : m.kda_ratio >= 3 ? 'text-text-body' : m.kda_ratio >= 2 ? 'text-yellow-400' : 'text-red-400'
                     }`}>
                       {m.kda_ratio.toFixed(2)} KDA
                     </p>
@@ -316,7 +316,7 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
                   {/* CS */}
                   <div className="text-center">
                     <span className="font-mono text-base font-semibold text-white">{m.cs_total}</span>
-                    <p className="text-[11px] text-gray-500">CS · {m.cs_min.toFixed(1)}/M</p>
+                    <p className="text-xs text-text-mute">CS · {m.cs_min.toFixed(1)}/M</p>
                   </div>
 
                   {/* KP */}
@@ -324,23 +324,23 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
                     <span className="font-mono text-base font-semibold text-white">
                       {(m.kill_participation * 100).toFixed(0)}%
                     </span>
-                    <p className="text-[11px] text-gray-500">KP</p>
+                    <p className="text-xs text-text-mute">KP</p>
                   </div>
 
                   {/* DPM */}
                   <div className="text-center">
                     <span className="font-mono text-base font-semibold text-white">{m.dpm}</span>
-                    <p className="text-[11px] text-gray-500">DPM</p>
+                    <p className="text-xs text-text-mute">DPM</p>
                   </div>
 
                   {/* Rating */}
                   <div className="text-center">
                     <span className={`font-mono text-2xl font-black leading-none ${
-                      m.rating >= 80 ? 'text-orange-400' : m.rating >= 60 ? 'text-emerald-400' : m.rating >= 40 ? 'text-gray-300' : 'text-red-400'
+                      m.rating >= 80 ? 'text-orange-400' : m.rating >= 60 ? 'text-emerald-400' : m.rating >= 40 ? 'text-text-body' : 'text-red-400'
                     }`}>
                       {m.rating.toFixed(1)}
                     </span>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-600">Rating</p>
+                    <p className="text-xs font-bold uppercase tracking-wider text-text-mute">Rating</p>
                   </div>
 
                   {/* LP */}
@@ -352,17 +352,17 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
                         }`}>
                           {m.lp_change > 0 ? '+' : ''}{m.lp_change}
                         </span>
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-600">LP</p>
+                        <p className="text-xs font-bold uppercase tracking-wider text-text-mute">LP</p>
                       </>
                     ) : (
-                      <span className="text-gray-600">—</span>
+                      <span className="text-text-mute">—</span>
                     )}
                   </div>
                 </div>
 
                 {/* Expanded Accordion */}
                 {isExpanded && (
-                  <div className="border-b border-gray-800 bg-[#0D0D12] px-4 py-3">
+                  <div className="border-b border-hairline bg-canvas px-4 py-3">
                     <MatchAccordion match={m} onReviewSave={onReviewSave} isSaving={isSaving} />
                   </div>
                 )}
@@ -378,14 +378,14 @@ export default function MatchesTable({ matches, isLoading, isError, queueFilter,
       {/* Paginación: el historial ya no trunca en la primera página. Fuera del scroller
           horizontal para que siga centrado aunque la tabla esté desplazada. */}
       {!isLoading && !isError && hasMore && onLoadMore && (
-        <div className="border-t border-gray-800/50 px-4 py-3 text-center">
+        <div className="border-t border-hairline/50 px-4 py-3 text-center">
           <button
             onClick={onLoadMore}
             disabled={isLoadingMore}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider transition-all active:scale-95 ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all active:scale-95 ${
               isLoadingMore
-                ? 'cursor-not-allowed bg-gray-800 text-gray-500'
-                : 'bg-[#0A0A10] text-purple-300 ring-1 ring-purple-500/30 hover:bg-purple-500/10'
+                ? 'cursor-not-allowed bg-surface-2 text-text-mute'
+                : 'bg-canvas text-accent-primary ring-1 ring-accent-primary/30 hover:bg-accent-primary/10'
             }`}
           >
             <ChevronDown className={`h-3.5 w-3.5 ${isLoadingMore ? 'animate-bounce' : ''}`} />

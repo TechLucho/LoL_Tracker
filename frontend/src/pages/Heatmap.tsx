@@ -21,7 +21,7 @@ const TIME_BLOCKS = ['Madrugada', 'Mañana', 'Tarde', 'Noche']
 // Escala térmica basada en winrate: verdes hacia la victoria, rojos hacia la derrota,
 // neutro cuando la franja no tiene partidas.
 function cellColor(wr: number, games: number): string {
-  if (games === 0) return 'border-gray-800/40 bg-[#0D0D12]'
+  if (games === 0) return 'border-hairline/40 bg-canvas'
   if (wr >= 75) return 'border-emerald-400/40 bg-emerald-500/90'
   if (wr >= 65) return 'border-emerald-400/30 bg-emerald-500/65'
   if (wr >= 50) return 'border-emerald-400/20 bg-emerald-500/35'
@@ -39,7 +39,7 @@ function cellTextColor(wr: number, games: number): string {
 }
 
 function CellSkeleton() {
-  return <div className="shimmer h-9 rounded-md bg-gray-800/30" />
+  return <div className="shimmer h-9 rounded-md bg-surface-2/30" />
 }
 
 function formatTooltip(cell: HeatmapCell): string {
@@ -64,23 +64,23 @@ export default function HeatmapPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-black uppercase tracking-wider text-purple-400">
+        <h2 className="text-lg font-black uppercase tracking-wider text-accent-primary">
           🕐 Horarios / Heatmap
         </h2>
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-text-mute">
           Detecta tus horas pico y las de fatiga. Juega cuando ganas, para cuando pierdes.
         </p>
       </div>
 
       {/* Summary Bar */}
       {!isLoading && !isError && cells.length > 0 && (
-        <div className="flex items-center gap-4 rounded-xl border border-gray-800 bg-[#14141C] px-4 py-3">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+        <div className="flex items-center gap-4 rounded-xl border border-hairline bg-surface-1 px-4 py-3">
+          <span className="text-xs font-bold uppercase tracking-wider text-text-mute">
             Total
           </span>
           <span className="font-mono text-sm font-bold text-white">{totalGames} partidas</span>
-          <span className="text-[10px] text-gray-600">·</span>
-          <span className="text-[10px] text-gray-500">7 días × 4 franjas horarias</span>
+          <span className="text-xs text-text-mute">·</span>
+          <span className="text-xs text-text-mute">7 días × 4 franjas horarias</span>
         </div>
       )}
 
@@ -109,22 +109,22 @@ export default function HeatmapPage() {
         <div className="flex flex-col items-center justify-center py-16">
           <AlertTriangle className="h-8 w-8 text-red-500/50" />
           <p className="mt-3 text-sm text-red-400">Error al cargar el heatmap</p>
-          <p className="mt-1 text-xs text-gray-500">Asegúrate de que el backend esté corriendo.</p>
+          <p className="mt-1 text-xs text-text-mute">Asegúrate de que el backend esté corriendo.</p>
         </div>
       )}
 
       {/* Empty */}
       {!isLoading && !isError && totalGames === 0 && (
         <div className="flex flex-col items-center justify-center py-16">
-          <Clock className="h-8 w-8 text-gray-600" />
-          <p className="mt-3 text-sm font-medium text-gray-300">No hay datos de horarios</p>
-          <p className="mt-1 text-xs text-gray-500">Sincroniza partidas para generar el mapa de calor.</p>
+          <Clock className="h-8 w-8 text-text-mute" />
+          <p className="mt-3 text-sm font-medium text-text-body">No hay datos de horarios</p>
+          <p className="mt-1 text-xs text-text-mute">Sincroniza partidas para generar el mapa de calor.</p>
         </div>
       )}
 
       {/* Heatmap Grid */}
       {!isLoading && !isError && cells.length > 0 && (
-        <div className="rounded-xl border border-gray-800 bg-[#14141C] p-4">
+        <div className="rounded-xl border border-hairline bg-surface-1 p-6">
           <div className="overflow-x-auto">
             <div className="min-w-[480px]">
               {/* Column headers: días */}
@@ -132,7 +132,7 @@ export default function HeatmapPage() {
                 <div />
                 {DAY_COLUMNS.map((d) => (
                   <div key={d.dow} className="text-center">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500">
+                    <span className="text-xs font-bold uppercase tracking-wider text-text-mute">
                       {d.label}
                     </span>
                   </div>
@@ -144,7 +144,7 @@ export default function HeatmapPage() {
                 {TIME_BLOCKS.map((tb) => (
                   <div key={tb} className="grid grid-cols-[56px_repeat(7,1fr)] gap-1.5">
                     <div className="flex items-center">
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500">
+                      <span className="text-xs font-bold uppercase tracking-wider text-text-mute">
                         {tb}
                       </span>
                     </div>
@@ -166,7 +166,7 @@ export default function HeatmapPage() {
                           onMouseLeave={() => setHovered(null)}
                         >
                           {games > 0 && (
-                            <span className={`font-mono text-[10px] font-bold ${cellTextColor(wr, games)}`}>
+                            <span className={`font-mono text-xs font-bold ${cellTextColor(wr, games)}`}>
                               {wr.toFixed(0)}%
                             </span>
                           )}
@@ -182,16 +182,16 @@ export default function HeatmapPage() {
           {/* Tooltip flotante */}
           {hovered && cellMap.get(hovered.key) && (
             <div
-              className="pointer-events-none fixed z-50 rounded-lg border border-gray-700 bg-[#1A1A24] px-3 py-2 shadow-xl"
+              className="pointer-events-none fixed z-50 rounded-lg border border-hairline bg-surface-2 px-3 py-2 shadow-xl"
               style={{
                 left: Math.min(hovered.x + 14, window.innerWidth - 220),
                 top: hovered.y - 14,
               }}
             >
-              <p className="text-[11px] font-bold text-white">
+              <p className="text-xs font-bold text-white">
                 {formatTooltip(cellMap.get(hovered.key)!)}
               </p>
-              <p className="mt-0.5 text-[10px] text-gray-400">
+              <p className="mt-0.5 text-xs text-text-mute">
                 {cellMap.get(hovered.key)!.games_played}{' '}
                 {cellMap.get(hovered.key)!.games_played === 1 ? 'partida' : 'partidas'}
               </p>
@@ -199,27 +199,27 @@ export default function HeatmapPage() {
           )}
 
           {/* Legend */}
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-4 border-t border-gray-800 pt-3">
-            <span className="text-[9px] font-bold uppercase tracking-wider text-gray-600">Leyenda:</span>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-4 border-t border-hairline pt-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-text-mute">Leyenda:</span>
             <div className="flex items-center gap-1.5">
               <div className="h-3 w-3 rounded-sm bg-red-500/90" />
-              <span className="text-[9px] text-gray-500">{"< 40%"}</span>
+              <span className="text-xs text-text-mute">{"< 40%"}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="h-3 w-3 rounded-sm bg-red-500/35" />
-              <span className="text-[9px] text-gray-500">40-50%</span>
+              <span className="text-xs text-text-mute">40-50%</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="h-3 w-3 rounded-sm border border-gray-800 bg-[#0D0D12]" />
-              <span className="text-[9px] text-gray-500">Sin datos</span>
+              <div className="h-3 w-3 rounded-sm border border-hairline bg-canvas" />
+              <span className="text-xs text-text-mute">Sin datos</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="h-3 w-3 rounded-sm bg-emerald-500/35" />
-              <span className="text-[9px] text-gray-500">50-65%</span>
+              <span className="text-xs text-text-mute">50-65%</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="h-3 w-3 rounded-sm bg-emerald-500/90" />
-              <span className="text-[9px] text-gray-500">{"> 65%"}</span>
+              <span className="text-xs text-text-mute">{"> 65%"}</span>
             </div>
           </div>
         </div>
@@ -230,46 +230,46 @@ export default function HeatmapPage() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {bestSlot ? (
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
                 🏆 Mejor Horario
               </span>
               <p className="mt-1 text-sm font-bold text-white">
                 {DAY_NAMES[bestSlot.day_of_week]} · {bestSlot.time_block}
               </p>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-text-mute">
                 {bestSlot.winrate.toFixed(0)}% WR en {bestSlot.games_played} partidas (
                 {bestSlot.wins}V - {bestSlot.losses}D)
               </p>
             </div>
           ) : (
-            <div className="rounded-xl border border-gray-800 bg-[#14141C] p-4">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+            <div className="rounded-xl border border-hairline bg-surface-1 p-6">
+              <span className="text-xs font-bold uppercase tracking-wider text-text-mute">
                 🏆 Mejor Horario
               </span>
-              <p className="mt-1 text-xs text-gray-400">
+              <p className="mt-1 text-xs text-text-mute">
                 Aún sin datos suficientes (mínimo 3 partidas por franja).
               </p>
             </div>
           )}
           {worstSlot ? (
             <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-red-400">
+              <span className="text-xs font-bold uppercase tracking-wider text-red-400">
                 ⚠️ Peor Horario
               </span>
               <p className="mt-1 text-sm font-bold text-white">
                 {DAY_NAMES[worstSlot.day_of_week]} · {worstSlot.time_block}
               </p>
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-text-mute">
                 {worstSlot.winrate.toFixed(0)}% WR en {worstSlot.games_played} partidas (
                 {worstSlot.wins}V - {worstSlot.losses}D)
               </p>
             </div>
           ) : (
-            <div className="rounded-xl border border-gray-800 bg-[#14141C] p-4">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+            <div className="rounded-xl border border-hairline bg-surface-1 p-6">
+              <span className="text-xs font-bold uppercase tracking-wider text-text-mute">
                 ⚠️ Peor Horario
               </span>
-              <p className="mt-1 text-xs text-gray-400">
+              <p className="mt-1 text-xs text-text-mute">
                 Aún sin datos suficientes (mínimo 3 partidas por franja).
               </p>
             </div>

@@ -16,7 +16,7 @@ function SpellIcon({ id }: { id: number }) {
       src={spell.url}
       alt={spell.name ?? 'Hechizo'}
       title={spell.name}
-      className="h-[15px] w-[15px] rounded-sm border border-gray-700"
+      className="h-[15px] w-[15px] rounded-sm border border-hairline"
     />
   )
 }
@@ -26,7 +26,7 @@ function ItemBox({ id }: { id: number }) {
   const item = icons.item(id)
   return (
     <div
-      className="flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-gray-700/80 bg-gray-800"
+      className="flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-hairline/80 bg-surface-2"
       title={item?.name || undefined}
     >
       {item && (
@@ -63,7 +63,7 @@ function PlayerRow({
     kdaRatio === null || kdaRatio >= 4
       ? 'text-emerald-400'
       : kdaRatio >= 2.5
-        ? 'text-gray-300'
+        ? 'text-text-body'
         : kdaRatio >= 1.5
           ? 'text-yellow-400'
           : 'text-red-400'
@@ -75,7 +75,7 @@ function PlayerRow({
     <div
       className={`${PLAYER_GRID} min-w-[720px] rounded-md px-3 py-2 ${
         isYou
-          ? 'bg-purple-500/[0.08] ring-1 ring-purple-500/40'
+          ? 'bg-accent-primary/[0.08] ring-1 ring-accent-primary/40'
           : player.team_id === 100
             ? 'bg-blue-500/[0.04]'
             : 'bg-red-500/[0.04]'
@@ -87,7 +87,7 @@ function PlayerRow({
           src={champIcon.url}
           alt={player.champion_name}
           title={champIcon.name}
-          className="h-9 w-9 rounded-md border border-gray-700"
+          className="h-9 w-9 rounded-md border border-hairline"
           onError={(e) => {
             (e.target as HTMLImageElement).src = DDragon.champion('Teemo')
           }}
@@ -102,12 +102,12 @@ function PlayerRow({
       {/* Col 2: Jugador (Riot ID) */}
       <div className="min-w-0">
         <span
-          className={`block truncate text-sm font-semibold ${isYou ? 'text-purple-300' : 'text-gray-200'}`}
+          className={`block truncate text-sm font-semibold ${isYou ? 'text-accent-primary' : 'text-gray-200'}`}
           title={player.player_name}
         >
           {player.player_name}
         </span>
-        <span className="block truncate text-[11px] text-gray-500">{player.champion_name}</span>
+        <span className="block truncate text-xs text-text-mute">{player.champion_name}</span>
       </div>
 
       {/* Col 3: Items (6 juntos) + Trinket separado */}
@@ -125,18 +125,18 @@ function PlayerRow({
         <span className="font-mono text-base font-bold text-white">
           {player.kills}/{player.deaths}/{player.assists}
         </span>
-        <p className="font-mono text-[11px] leading-tight">
+        <p className="font-mono text-xs leading-tight">
           <span className={kdaColor}>{kdaLabel} KDA</span>
-          <span className="text-gray-500"> · {csPerMin.toFixed(1)} cs/m</span>
+          <span className="text-text-mute"> · {csPerMin.toFixed(1)} cs/m</span>
         </p>
       </div>
 
       {/* Col 5: Barra de daño (relativa al máximo de la partida) */}
       <div className="min-w-[130px]">
-        <p className="text-right font-mono text-[11px] leading-none text-gray-400">
+        <p className="text-right font-mono text-xs leading-none text-text-mute">
           {player.total_damage.toLocaleString()}
         </p>
-        <div className="mt-1 h-1.5 w-full overflow-hidden rounded bg-gray-800">
+        <div className="mt-1 h-1.5 w-full overflow-hidden rounded bg-surface-2">
           <div
             className={`h-full rounded ${player.team_id === 100 ? 'bg-blue-500' : 'bg-red-500'}`}
             style={{ width: `${damagePct}%` }}
@@ -153,7 +153,7 @@ function PlayerRow({
               : player.rating >= 60
                 ? 'text-emerald-400'
                 : player.rating >= 40
-                  ? 'text-gray-300'
+                  ? 'text-text-body'
                   : 'text-red-400'
           }`}
         >
@@ -175,12 +175,12 @@ function OkrStrip({ match, me }: { match: UIMatch; me: UIParticipant }) {
   })
 
   return (
-    <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-gray-800 bg-[#14141C] px-3 py-2">
-      <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400">🎯 OKR</span>
+    <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-hairline bg-surface-1 px-3 py-2">
+      <span className="text-xs font-bold uppercase tracking-wider text-accent-primary">🎯 OKR</span>
       {results.map((item) => (
         <span
           key={item.label}
-          className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
+          className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold ${
             item.met ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
           }`}
         >
@@ -263,9 +263,9 @@ function ScoutView({ match }: { match: UIMatch }) {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-lg border border-gray-800 bg-[#14141C] px-4 py-10 text-center">
-        <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
-        <p className="text-xs text-gray-500">Consultando maestrías del rival en Riot...</p>
+      <div className="flex flex-col items-center gap-2 rounded-lg border border-hairline bg-surface-1 px-4 py-10 text-center">
+        <Loader2 className="h-5 w-5 animate-spin text-text-mute" />
+        <p className="text-xs text-text-mute">Consultando maestrías del rival en Riot...</p>
       </div>
     )
   }
@@ -277,7 +277,7 @@ function ScoutView({ match }: { match: UIMatch }) {
     return (
       <div className="flex flex-col items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/[0.04] px-4 py-10 text-center">
         <AlertTriangle className="h-5 w-5 text-red-400" />
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-text-mute">
           {detail ?? 'No se pudo escoutear al rival. ¿La API key de Riot sigue válida?'}
         </p>
       </div>
@@ -292,24 +292,24 @@ function ScoutView({ match }: { match: UIMatch }) {
   return (
     <div className="space-y-3">
       {/* Cabecera del rival */}
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-800 bg-[#14141C] px-3 py-2.5">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-hairline bg-surface-1 px-3 py-2.5">
         <div className="min-w-0">
           <div className="truncate text-sm font-bold text-white">
             {data.opponent_name || 'Rival de línea'}
             {data.opponent_champion && (
-              <span className="ml-2 font-mono text-xs font-semibold text-purple-300">
+              <span className="ml-2 font-mono text-xs font-semibold text-accent-primary">
                 jugó {data.opponent_champion}
               </span>
             )}
           </div>
           {data.opponent_role && (
-            <span className="text-[11px] text-gray-500">Rol: {data.opponent_role}</span>
+            <span className="text-xs text-text-mute">Rol: {data.opponent_role}</span>
           )}
         </div>
         <span
-          className={`shrink-0 rounded px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+          className={`shrink-0 rounded px-2 py-0.5 text-xs font-bold uppercase tracking-wider ${
             data.cached
-              ? 'bg-gray-800 text-gray-400'
+              ? 'bg-surface-2 text-text-mute'
               : 'bg-emerald-500/10 text-emerald-400'
           }`}
           title={data.cached ? 'Servido desde la caché de DB (sin golpear a Riot)' : 'Llamada fresca a Riot'}
@@ -321,11 +321,11 @@ function ScoutView({ match }: { match: UIMatch }) {
       {/* Contenido */}
       {data.note ? (
         <div className="rounded-lg border border-blue-500/20 bg-blue-500/[0.04] px-4 py-6 text-center">
-          <p className="text-xs text-gray-400">{data.note}</p>
+          <p className="text-xs text-text-mute">{data.note}</p>
         </div>
       ) : top.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-800 bg-[#14141C] px-4 py-8 text-center">
-          <p className="text-xs text-gray-500">Sin maestrías para este rival.</p>
+        <div className="rounded-lg border border-dashed border-hairline bg-surface-1 px-4 py-8 text-center">
+          <p className="text-xs text-text-mute">Sin maestrías para este rival.</p>
         </div>
       ) : (
         <>
@@ -335,15 +335,15 @@ function ScoutView({ match }: { match: UIMatch }) {
                 key={c.champion_key}
                 className={`rounded-lg border p-3 text-center ${
                   i === 0
-                    ? 'border-purple-500/40 bg-purple-500/[0.06]'
-                    : 'border-gray-800 bg-[#1A1A24]'
+                    ? 'border-accent-primary/40 bg-accent-primary/[0.06]'
+                    : 'border-hairline bg-surface-2'
                 }`}
               >
                 <img
                   src={icons.champion(c.champion).url}
                   alt={c.champion}
                   title={icons.champion(c.champion).name}
-                  className="mx-auto mb-1.5 h-12 w-12 rounded-lg border border-gray-700"
+                  className="mx-auto mb-1.5 h-12 w-12 rounded-lg border border-hairline"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = DDragon.champion('Teemo')
                   }}
@@ -352,7 +352,7 @@ function ScoutView({ match }: { match: UIMatch }) {
                   {i === 0 && <span className="mr-1">👑</span>}
                   {c.champion}
                 </p>
-                <p className="font-mono text-[11px] text-gray-400">
+                <p className="font-mono text-xs text-text-mute">
                   M{c.mastery_level} · {c.points.toLocaleString()} pts
                 </p>
               </div>
@@ -360,7 +360,7 @@ function ScoutView({ match }: { match: UIMatch }) {
           </div>
 
           {/* Veredicto: ¿OTP o first time? */}
-          <div className="rounded-lg border border-gray-800 bg-[#14141C] px-3 py-2.5 text-[11px] leading-relaxed text-gray-400">
+          <div className="rounded-lg border border-hairline bg-surface-1 px-3 py-2.5 text-xs leading-relaxed text-text-mute">
             {otp ? (
               <span>
                 ⚠️ <b className="text-orange-400">{data.opponent_name || 'El rival'}</b> se jugó{' '}
@@ -453,7 +453,7 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
       return [
         { label: 'KDA', value: `${match.kills}/${match.deaths}/${match.assists}`, sub: `${match.kda_ratio.toFixed(2)} ratio`, color: 'text-white' },
         { label: 'CS/min', value: match.cs_min.toFixed(1), sub: `${match.cs_total} total CS`, color: 'text-white' },
-        { label: 'KP%', value: `${(match.kill_participation * 100).toFixed(0)}%`, sub: 'Kill Participation', color: 'text-purple-400' },
+        { label: 'KP%', value: `${(match.kill_participation * 100).toFixed(0)}%`, sub: 'Kill Participation', color: 'text-accent-primary' },
         { label: 'DPM', value: `${match.dpm}`, sub: 'Estimated DPM', color: 'text-white' },
         { label: 'Control Wards', value: `${match.control_wards}`, sub: 'Placed', color: 'text-white' },
         { label: 'Duration', value: match.duration_display, sub: 'Game length', color: 'text-white' },
@@ -476,7 +476,7 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
         label: 'KP%',
         value: `${(match.kill_participation * 100).toFixed(0)}%`,
         sub: 'Kill Participation',
-        color: match.kill_participation >= 0.6 ? 'text-purple-400' : 'text-gray-300',
+        color: match.kill_participation >= 0.6 ? 'text-accent-primary' : 'text-text-body',
         expected: exp ? `Exp: ${(exp.kill_participation * 100).toFixed(0)}%` : undefined,
         beat: beatBaseline(match.kill_participation, exp?.kill_participation),
       },
@@ -484,7 +484,7 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
         label: 'DPM',
         value: `${match.dpm}`,
         sub: 'Damage Per Minute',
-        color: match.dpm >= 700 ? 'text-orange-400' : match.dpm >= 500 ? 'text-white' : 'text-gray-400',
+        color: match.dpm >= 700 ? 'text-orange-400' : match.dpm >= 500 ? 'text-white' : 'text-text-mute',
         expected: exp ? `Exp: ${exp.dpm}` : undefined,
         beat: beatBaseline(match.dpm, exp?.dpm),
       },
@@ -511,15 +511,15 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
   return (
     <div>
       {/* Tab Bar */}
-      <div className="mb-3 flex gap-1 rounded-lg bg-[#0A0A10] p-1">
+      <div className="mb-3 flex gap-1 rounded-lg bg-canvas p-1">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={`rounded-md px-3 py-2 text-xs font-semibold transition-colors ${
               activeTab === tab.key
-                ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20'
-                : 'text-gray-500 hover:text-gray-300'
+                ? 'bg-accent-primary text-white shadow-[0_0_24px_rgba(168,85,247,0.35)]'
+                : 'text-text-mute hover:text-text-body'
             }`}
           >
             {tab.label}
@@ -534,12 +534,12 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
       {activeTab === 'match' && (
         <div className="space-y-4">
           {players.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-800 bg-[#14141C] px-4 py-10 text-center">
-              <Database className="mb-1 h-6 w-6 text-gray-600" />
-              <p className="text-sm font-semibold text-gray-400">
+            <div className="flex flex-col items-center justify-center gap-1.5 rounded-lg border border-dashed border-hairline bg-surface-1 px-4 py-10 text-center">
+              <Database className="mb-1 h-6 w-6 text-text-mute" />
+              <p className="text-sm font-semibold text-text-mute">
                 Datos detallados no disponibles para esta partida (Legacy)
               </p>
-              <p className="text-[11px] text-gray-600">
+              <p className="text-xs text-text-mute">
                 Sincronizada antes de guardar el detalle por participante.
               </p>
             </div>
@@ -567,7 +567,7 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
                     {side.label}
                     {side.players.length > 0 && side.players[0].win ? ' — VICTORY' : ''}
                   </span>
-                  <span className="ml-auto font-mono text-[11px] text-gray-500">
+                  <span className="ml-auto font-mono text-xs text-text-mute">
                     {side.players.reduce((s, p) => s + p.kills, 0)} kills
                   </span>
                 </div>
@@ -585,7 +585,7 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
               </div>
             ))
           )}
-          <div className="text-center text-[11px] text-gray-600">
+          <div className="text-center text-xs text-text-mute">
             {match.champion} vs {match.enemy_champion} · {match.duration_display} · {match.game_id}
           </div>
         </div>
@@ -595,17 +595,17 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
       {activeTab === 'stats' && (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {stats.map((s) => (
-            <div key={s.label} className="rounded-lg border border-gray-800 bg-[#1A1A24] p-3">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{s.label}</span>
+            <div key={s.label} className="rounded-lg border border-hairline bg-surface-2 p-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-text-mute">{s.label}</span>
               <p className={`font-mono text-xl font-black ${s.color}`}>
                 {s.value}
                 {s.beat && (
                   <ArrowUp className="ml-1 inline-block h-3.5 w-3.5 text-emerald-400" />
                 )}
               </p>
-              <span className="text-[10px] text-gray-600">{s.sub}</span>
+              <span className="text-xs text-text-mute">{s.sub}</span>
               {s.expected && (
-                <span className="mt-1 block border-t border-gray-800 pt-1 text-[10px] text-gray-500">
+                <span className="mt-1 block border-t border-hairline pt-1 text-xs text-text-mute">
                   {s.expected}
                 </span>
               )}
@@ -622,26 +622,26 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
             <h4 className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-emerald-400">
-              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500/20 text-[8px]">▲</span>
+              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500/20 text-xs">▲</span>
               Gave You Points
             </h4>
             {elo.positive.length === 0 ? (
-                <p className="text-xs text-gray-500 italic">No positive factors this game</p>
+                <p className="text-xs text-text-mute italic">No positive factors this game</p>
             ) : (
               <>
                 <div className="space-y-2">
                   {elo.positive.map((f) => (
                     <div key={f.factor} className="flex items-center justify-between">
                       <div>
-                        <span className="text-xs font-medium text-gray-300">{f.factor}</span>
-                        <span className="block text-[10px] text-gray-600">{f.detail}</span>
+                        <span className="text-xs font-medium text-text-body">{f.factor}</span>
+                        <span className="block text-xs text-text-mute">{f.detail}</span>
                       </div>
                       <span className="font-mono text-sm font-bold text-emerald-400">{f.value}</span>
                     </div>
                   ))}
                 </div>
                 <div className="mt-3 border-t border-emerald-500/10 pt-2 text-right">
-                  <span className="text-[11px] text-gray-500">Net: </span>
+                  <span className="text-xs text-text-mute">Net: </span>
                   <span className="font-mono text-sm font-black text-emerald-400">+{positiveNet.toFixed(1)} pts</span>
                 </div>
               </>
@@ -649,37 +649,37 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
           </div>
           <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
             <h4 className="mb-3 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-red-400">
-              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-red-500/20 text-[8px]">▼</span>
+              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-red-500/20 text-xs">▼</span>
               Cost You Points
             </h4>
             {elo.negative.length === 0 ? (
-                <p className="text-xs text-gray-500 italic">No negative factors this game</p>
+                <p className="text-xs text-text-mute italic">No negative factors this game</p>
             ) : (
               <>
                 <div className="space-y-2">
                   {elo.negative.map((f) => (
                     <div key={f.factor} className="flex items-center justify-between">
                       <div>
-                        <span className="text-xs font-medium text-gray-300">{f.factor}</span>
-                        <span className="block text-[10px] text-gray-600">{f.detail}</span>
+                        <span className="text-xs font-medium text-text-body">{f.factor}</span>
+                        <span className="block text-xs text-text-mute">{f.detail}</span>
                       </div>
                       <span className="font-mono text-sm font-bold text-red-400">{f.value}</span>
                     </div>
                   ))}
                 </div>
                 <div className="mt-3 border-t border-red-500/10 pt-2 text-right">
-                  <span className="text-[11px] text-gray-500">Net: </span>
+                  <span className="text-xs text-text-mute">Net: </span>
                   <span className="font-mono text-sm font-black text-red-400">{negativeNet.toFixed(1)} pts</span>
                 </div>
               </>
             )}
           </div>
-          <div className="md:col-span-2 rounded-lg border border-gray-800 bg-[#1A1A24] p-3 text-center">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Estimated Rating Impact</span>
+          <div className="md:col-span-2 rounded-lg border border-hairline bg-surface-2 p-3 text-center">
+            <span className="text-xs font-bold uppercase tracking-wider text-text-mute">Estimated Rating Impact</span>
             <p className={`font-mono text-2xl font-black ${(positiveNet + negativeNet) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
               {(positiveNet + negativeNet) >= 0 ? '+' : ''}{(positiveNet + negativeNet).toFixed(1)} pts
             </p>
-            <span className="text-[10px] text-gray-600">Based on performance metrics vs baselines</span>
+            <span className="text-xs text-text-mute">Based on performance metrics vs baselines</span>
           </div>
         </div>
       )}
@@ -691,49 +691,49 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
           {hasReview && !isEditing ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-purple-400">Post-Game Review</h4>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-accent-primary">Post-Game Review</h4>
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="rounded-md border border-gray-700 px-3 py-1.5 text-[11px] font-semibold text-gray-300 transition-colors hover:border-purple-500/50 hover:text-purple-400"
+                  className="rounded-md border border-hairline px-3 py-1.5 text-xs font-semibold text-text-body transition-colors hover:border-accent-primary/50 hover:text-accent-primary"
                 >
                   Editar
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {match.lp_change !== null && (
-                  <div className="rounded-lg border border-gray-800 bg-[#1A1A24] p-3">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">LP Change</span>
+                  <div className="rounded-lg border border-hairline bg-surface-2 p-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-text-mute">LP Change</span>
                     <p className={`font-mono text-xl font-black ${match.lp_change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                       {match.lp_change >= 0 ? '+' : ''}{match.lp_change}
                     </p>
                   </div>
                 )}
                 {match.tilt_level !== null && match.tilt_level > 0 && (
-                  <div className="rounded-lg border border-gray-800 bg-[#1A1A24] p-3">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Tilt</span>
+                  <div className="rounded-lg border border-hairline bg-surface-2 p-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-text-mute">Tilt</span>
                     <p className={`text-xl font-black ${TILT_LEVELS[match.tilt_level - 1]?.textColor ?? 'text-white'}`}>
                       {match.tilt_level}/5
                     </p>
-                    <span className="text-[9px] text-gray-600">{TILT_LEVELS[match.tilt_level - 1]?.label}</span>
+                    <span className="text-xs text-text-mute">{TILT_LEVELS[match.tilt_level - 1]?.label}</span>
                   </div>
                 )}
                 {match.impact_rating && (
-                  <div className="rounded-lg border border-gray-800 bg-[#1A1A24] p-3">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Impact</span>
+                  <div className="rounded-lg border border-hairline bg-surface-2 p-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-text-mute">Impact</span>
                     <p className="text-sm font-bold text-white">{match.impact_rating}</p>
                   </div>
                 )}
                 {match.vod_review && (
-                  <div className="rounded-lg border border-gray-800 bg-[#1A1A24] p-3">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">VOD Review</span>
+                  <div className="rounded-lg border border-hairline bg-surface-2 p-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-text-mute">VOD Review</span>
                     <p className="text-lg text-emerald-400">✅</p>
                   </div>
                 )}
               </div>
               {match.notes && (
-                <div className="rounded-lg border border-gray-800 bg-[#1A1A24] p-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Notes</span>
-                  <p className="mt-1 text-sm text-gray-300 whitespace-pre-wrap">{match.notes}</p>
+                <div className="rounded-lg border border-hairline bg-surface-2 p-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-text-mute">Notes</span>
+                  <p className="mt-1 text-sm text-text-body whitespace-pre-wrap">{match.notes}</p>
                 </div>
               )}
             </div>
@@ -741,13 +741,13 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
             /* Editable form */
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-purple-400">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-accent-primary">
                   {hasReview ? 'Editar Review' : 'Post-Game Review'}
                 </h4>
                 {hasReview && (
                   <button
                     onClick={() => setIsEditing(false)}
-                    className="rounded-md px-3 py-1.5 text-[11px] font-semibold text-gray-500 hover:text-gray-300"
+                    className="rounded-md px-3 py-1.5 text-xs font-semibold text-text-mute hover:text-text-body"
                   >
                     Cancelar
                   </button>
@@ -755,14 +755,14 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
               </div>
 
               {!hasReview && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-text-mute">
                   Registra cómo te sentiste en esta partida. Esto alimenta el sistema de anti-tilt.
                 </p>
               )}
 
               {/* LP Change */}
               <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-400">
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-text-mute">
                   LP Change
                 </label>
                 <input
@@ -770,13 +770,13 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
                   value={lpChange}
                   onChange={(e) => setLpChange(e.target.value)}
                   placeholder="ej: +21 o -15"
-                  className="w-full rounded-lg border border-gray-700 bg-[#0D0D12] px-3 py-2.5 font-mono text-sm text-white placeholder-gray-600 outline-none transition-colors focus:border-purple-500/50"
+                  className="w-full rounded-lg border border-hairline bg-canvas px-3 py-2.5 font-mono text-sm text-white placeholder-text-mute outline-none transition-colors focus:border-accent-primary/50"
                 />
               </div>
 
               {/* Tilt Level */}
               <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-400">
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-text-mute">
                   Tilt Level
                 </label>
                 <div className="flex gap-1.5">
@@ -784,10 +784,10 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
                     <button
                       key={level.value}
                       onClick={() => setTiltLevel(tiltLevel === level.value ? 0 : level.value)}
-                      className={`flex flex-1 flex-col items-center gap-1 rounded-lg border px-2 py-2.5 text-[11px] font-semibold transition-all ${
+                      className={`flex flex-1 flex-col items-center gap-1 rounded-lg border px-2 py-2.5 text-xs font-semibold transition-all ${
                         tiltLevel === level.value
                           ? `border-current ${level.textColor} bg-current/10`
-                          : 'border-gray-700 bg-[#0D0D12] text-gray-500 hover:border-gray-600'
+                          : 'border-hairline bg-canvas text-text-mute hover:border-accent-primary/40'
                       }`}
                     >
                       <span className={`h-3 w-3 rounded-full ${level.color} ${tiltLevel === level.value ? 'opacity-100' : 'opacity-30'}`} />
@@ -799,7 +799,7 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
 
               {/* Impact Rating */}
               <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-400">
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-text-mute">
                   Impact Rating
                 </label>
                 <div className="flex flex-wrap gap-1.5">
@@ -810,7 +810,7 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
                       className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-all ${
                         impactRating === rating.value
                           ? `border-current ${rating.color} bg-current/10`
-                          : 'border-gray-700 bg-[#0D0D12] text-gray-500 hover:border-gray-600'
+                          : 'border-hairline bg-canvas text-text-mute hover:border-accent-primary/40'
                       }`}
                     >
                       <span className="mr-1">{rating.emoji}</span>
@@ -822,7 +822,7 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
 
               {/* Notes */}
               <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-gray-400">
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-text-mute">
                   Notas
                 </label>
                 <textarea
@@ -830,7 +830,7 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="¿Qué aprendí? ¿Qué hice bien? ¿Qué puedo mejorar?"
                   rows={4}
-                  className="w-full resize-none rounded-lg border border-gray-700 bg-[#0D0D12] px-3 py-2.5 text-sm text-white placeholder-gray-600 outline-none transition-colors focus:border-purple-500/50"
+                  className="w-full resize-none rounded-lg border border-hairline bg-canvas px-3 py-2.5 text-sm text-white placeholder-text-mute outline-none transition-colors focus:border-accent-primary/50"
                 />
               </div>
 
@@ -839,15 +839,15 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
                 <button
                   onClick={() => setVodReview(!vodReview)}
                   className={`relative h-6 w-11 rounded-full transition-colors ${
-                    vodReview ? 'bg-purple-500' : 'bg-gray-700'
+                    vodReview ? 'bg-accent-primary' : 'bg-surface-2'
                   }`}
                 >
                   <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
                     vodReview ? 'left-[22px]' : 'left-0.5'
                   }`} />
                 </button>
-                <span className="text-xs font-semibold text-gray-300">VOD Review</span>
-                {vodReview && <span className="text-[11px] text-purple-400">✅ Visto</span>}
+                <span className="text-xs font-semibold text-text-body">VOD Review</span>
+                {vodReview && <span className="text-xs text-accent-primary">✅ Visto</span>}
               </div>
 
               {/* Save */}
@@ -856,13 +856,13 @@ export default function MatchAccordion({ match, onReviewSave, isSaving }: Props)
                 disabled={isSaving}
                 className={`w-full rounded-lg px-4 py-2.5 text-sm font-bold transition-all active:scale-[0.98] ${
                   isSaving
-                    ? 'cursor-not-allowed bg-gray-800 text-gray-500'
-                    : 'bg-purple-500 text-white shadow-lg shadow-purple-500/20 hover:bg-purple-400'
+                    ? 'cursor-not-allowed bg-surface-2 text-text-mute'
+                    : 'bg-accent-primary text-white shadow-[0_0_24px_rgba(168,85,247,0.35)] hover:bg-accent-primary/90'
                 }`}
               >
                 {isSaving ? (
                   <span className="flex items-center justify-center gap-2">
-                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-gray-500 border-t-transparent" />
+                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-text-mute border-t-transparent" />
                     Guardando...
                   </span>
                 ) : hasReview ? (

@@ -11,14 +11,14 @@ function CustomTooltip({ active, payload }: TooltipPayload) {
   if (!active || !payload?.length) return null
   const d = payload[0].payload
   return (
-    <div className="rounded-lg border border-gray-700 bg-[#1A1A24] px-3 py-2 shadow-xl">
-      <p className="text-[11px] font-bold text-white">{d.champion}</p>
+    <div className="rounded-lg border border-hairline bg-surface-2 px-3 py-2 shadow-xl">
+      <p className="text-xs font-bold text-white">{d.champion}</p>
       <div className="mt-1 flex items-center gap-2">
         <span className={`font-mono text-xs font-bold ${d.lp_change != null && d.lp_change >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
           {d.has_lp ? `${d.lp_change! >= 0 ? '+' : ''}${d.lp_change}` : 'Sin LP'}
         </span>
         {d.has_lp && (
-          <span className="text-[10px] text-gray-500">
+          <span className="text-xs text-text-mute">
             ({d.lp_cumulative >= 0 ? '+' : ''}{d.lp_cumulative} acuml.)
           </span>
         )}
@@ -29,7 +29,7 @@ function CustomTooltip({ active, payload }: TooltipPayload) {
 
 function Skeleton() {
   return (
-    <div className="shimmer h-32 rounded-lg bg-gray-800/30" />
+    <div className="shimmer h-32 rounded-lg bg-surface-2/30" />
   )
 }
 
@@ -37,9 +37,9 @@ export default function RatingTrend() {
   const { data, isLoading, isError } = useLpTrend(30)
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-[#14141C] p-4">
+    <div className="rounded-xl border border-hairline bg-surface-1 p-6">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-purple-400">
+        <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-accent-primary">
           📈 LP Acumulado
         </h3>
         {data && data.length > 0 && (
@@ -56,14 +56,14 @@ export default function RatingTrend() {
 
       {isError && (
         <div className="flex h-32 items-center justify-center">
-          <p className="text-[11px] text-gray-500">No hay datos de LP todavía</p>
+          <p className="text-xs text-text-mute">No hay datos de LP todavía</p>
         </div>
       )}
 
       {!isLoading && !isError && data && data.length === 0 && (
         <div className="flex h-32 flex-col items-center justify-center gap-1.5">
-          <TrendingUp className="h-5 w-5 text-gray-600" />
-          <p className="text-[11px] text-gray-500">Registra tu primer LP para ver la tendencia</p>
+          <TrendingUp className="h-5 w-5 text-text-mute" />
+          <p className="text-xs text-text-mute">Registra tu primer LP para ver la tendencia</p>
         </div>
       )}
 

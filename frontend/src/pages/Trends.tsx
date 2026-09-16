@@ -58,8 +58,8 @@ function TrendYAxis({
 
 function TooltipShell({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="rounded-lg border border-gray-700 bg-[#1A1A24] px-3 py-2 shadow-xl">
-      <p className="text-[11px] font-bold text-white">{title}</p>
+    <div className="rounded-lg border border-hairline bg-surface-2 px-3 py-2 shadow-xl">
+      <p className="text-xs font-bold text-white">{title}</p>
       {children}
     </div>
   )
@@ -137,7 +137,7 @@ function VisionTooltip({
     <TooltipShell title={formatTs(d.timestamp)}>
       <p
         className={`mt-1 font-mono text-xs font-bold ${
-          v > 0 ? 'text-emerald-400' : v < 0 ? 'text-red-400' : 'text-gray-400'
+          v > 0 ? 'text-emerald-400' : v < 0 ? 'text-red-400' : 'text-text-mute'
         }`}
       >
         Δ Visión: {v > 0 ? '+' : ''}
@@ -159,10 +159,10 @@ function KpTooltip({
   const kp = d.kp ?? 0
   return (
     <TooltipShell title={formatTs(d.timestamp)}>
-      <p className="mt-1 font-mono text-xs font-bold text-purple-300">
+      <p className="mt-1 font-mono text-xs font-bold text-accent-primary">
         KP: {(kp * 100).toFixed(0)}%
       </p>
-      <p className={`text-[10px] font-bold ${d.win ? 'text-emerald-400' : 'text-red-400'}`}>
+      <p className={`text-xs font-bold ${d.win ? 'text-emerald-400' : 'text-red-400'}`}>
         {d.win ? 'VICTORIA' : 'DERROTA'}
       </p>
     </TooltipShell>
@@ -179,12 +179,12 @@ function TrendCard({
   data: TrendPoint[]
 }) {
   return (
-    <div className="rounded-xl border border-gray-800 bg-[#14141C] p-4">
+    <div className="rounded-xl border border-hairline bg-surface-1 p-6">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: metric.color }}>
           📈 {metric.label}
         </h3>
-        <span className="font-mono text-xs font-bold text-gray-400">
+        <span className="font-mono text-xs font-bold text-text-mute">
           {data.length} partidas
         </span>
       </div>
@@ -234,21 +234,21 @@ function VisionDeltaCard({ data }: { data: TrendPoint[] }) {
   )
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-[#14141C] p-4">
+    <div className="rounded-xl border border-hairline bg-surface-1 p-6">
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-xs font-bold uppercase tracking-widest text-cyan-400">
           🔭 Delta de Visión
         </h3>
-        <span className="font-mono text-xs font-bold text-gray-400">
+        <span className="font-mono text-xs font-bold text-text-mute">
           {points.length} partidas
         </span>
       </div>
 
       {points.length === 0 ? (
         <div className="flex h-44 flex-col items-center justify-center px-6 text-center">
-          <Eye className="h-6 w-6 text-gray-600" />
-          <p className="mt-2 text-xs font-medium text-gray-300">Sin datos de visión</p>
-          <p className="mt-1 text-[10px] text-gray-500">
+          <Eye className="h-6 w-6 text-text-mute" />
+          <p className="mt-2 text-xs font-medium text-text-body">Sin datos de visión</p>
+          <p className="mt-1 text-xs text-text-mute">
             Necesitas partidas sincronizadas con rival de línea directo.
           </p>
         </div>
@@ -277,7 +277,7 @@ function VisionDeltaCard({ data }: { data: TrendPoint[] }) {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <p className="mt-2 text-[10px] text-gray-500">
+          <p className="mt-2 text-xs text-text-mute">
             Δ medio:{' '}
             <span
               className={`font-mono font-bold ${
@@ -286,7 +286,7 @@ function VisionDeltaCard({ data }: { data: TrendPoint[] }) {
             >
               {avg != null ? `${avg >= 0 ? '+' : ''}${avg.toFixed(1)}` : '—'}
             </span>{' '}
-            <span className="text-gray-600">·</span> sobre 0 ganas la batalla de visión
+            <span className="text-text-mute">·</span> sobre 0 ganas la batalla de visión
           </p>
         </>
       )}
@@ -308,21 +308,21 @@ function KpScatterCard({ data }: { data: TrendPoint[] }) {
   }, [data])
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-[#14141C] p-4">
+    <div className="rounded-xl border border-hairline bg-surface-1 p-6">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-purple-400">
+        <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-accent-primary">
           🎯 KP% vs Resultado
         </h3>
-        <span className="font-mono text-xs font-bold text-gray-400">
+        <span className="font-mono text-xs font-bold text-text-mute">
           {points.length} partidas
         </span>
       </div>
 
       {points.length === 0 ? (
         <div className="flex h-44 flex-col items-center justify-center px-6 text-center">
-          <Target className="h-6 w-6 text-gray-600" />
-          <p className="mt-2 text-xs font-medium text-gray-300">Sin datos de participación</p>
-          <p className="mt-1 text-[10px] text-gray-500">
+          <Target className="h-6 w-6 text-text-mute" />
+          <p className="mt-2 text-xs font-medium text-text-body">Sin datos de participación</p>
+          <p className="mt-1 text-xs text-text-mute">
             Sincroniza partidas para ver en qué rango de KP% ganas.
           </p>
         </div>
@@ -362,7 +362,7 @@ function KpScatterCard({ data }: { data: TrendPoint[] }) {
               </ScatterChart>
             </ResponsiveContainer>
           </div>
-          <p className="mt-2 text-[10px] text-gray-500">
+          <p className="mt-2 text-xs text-text-mute">
             <span className="font-semibold text-emerald-400">V</span> victoria ·{' '}
             <span className="font-semibold text-red-400">D</span> derrota · fíjate en qué rango
             de KP% se concentran tus puntos verdes
@@ -376,7 +376,7 @@ function KpScatterCard({ data }: { data: TrendPoint[] }) {
 // ────────────────────── Página ──────────────────────
 
 function Skeleton() {
-  return <div className="shimmer h-52 rounded-xl bg-gray-800/30" />
+  return <div className="shimmer h-52 rounded-xl bg-surface-2/30" />
 }
 
 export default function TrendsPage() {
@@ -385,10 +385,10 @@ export default function TrendsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-black uppercase tracking-wider text-purple-400">
+        <h2 className="text-lg font-black uppercase tracking-wider text-accent-primary">
           📊 KPIs de Mejora
         </h2>
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-text-mute">
           Evolución de tus métricas clave partida a partida. ¿Estás mejorando de verdad?
         </p>
       </div>
@@ -407,15 +407,15 @@ export default function TrendsPage() {
         <div className="flex flex-col items-center justify-center py-16">
           <AlertTriangle className="h-8 w-8 text-red-500/50" />
           <p className="mt-3 text-sm text-red-400">Error al cargar las tendencias</p>
-          <p className="mt-1 text-xs text-gray-500">Asegúrate de que el backend esté corriendo.</p>
+          <p className="mt-1 text-xs text-text-mute">Asegúrate de que el backend esté corriendo.</p>
         </div>
       )}
 
       {!isLoading && !isError && data && data.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16">
-          <TrendingUp className="h-8 w-8 text-gray-600" />
-          <p className="mt-3 text-sm font-medium text-gray-300">No hay datos de KPIs todavía</p>
-          <p className="mt-1 text-xs text-gray-500">Sincroniza partidas para empezar a medir tu evolución.</p>
+          <TrendingUp className="h-8 w-8 text-text-mute" />
+          <p className="mt-3 text-sm font-medium text-text-body">No hay datos de KPIs todavía</p>
+          <p className="mt-1 text-xs text-text-mute">Sincroniza partidas para empezar a medir tu evolución.</p>
         </div>
       )}
 
@@ -427,7 +427,7 @@ export default function TrendsPage() {
           <VisionDeltaCard data={data} />
           <KpScatterCard data={data} />
           <LaningRadarCard />
-          <div className="flex items-center justify-center gap-2 rounded-xl border border-gray-800 bg-[#14141C] px-4 py-3 text-[10px] text-gray-500">
+          <div className="flex items-center justify-center gap-2 rounded-xl border border-hairline bg-surface-1 px-4 py-3 text-xs text-text-mute">
             <LineChartIcon className="h-3.5 w-3.5" />
             Pasando el ratón sobre cada gráfica verás el valor exacto de esa partida.
           </div>

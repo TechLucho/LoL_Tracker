@@ -12,18 +12,18 @@ export default function PerformanceNotes({ matches }: Props) {
   const notes = computePerformanceNotes(matches)
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-[#14141C] p-4">
+    <div className="rounded-xl border border-hairline bg-surface-1 p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-purple-400">
+        <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-accent-primary">
           🧠 Performance Notes
         </h3>
-        <span className="text-[10px] text-gray-500">Patrones sobre tus partidas sincronizadas</span>
+        <span className="text-xs text-text-mute">Patrones sobre tus partidas sincronizadas</span>
       </div>
 
       {notes.length === 0 ? (
         <div className="flex flex-col items-center gap-1.5 py-6">
-          <LineChart className="h-5 w-5 text-gray-600" />
-          <p className="text-xs text-gray-500">
+          <LineChart className="h-5 w-5 text-text-mute" />
+          <p className="text-xs text-text-mute">
             Sincroniza partidas para detectar patrones de rendimiento.
           </p>
         </div>
@@ -41,26 +41,26 @@ export default function PerformanceNotes({ matches }: Props) {
                     ? 'border-emerald-500/20 bg-emerald-500/5'
                     : isBelowAvg
                     ? 'border-red-500/20 bg-red-500/5'
-                    : 'border-gray-700/50 bg-gray-800/20'
+                    : 'border-hairline/50 bg-surface-2/20'
                 }`}
               >
-                <span className="mb-1 text-[9px] font-bold uppercase tracking-widest text-gray-500">
+                <span className="mb-1 text-xs font-bold uppercase tracking-widest text-text-mute">
                   {note.label}
                 </span>
                 <span className={`font-mono text-4xl font-black leading-none ${
-                  isAboveAvg ? 'text-emerald-400' : isBelowAvg ? 'text-red-400' : 'text-gray-300'
+                  isAboveAvg ? 'text-emerald-400' : isBelowAvg ? 'text-red-400' : 'text-text-body'
                 }`}>
                   {note.winrate.toFixed(0)}
                   <span className="text-lg">%</span>
                 </span>
-                <p className="mt-1.5 text-[10px] leading-tight text-gray-500">
+                <p className="mt-1.5 text-xs leading-tight text-text-mute">
                   {note.coaching}
                 </p>
                 <div className="mt-auto flex items-center justify-between pt-2">
-                  <span className="text-[9px] text-gray-600">
+                  <span className="text-xs text-text-mute">
                     {note.games} games
                   </span>
-                  <span className={`text-[10px] font-bold ${
+                  <span className={`text-xs font-bold ${
                     isPositive ? 'text-emerald-400' : 'text-red-400'
                   }`}>
                     {isPositive ? '+' : ''}{note.comparison.toFixed(1)}% vs avg

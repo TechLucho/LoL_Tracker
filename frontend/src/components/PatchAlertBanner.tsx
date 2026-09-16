@@ -16,10 +16,10 @@ export default function PatchAlertBanner() {
   // Parche recién salido: aún no hay partidas sincronizadas → aviso informativo.
   if (!data.has_current_games) {
     return (
-      <div className="flex items-start gap-3 rounded-xl border border-purple-800/50 bg-[#14141C] p-3">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-purple-400" />
-        <p className="text-[11px] leading-relaxed text-gray-400">
-          <span className="font-bold text-purple-300">Parche {data.current_patch} detectado.</span>{' '}
+      <div className="flex items-start gap-3 rounded-xl border border-accent-primary/30 bg-surface-1 p-3">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-accent-primary" />
+        <p className="text-xs leading-relaxed text-text-mute">
+          <span className="font-bold text-accent-primary">Parche {data.current_patch} detectado.</span>{' '}
           Todavía no hay partidas sincronizadas en este parche: al sincronizar algunas,
           compararé tu winrate contra el histórico.
         </p>
@@ -33,18 +33,18 @@ export default function PatchAlertBanner() {
   const worstDrop = [...affected].sort((a, b) => a.delta_pp! - b.delta_pp!)[0]
 
   return (
-    <div className="rounded-xl border border-amber-700/50 bg-[#14141C] p-3">
+    <div className="rounded-xl border border-amber-700/50 bg-surface-1 p-3">
       <div className="flex items-start gap-3">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] leading-relaxed text-gray-300">
+          <p className="text-xs leading-relaxed text-text-body">
             <span className="font-bold text-amber-300">
               Parche {data.current_patch}
             </span>{' '}
             — tu rendimiento bajó en {affected.length === 1 ? '1 campeón' : `${affected.length} campeones`} del
             pool: {affected.map((c) => c.champion).join(', ')}.{' '}
             {worstDrop && (
-              <span className="text-gray-500">
+              <span className="text-text-mute">
                 Peor caída: {worstDrop.champion} ({worstDrop.winrate_current}% vs {worstDrop.winrate_previous}% histórico).
               </span>
             )}
@@ -64,10 +64,10 @@ function ChampionChip({ info }: { info: PatchChampionInfo }) {
   const dropped = info.dropped
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] ${
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs ${
         dropped
           ? 'border-amber-700/60 bg-amber-500/10 text-amber-200'
-          : 'border-gray-800 bg-[#0D0D12] text-gray-500'
+          : 'border-hairline bg-canvas text-text-mute'
       }`}
     >
       <span>{info.champion}</span>

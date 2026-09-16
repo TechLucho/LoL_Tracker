@@ -40,33 +40,33 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm space-y-5 rounded-xl border border-border bg-card p-6">
+    <div className="flex min-h-screen items-center justify-center bg-canvas px-4">
+      <div className="w-full max-w-sm space-y-5 rounded-xl border border-hairline bg-surface-1 p-6">
         <div className="space-y-1">
-          <h1 className="flex items-center gap-2 text-lg font-bold text-text-primary">
+          <h1 className="flex items-center gap-2 text-lg font-bold text-text-ink">
             <span className="text-lg">⚔️</span>
             LoL Tracker
           </h1>
-          <p className="text-sm text-text-muted">
+          <p className="text-sm text-text-mute">
             {mode === 'login' ? 'Accede a tu centro de mando.' : 'Crea tu cuenta y empieza.'}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-text-secondary">Email</span>
+            <span className="mb-1 block text-xs font-medium text-text-body">Email</span>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="tu@email.com"
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary placeholder-text-muted outline-none transition-colors focus:border-accent-purple/50"
+              className="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-text-ink placeholder-text-mute outline-none transition-colors focus:border-accent-primary/50"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-text-secondary">Contraseña</span>
+            <span className="mb-1 block text-xs font-medium text-text-body">Contraseña</span>
             <input
               type="password"
               required
@@ -74,7 +74,7 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-text-primary placeholder-text-muted outline-none transition-colors focus:border-accent-purple/50"
+              className="w-full rounded-lg border border-hairline bg-canvas px-3 py-2 text-sm text-text-ink placeholder-text-mute outline-none transition-colors focus:border-accent-primary/50"
             />
           </label>
 
@@ -83,7 +83,7 @@ export default function Login() {
               type="submit"
               onClick={() => setMode('login')}
               disabled={isSubmitting}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-accent-purple px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-accent-purple/20 transition-all hover:bg-accent-purple-dim active:scale-95 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500"
+              className="flex flex-1 items-center justify-center gap-2 rounded-full bg-accent-primary px-4 py-2.5 text-sm font-bold text-white shadow-[0_0_24px_rgba(168,85,247,0.35)] transition-all hover:bg-accent-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-text-mute"
             >
               <LogIn className="h-3.5 w-3.5" />
               {isSubmitting && mode === 'login' ? 'Accediendo...' : 'Iniciar sesión'}
@@ -92,7 +92,7 @@ export default function Login() {
               type="submit"
               onClick={() => setMode('signup')}
               disabled={isSubmitting}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-accent-purple/30 bg-accent-purple/10 px-4 py-2.5 text-sm font-bold text-accent-purple transition-all hover:bg-accent-purple/20 active:scale-95 disabled:cursor-not-allowed disabled:border-gray-800 disabled:bg-gray-800/50 disabled:text-gray-500"
+              className="flex flex-1 items-center justify-center gap-2 rounded-full border border-accent-primary/30 bg-accent-primary/10 px-4 py-2.5 text-sm font-bold text-accent-primary transition-all hover:bg-accent-primary/20 active:scale-95 disabled:cursor-not-allowed disabled:border-hairline disabled:bg-surface-2/50 disabled:text-text-mute"
             >
               <UserPlus className="h-3.5 w-3.5" />
               {isSubmitting && mode === 'signup' ? 'Creando...' : 'Registrarse'}

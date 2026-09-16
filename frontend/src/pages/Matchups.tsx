@@ -49,26 +49,26 @@ function ChampionSelect({
 
   return (
     <div className="relative" ref={ref}>
-      <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-text-secondary">
+      <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-text-body">
         {label}
       </span>
 
       {value ? (
-        <div className="flex items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5">
+        <div className="flex items-center gap-3 rounded-lg border border-hairline bg-canvas px-3 py-2.5">
           <img
             src={image}
             alt={value}
-            className="h-9 w-9 rounded-lg border border-gray-700"
+            className="h-9 w-9 rounded-lg border border-hairline"
             onError={(e) => {
               (e.target as HTMLImageElement).src = DDragon.champion('Teemo')
             }}
           />
           <div className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-bold text-text-primary">{value}</span>
+            <span className="block truncate text-sm font-bold text-text-ink">{value}</span>
             <button
               type="button"
               onClick={clear}
-              className="mt-0.5 text-xs text-text-muted transition-colors hover:text-red-400"
+              className="mt-0.5 text-xs text-text-mute transition-colors hover:text-red-400"
             >
               Cambiar campeón
             </button>
@@ -87,13 +87,13 @@ function ChampionSelect({
               if (search.length > 0) setShowDropdown(true)
             }}
             placeholder="Busca un campeón..."
-            className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-text-primary placeholder-text-muted outline-none transition-colors focus:border-accent-purple/50"
+            className="w-full rounded-lg border border-hairline bg-canvas px-3 py-2.5 text-sm text-text-ink placeholder-text-mute outline-none transition-colors focus:border-accent-primary/50"
           />
 
           {showDropdown && (
-            <div className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-border bg-card shadow-xl">
+            <div className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-hairline bg-surface-1 shadow-xl">
               {filtered.length === 0 && (
-                <div className="px-3 py-4 text-center text-xs text-text-muted">
+                <div className="px-3 py-4 text-center text-xs text-text-mute">
                   {champions.length === 0
                     ? 'Cargando campeones desde el backend...'
                     : `No se encontró "${search}"`}
@@ -108,17 +108,17 @@ function ChampionSelect({
                     setSearch('')
                     setShowDropdown(false)
                   }}
-                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors hover:bg-card-hover"
+                  className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors hover:bg-surface-2"
                 >
                   <img
                     src={c.image}
                     alt={c.name}
-                    className="h-6 w-6 rounded border border-gray-700"
+                    className="h-6 w-6 rounded border border-hairline"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = DDragon.champion('Teemo')
                     }}
                   />
-                  <span className="font-medium text-text-primary">{c.name}</span>
+                  <span className="font-medium text-text-ink">{c.name}</span>
                 </button>
               ))}
             </div>
@@ -158,18 +158,18 @@ export default function MatchupsPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       {/* Header */}
       <div>
-        <h2 className="flex items-center gap-2 text-lg font-black uppercase tracking-wider text-purple-400">
-          <Swords className="h-5 w-5 text-accent-purple" />
+        <h2 className="flex items-center gap-2 text-lg font-black uppercase tracking-wider text-accent-primary">
+          <Swords className="h-5 w-5 text-accent-primary" />
           Matchups
         </h2>
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-xs text-text-mute">
           Elige dos campeones (Tú vs Enemigo) y revisa tus números en ese cruce, con un bloc de
           notas persistente por emparejamiento.
         </p>
       </div>
 
       {/* Selectores */}
-      <div className="grid grid-cols-1 gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 rounded-xl border border-hairline bg-surface-1 p-6 sm:grid-cols-2">
         <ChampionSelect
           label="Tu campeón"
           value={userChamp}
@@ -192,13 +192,13 @@ export default function MatchupsPage() {
 
       {/* Estadísticas */}
       {bothSelected && (
-        <div className="rounded-xl border border-border bg-card p-5">
+        <div className="rounded-xl border border-hairline bg-surface-1 p-6">
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="flex items-center gap-2 text-base font-bold text-text-primary">
+            <h3 className="flex items-center gap-2 text-base font-bold text-text-ink">
               <span className="text-base">📊</span>
               {userChamp} vs {enemyChamp}
             </h3>
-            {statsLoading && <Loader2 className="h-4 w-4 animate-spin text-text-muted" />}
+            {statsLoading && <Loader2 className="h-4 w-4 animate-spin text-text-mute" />}
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -219,28 +219,28 @@ export default function MatchupsPage() {
       )}
 
       {/* Bloc de notas */}
-      <div className="rounded-xl border border-border bg-card p-5">
+      <div className="rounded-xl border border-hairline bg-surface-1 p-6">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="flex items-center gap-2 text-base font-bold text-text-primary">
-            <ScrollText className="h-4 w-4 text-accent-purple" />
+          <h3 className="flex items-center gap-2 text-base font-bold text-text-ink">
+            <ScrollText className="h-4 w-4 text-accent-primary" />
             Notas del emparejamiento
           </h3>
           {notes?.updated_at && (
-            <span className="text-[11px] text-text-muted">
+            <span className="text-xs text-text-mute">
               Última edición: {new Date(notes.updated_at).toLocaleString()}
             </span>
           )}
         </div>
 
         {!bothSelected ? (
-          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-background px-4 py-10 text-center">
-            <AlertTriangle className="h-6 w-6 text-text-muted" />
-            <p className="mt-2 text-sm text-text-muted">
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-hairline bg-canvas px-4 py-10 text-center">
+            <AlertTriangle className="h-6 w-6 text-text-mute" />
+            <p className="mt-2 text-sm text-text-mute">
               Selecciona ambos campeones para leer o escribir las notas del emparejamiento.
             </p>
           </div>
         ) : notesLoading ? (
-          <div className="shimmer h-40 rounded-lg bg-background" />
+          <div className="shimmer h-40 rounded-lg bg-canvas" />
         ) : (
           <>
             <textarea
@@ -248,10 +248,10 @@ export default function MatchupsPage() {
               onChange={(e) => setDraftNotes(e.target.value)}
               placeholder="Apuntes de estrategia para este cruce: cuándo agredir, cómo jugar la línea, cuándo dodge..."
               rows={8}
-              className="w-full resize-y rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-text-primary placeholder-text-muted outline-none transition-colors focus:border-accent-purple/50"
+              className="w-full resize-y rounded-lg border border-hairline bg-canvas px-3 py-2.5 text-sm text-text-ink placeholder-text-mute outline-none transition-colors focus:border-accent-primary/50"
             />
             <div className="mt-3 flex items-center justify-between">
-              <p className="text-[11px] text-text-muted">
+              <p className="text-xs text-text-mute">
                 {stats && stats.games_played === 0 ? (
                   '0 partidas registradas en este cruce — las notas se guardan igualmente.'
                 ) : (
@@ -266,8 +266,8 @@ export default function MatchupsPage() {
                 }}
                 className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-bold transition-all active:scale-95 ${
                   updateNotes.isPending
-                    ? 'cursor-not-allowed bg-gray-800 text-gray-500'
-                    : 'bg-accent-purple text-white shadow-lg shadow-accent-purple/20 hover:bg-accent-purple-dim'
+                    ? 'cursor-not-allowed bg-surface-2 text-text-mute'
+                    : 'bg-accent-primary text-white shadow-[0_0_24px_rgba(168,85,247,0.35)] hover:bg-accent-primary/90'
                 }`}
               >
                 {updateNotes.isPending ? (
@@ -297,10 +297,10 @@ function StatBox({
   accent?: string
 }) {
   return (
-    <div className="rounded-lg border border-border bg-background px-4 py-3 text-center">
-      <span className="text-[10px] font-bold uppercase tracking-wider text-text-muted">{label}</span>
-      <p className={`mt-1 font-mono text-xl font-black ${accent ?? 'text-text-primary'}`}>{value}</p>
-      {sub && <p className="mt-0.5 text-[10px] text-text-muted">{sub}</p>}
+    <div className="rounded-lg border border-hairline bg-canvas px-4 py-3 text-center">
+      <span className="text-xs font-bold uppercase tracking-wider text-text-mute">{label}</span>
+      <p className={`mt-1 font-mono text-xl font-black ${accent ?? 'text-text-ink'}`}>{value}</p>
+      {sub && <p className="mt-0.5 text-xs text-text-mute">{sub}</p>}
     </div>
   )
 }
@@ -316,42 +316,42 @@ function VerdictRow({ row, highlighted }: { row: MetaVerdict; highlighted: boole
       className={`flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between ${
         highlighted
           ? 'border-red-500/40 bg-red-500/[0.05]'
-          : 'border-border bg-background'
+          : 'border-hairline bg-canvas'
       }`}
     >
       <div className="flex min-w-0 items-center gap-3">
         <img
           src={icons.champion(row.user_champion).url}
           alt={row.user_champion}
-          className="h-9 w-9 rounded-lg border border-gray-700"
+          className="h-9 w-9 rounded-lg border border-hairline"
           onError={(e) => {
             (e.target as HTMLImageElement).src = DDragon.champion('Teemo')
           }}
         />
-        <span className="truncate text-sm font-bold text-text-primary">{row.user_champion}</span>
-        <span className="text-text-muted">vs</span>
+        <span className="truncate text-sm font-bold text-text-ink">{row.user_champion}</span>
+        <span className="text-text-mute">vs</span>
         <img
           src={icons.champion(row.enemy_champion).url}
           alt={row.enemy_champion}
-          className="h-9 w-9 rounded-lg border border-gray-700"
+          className="h-9 w-9 rounded-lg border border-hairline"
           onError={(e) => {
             (e.target as HTMLImageElement).src = DDragon.champion('Teemo')
           }}
         />
-        <span className="truncate text-sm font-bold text-text-primary">{row.enemy_champion}</span>
+        <span className="truncate text-sm font-bold text-text-ink">{row.enemy_champion}</span>
       </div>
 
       <div className="flex shrink-0 items-center gap-3 text-right">
-        <div className="text-[11px] text-text-muted sm:text-right">
+        <div className="text-xs text-text-mute sm:text-right">
           <p>
             global:{' '}
-            <b className={prev != null && prev >= 55 ? 'text-emerald-400' : 'text-text-primary'}>
+            <b className={prev != null && prev >= 55 ? 'text-emerald-400' : 'text-text-ink'}>
               {prev != null ? `${prev}%` : '–'}
             </b>
-            <span className="px-1 text-text-muted">→</span>
+            <span className="px-1 text-text-mute">→</span>
             <b
               className={
-                curr != null ? (curr >= 50 ? 'text-emerald-400' : 'text-red-400') : 'text-text-muted'
+                curr != null ? (curr >= 50 ? 'text-emerald-400' : 'text-red-400') : 'text-text-mute'
               }
             >
               {curr != null ? `${curr}%` : 'sin datos'}
@@ -365,7 +365,7 @@ function VerdictRow({ row, highlighted }: { row: MetaVerdict; highlighted: boole
           )}
         </div>
         {highlighted && (
-          <span className="rounded bg-red-500/15 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-red-400">
+          <span className="rounded bg-red-500/15 px-2 py-1 text-xs font-bold uppercase tracking-wider text-red-400">
             ⚠ Meta shift
           </span>
         )}
@@ -385,12 +385,12 @@ function MetaVerdictSection({
 
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-border bg-card p-5">
-        <div className="mb-3 flex items-center gap-2 text-base font-bold text-text-primary">
-          <TrendingUp className="h-4 w-4 text-accent-purple" />
+      <div className="rounded-xl border border-hairline bg-surface-1 p-6">
+        <div className="mb-3 flex items-center gap-2 text-base font-bold text-text-ink">
+          <TrendingUp className="h-4 w-4 text-accent-primary" />
           Meta del Parche
         </div>
-        <div className="shimmer h-24 rounded-lg bg-background" />
+        <div className="shimmer h-24 rounded-lg bg-canvas" />
       </div>
     )
   }
@@ -398,7 +398,7 @@ function MetaVerdictSection({
   if (isError) {
     return (
       <div className="rounded-xl border border-red-500/30 bg-red-500/[0.04] p-5 text-center">
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-text-mute">
           No se pudo calcular el veredicto del meta. ¿Está disponible Data Dragon?
         </p>
       </div>
@@ -407,12 +407,12 @@ function MetaVerdictSection({
 
   if (!meta || meta.verdicts.length === 0) {
     return (
-      <div className="rounded-xl border border-border bg-card p-5">
-        <div className="flex items-center gap-2 text-base font-bold text-text-primary">
-          <TrendingUp className="h-4 w-4 text-accent-purple" />
+      <div className="rounded-xl border border-hairline bg-surface-1 p-6">
+        <div className="flex items-center gap-2 text-base font-bold text-text-ink">
+          <TrendingUp className="h-4 w-4 text-accent-primary" />
           Meta del Parche
         </div>
-        <p className="mt-3 text-center text-xs text-text-muted">
+        <p className="mt-3 text-center text-xs text-text-mute">
           Aún no hay cruces con datos suficientes en el parche {meta?.current_patch ?? 'actual'}.
           Los matchups aparecen aquí cuando acumulas partidas.
         </p>
@@ -424,12 +424,12 @@ function MetaVerdictSection({
   const shown = metaOnly ? shifts : meta.verdicts
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5">
+    <div className="rounded-xl border border-hairline bg-surface-1 p-6">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
-        <h3 className="flex items-center gap-2 text-base font-bold text-text-primary">
-          <TrendingUp className="h-4 w-4 text-accent-purple" />
+        <h3 className="flex items-center gap-2 text-base font-bold text-text-ink">
+          <TrendingUp className="h-4 w-4 text-accent-primary" />
           Meta del Parche
-          <span className="rounded bg-background px-2 py-0.5 font-mono text-[11px] text-text-muted">
+          <span className="rounded bg-canvas px-2 py-0.5 font-mono text-xs text-text-mute">
             {meta.current_patch}
           </span>
         </h3>
@@ -438,7 +438,7 @@ function MetaVerdictSection({
           className={`flex cursor-pointer select-none items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${
             metaOnly
               ? 'border-red-500/40 bg-red-500/10 text-red-400'
-              : 'border-border bg-background text-text-secondary hover:border-red-500/40 hover:text-red-400'
+              : 'border-hairline bg-canvas text-text-body hover:border-red-500/40 hover:text-red-400'
           }`}
         >
           <input
@@ -449,21 +449,21 @@ function MetaVerdictSection({
           />
           Filtro de Meta Actual
           {shifts.length > 0 && (
-            <span className="rounded-full bg-red-500 px-1.5 text-[10px] font-black text-white">
+            <span className="rounded-full bg-red-500 px-1.5 text-xs font-black text-white">
               {shifts.length}
             </span>
           )}
         </label>
       </div>
 
-      <p className="mb-3 text-[11px] leading-relaxed text-text-muted">
+      <p className="mb-3 text-xs leading-relaxed text-text-mute">
         Compara tu winrate en cada cruce dentro del parche actual frente al histórico previo. Un
         emparejamiento se marca como <b className="text-red-400">meta shift</b> cuando era favorable
         (≥55% previo) y ahora cae por debajo del 50% con muestra propia del parche.
       </p>
 
       {shown.length === 0 ? (
-        <p className="py-4 text-center text-xs text-text-muted">
+        <p className="py-4 text-center text-xs text-text-mute">
           Sin meta-shifts detectados en el parche actual — tus matchups favorables siguen siéndolo.
         </p>
       ) : (

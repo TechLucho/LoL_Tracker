@@ -59,7 +59,7 @@ export const IMPACT_RATINGS = [
   { value: 'Carree (1v9)', label: 'Carree (1v9)', emoji: '🔥', color: 'text-orange-400' },
   { value: 'Hice mi trabajo', label: 'Hice mi trabajo', emoji: '✅', color: 'text-emerald-400' },
   { value: 'Fui Carreado', label: 'Fui Carreado', emoji: '🚗', color: 'text-blue-400' },
-  { value: 'Invisible', label: 'Invisible', emoji: '👻', color: 'text-gray-400' },
+  { value: 'Invisible', label: 'Invisible', emoji: '👻', color: 'text-text-mute' },
   { value: 'Inteé (Perdí la lane)', label: 'Inteé (Perdí la lane)', emoji: '💀', color: 'text-red-400' },
 ]
 

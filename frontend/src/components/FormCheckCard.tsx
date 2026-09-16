@@ -14,21 +14,21 @@ function MetricRow({ metric }: { metric: FormCheckMetric }) {
 
   return (
     <div className="flex items-center justify-between border-b border-white/5 py-2 last:border-0">
-      <span className="text-xs font-medium text-gray-300">{metric.name}</span>
+      <span className="text-xs font-medium text-text-body">{metric.name}</span>
       <div className="flex items-center gap-2">
-        <span className="font-mono text-xs text-gray-500 line-through">
+        <span className="font-mono text-xs text-text-mute line-through">
           {fmt(metric.previous)}{metric.unit}
         </span>
-        <span className="text-[10px] text-gray-600">→</span>
+        <span className="text-xs text-text-mute">→</span>
         <span className="font-mono text-xs font-bold text-white">
           {fmt(metric.current)}{metric.unit}
         </span>
-        <span className={`flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+        <span className={`flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-xs font-bold ${
           trend === 'up'
             ? 'bg-emerald-500/15 text-emerald-400'
             : trend === 'down'
             ? 'bg-red-500/15 text-red-400'
-            : 'bg-gray-500/15 text-gray-400'
+            : 'bg-surface-2 text-text-mute'
         }`}>
           {trend === 'up' ? <ArrowUp className="h-2.5 w-2.5" /> : trend === 'down' ? <ArrowDown className="h-2.5 w-2.5" /> : <Minus className="h-2.5 w-2.5" />}
           {absDelta}%
@@ -47,20 +47,20 @@ export default function FormCheckCard({ matches }: FormCheckCardProps) {
   const groups = computeFormCheck(matches)
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-[#14141C] p-4">
+    <div className="rounded-xl border border-hairline bg-surface-1 p-6">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-purple-400">
+        <h3 className="text-xs font-mono font-bold uppercase tracking-widest text-accent-primary">
           📋 Form Check
         </h3>
-        <span className="rounded-full bg-purple-500/10 px-2 py-0.5 text-[10px] font-bold text-purple-300">
+        <span className="rounded-full bg-accent-primary/10 px-2 py-0.5 text-xs font-bold text-accent-primary">
           LAST 5 vs PREV 5
         </span>
       </div>
 
       {!groups ? (
         <div className="flex flex-col items-center gap-1.5 py-6">
-          <BarChart3 className="h-5 w-5 text-gray-600" />
-          <p className="text-xs text-gray-500">
+          <BarChart3 className="h-5 w-5 text-text-mute" />
+          <p className="text-xs text-text-mute">
             Necesitas al menos 8 partidas sincronizadas para comparar tu forma.
           </p>
         </div>
@@ -69,13 +69,13 @@ export default function FormCheckCard({ matches }: FormCheckCardProps) {
           {/* Improving */}
           <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
             <div className="mb-2 flex items-center gap-1.5">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-[10px]">✓</span>
-              <h4 className="text-[11px] font-bold uppercase tracking-wider text-emerald-400">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-xs">✓</span>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400">
                 Improving
               </h4>
             </div>
             {groups.improving.length === 0 ? (
-              <p className="py-1 text-[10px] italic text-gray-600">Nada destacable al alza</p>
+              <p className="py-1 text-xs italic text-text-mute">Nada destacable al alza</p>
             ) : (
               groups.improving.map((m) => <MetricRow key={m.name} metric={m} />)
             )}
@@ -84,28 +84,28 @@ export default function FormCheckCard({ matches }: FormCheckCardProps) {
           {/* Slipping */}
           <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
             <div className="mb-2 flex items-center gap-1.5">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500/20 text-[10px]">!</span>
-              <h4 className="text-[11px] font-bold uppercase tracking-wider text-red-400">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-red-500/20 text-xs">!</span>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-red-400">
                 Slipping
               </h4>
             </div>
             {groups.slipping.length === 0 ? (
-              <p className="py-1 text-[10px] italic text-gray-600">Nada en caída</p>
+              <p className="py-1 text-xs italic text-text-mute">Nada en caída</p>
             ) : (
               groups.slipping.map((m) => <MetricRow key={m.name} metric={m} />)
             )}
           </div>
 
           {/* Steady */}
-          <div className="rounded-lg border border-gray-700/50 bg-gray-800/20 p-3">
+          <div className="rounded-lg border border-hairline/50 bg-surface-2/20 p-3">
             <div className="mb-2 flex items-center gap-1.5">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gray-500/20 text-[10px]">—</span>
-              <h4 className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-2 text-xs">—</span>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-text-mute">
                 Steady
               </h4>
             </div>
             {groups.steady.length === 0 ? (
-              <p className="py-1 text-[10px] italic text-gray-600">Todo se está moviendo</p>
+              <p className="py-1 text-xs italic text-text-mute">Todo se está moviendo</p>
             ) : (
               groups.steady.map((m) => <MetricRow key={m.name} metric={m} />)
             )}

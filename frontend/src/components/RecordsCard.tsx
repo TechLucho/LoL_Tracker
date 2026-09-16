@@ -6,7 +6,7 @@ const iconMap: Record<string, React.ReactNode> = {
   trophy: <Trophy className="h-4 w-4 text-yellow-400" />,
   swords: <Swords className="h-4 w-4 text-red-400" />,
   flame: <Flame className="h-4 w-4 text-orange-400" />,
-  target: <Target className="h-4 w-4 text-purple-400" />,
+  target: <Target className="h-4 w-4 text-accent-primary" />,
   zap: <Zap className="h-4 w-4 text-yellow-300" />,
   skull: <Skull className="h-4 w-4 text-red-500" />,
 }
@@ -20,14 +20,14 @@ export default function RecordsCard({ matches }: Props) {
   const records = computeRecords(matches)
 
   return (
-    <div className="rounded-xl border border-gray-800 bg-[#14141C] p-4">
-      <h3 className="mb-3 text-xs font-bold uppercase tracking-widest text-purple-400">
+    <div className="rounded-xl border border-hairline bg-surface-1 p-6">
+      <h3 className="mb-3 text-xs font-mono font-bold uppercase tracking-widest text-accent-primary">
         🏆 Records
       </h3>
       {records.length === 0 ? (
         <div className="flex flex-col items-center gap-1.5 py-4">
-          <Trophy className="h-5 w-5 text-gray-600" />
-          <p className="text-[11px] text-gray-500">
+          <Trophy className="h-5 w-5 text-text-mute" />
+          <p className="text-xs text-text-mute">
             Sincroniza partidas para empezar a registrar récords.
           </p>
         </div>
@@ -36,11 +36,11 @@ export default function RecordsCard({ matches }: Props) {
           {records.map((r) => (
             <div
               key={r.label}
-              className="flex items-center justify-between rounded-lg border border-gray-800/50 bg-[#0D0D12] px-3 py-2 transition-colors hover:bg-[#1A1A24]"
+              className="flex items-center justify-between rounded-lg border border-hairline/50 bg-canvas px-3 py-2 transition-colors hover:bg-surface-2"
             >
               <div className="flex items-center gap-2">
                 {iconMap[r.icon]}
-                <span className="text-[11px] text-gray-400">{r.label}</span>
+                <span className="text-xs text-text-mute">{r.label}</span>
               </div>
               <span className="font-mono text-sm font-bold text-white">
                 {r.value}

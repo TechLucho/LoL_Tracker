@@ -9,8 +9,8 @@ interface Props {
 export default function SessionFatigueCard({ data, isLoading = false }: Props) {
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-gray-800 bg-[#14141C] p-4">
-        <div className="shimmer h-14 rounded-lg bg-gray-800/30" />
+      <div className="rounded-xl border border-hairline bg-surface-1 p-6">
+        <div className="shimmer h-14 rounded-lg bg-surface-2/30" />
       </div>
     )
   }
@@ -51,18 +51,18 @@ export default function SessionFatigueCard({ data, isLoading = false }: Props) {
     <div className={`rounded-xl border ${borderClass} ${bgClass} p-4`}>
       <div className="flex items-center gap-2">
         <Icon className={`h-4 w-4 shrink-0 ${iconColor}`} />
-        <span className="text-xs font-bold uppercase tracking-widest text-gray-300">
+        <span className="text-xs font-bold uppercase tracking-widest text-text-body">
           ⚡ {title}
         </span>
         {data.recent && data.previous && (
-          <span className="ml-auto text-[10px] text-gray-600">
+          <span className="ml-auto text-xs text-text-mute">
             {data.recent.wins}W-{data.recent.losses}L reciente
           </span>
         )}
       </div>
-      <p className="mt-2 text-[11px] leading-relaxed text-gray-400">{data.message}</p>
+      <p className="mt-2 text-xs leading-relaxed text-text-mute">{data.message}</p>
       {data.sample_ok && data.winrate_delta_pp != null && data.kda_delta != null && (
-        <div className="mt-2 flex gap-3 text-[10px] text-gray-500">
+        <div className="mt-2 flex gap-3 text-xs text-text-mute">
           <span>
             WR Δ{' '}
             <span
