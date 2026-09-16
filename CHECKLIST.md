@@ -288,9 +288,9 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ---
 
-## Pendiente (Backlog / Features futuras)
+## Completado (v2.2)
 
-### Plan de Acción Inmediato
+### Plan de Acción Inmediato (liquidado en esta versión)
 
 - [x] **Fase 0: Auditoría Completa y Poda Extrema.** Eliminadas las vistas muertas `/pool` y
       `/constitution`, el motor duplicado de La Constitución (`services/constitution.py`,
@@ -302,16 +302,17 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
       `surface-1`, bordes `hairline`, tipografía monoespaciada) y refactorizada la vista
       `/settings` integrando la re-vinculación del Riot ID y el indicador de `/health`
       (commit `7861fab`).
+- [x] **Heredado de v2.1 — Panel de configuración completo** — re-vincular Riot ID/región
+      desde la UI (hoy también en el onboarding), estado de conexión (`/health`) con indicador
+      en Settings y verificación de email en el flujo de registro.
+
+---
+
+## Pendiente (Backlog / Features futuras)
 
 ### Despliegue
 
 - [ ] **Despliegue formalizado**: no hay Dockerfile/compose/fly.toml/render.yaml — hoy vive solo en la maquina local. Contenerizar backend+frontend antes de usarlo fuera de casa
-
-### Heredado de v2.1 (pendiente de cerrar)
-
-- [x] **Panel de configuración completo** — resuelto en la **Fase 1**: re-vincular Riot
-      ID/región desde la UI (hoy también en el onboarding), estado de conexión (`/health`) con
-      indicador en Settings y verificación de email en el flujo de registro.
 
 ### Roadmap v2.3 — Multijugador: El Rosco
 
