@@ -286,13 +286,33 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ## Pendiente (Backlog / Features futuras)
 
+### Plan de Acción Inmediato (Próxima Sesión)
+
+- [ ] **Fase 0: Auditoría Completa y Poda Extrema.** Escanear todo el árbol de rutas (React)
+      y routers (FastAPI) para detectar y eliminar vistas/endpoints muertos o redundantes.
+      Específicamente: eliminar la vista `/pool` (ya existe en el Dashboard), eliminar
+      `/constitution`, limpiar el `Layout` y borrar cualquier background task o lógica de
+      backend exclusiva de estas vistas.
+- [ ] **Fase 1: UI Core - Estilizar Onboarding y Configuración (Cierre v2.1).** Aplicar las
+      nuevas reglas del `DESIGN.md` a `RiotOnboarding.tsx` (botones *pill* con neón, tarjetas
+      `surface-1`, bordes *hairline*, tipografía monoespaciada). Refactorizar la vista
+      `/settings` integrando la re-vinculación del Riot ID y el indicador de `/health`.
+- [ ] **Fase 2: Base de Datos - Migraciones del Rosco (Inicio v2.2).** Crear y aplicar la
+      migración SQL `015_games_rosco.sql` con las tablas `game_rooms` y `rosco_questions`.
+- [ ] **Fase 3: Backend - Lógica del Lobby.** Implementar endpoints `POST /api/games/rooms`
+      y `/join` por código en FastAPI. Crear la función estricta `normalize_answer` y añadir
+      un script semilla con las primeras 26 preguntas de prueba.
+
 ### Despliegue
 
 - [ ] **Despliegue formalizado**: no hay Dockerfile/compose/fly.toml/render.yaml — hoy vive solo en la maquina local. Contenerizar backend+frontend antes de usarlo fuera de casa
 
 ### Heredado de v2.1 (pendiente de cerrar)
 
-- [ ] **Panel de configuración completo**: re-vincular Riot ID/región desde la UI (hoy solo existe en el onboarding de primer arranque), estado de conexión (`/health`) y verificación de email en el flujo de registro.
+- ~~[ ] **Panel de configuración completo**~~ — englobado en la **Fase 1** del Plan de Acción
+      Inmediato: re-vincular Riot ID/región desde la UI (hoy solo existe en el onboarding de
+      primer arranque), estado de conexión (`/health`) y verificación de email en el flujo de
+      registro.
 
 ### Roadmap v2.2 — Multijugador: El Rosco
 
