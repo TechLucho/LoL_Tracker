@@ -19,6 +19,7 @@ const SettingsPage = lazy(() => import('./pages/Settings'))
 const MatchupsPage = lazy(() => import('./pages/Matchups'))
 const TrendsPage = lazy(() => import('./pages/Trends'))
 const WeeklyPage = lazy(() => import('./pages/Weekly'))
+const RoscoLobbyPage = lazy(() => import('./pages/RoscoLobby'))
 
 // Guard de rutas privadas. Mientras se resuelve la sesión muestra un esqueleto (evita el
 // destello login→app); sin sesión, redirige a /login recordando a dónde iba el usuario.
@@ -71,6 +72,7 @@ function App() {
             <Route element={<RequireLinked />}>
               <Route element={<Layout />}>
                 <Route index element={<Dashboard />} />
+                <Route path="rosco/lobby" element={<RoscoLobbyPage />} />
                 <Route path="heatmap" element={<HeatmapPage />} />
                 <Route path="matchups" element={<MatchupsPage />} />
                 <Route path="trends" element={<TrendsPage />} />

@@ -346,3 +346,81 @@ export async function updateMatchupNotes(
   )
   return data
 }
+
+// ───────────────────────── El Rosco (Sprint 1 backend) ─────────────────────────
+// El contrato OpenAPI generado aún no incluye /api/games/* (se regenerará en el Sprint que
+// lo consuma desde el backend); el tipo se declara a mano, igual que `LpTrendPoint`.
+
+export type GameRoomStatus = 'lobby' | 'drafting' | 'minigames' | 'rosco' | 'finished'
+
+export interface GameRoom {
+  id: string
+  room_code: string
+  host_id: string
+  guest_id: string | null
+  status: GameRoomStatus
+  created_at: string
+}
+
+export async function createGameRoom(): Promise<GameRoom> {
+  const { data } = await api.post<GameRoom>('/games/rooms')
+  return data
+}
+
+export async function joinGameRoom(roomCode: string): Promise<GameRoom> {
+  const { data } = await api.post<GameRoom>(
+    `/games/rooms/${encodeURIComponent(roomCode)}/join`,
+  )
+  return data
+}
+
+// ──────────────────── El Rosco (Sprint 3 backend: draft y minijuegos) ────────────────────
+// Estado vivo que el backend (árbitro) difunde por Realtime y devuelve en cada mutación.
+// `draft_turn` = a quién le toca elegir ('host' primero); los bancos clave son 100s base +
+// segundos ganados por cada jugador (Regla 3 del CHECKLIST).
+
+export type RoomRole = 'host' | 'guest'
+
+export interface GameLiveState {
+  room_code: string
+  status: GameRoomStatus
+  draft_turn: RoomRole | null
+  draft_picks: Partial<Record<RoomRole, string>>
+  time_banks: Partial<Record<RoomRole, number>>
+}
+
+export interface GameStateInput {
+  status: GameRoomStatus
+}
+
+export interface DraftPickInput {
+  category: string
+}
+
+export interface ScoreInput {
+  points: number
+}
+
+export async function advanceGameState(roomCode: string, status: GameRoomStatus): Promise<GameLiveState> {
+  const { data } = await api.post<GameLiveState>(
+    `/games/rooms/${encodeURIComponent(roomCode)}/state`,
+    { status } satisfies GameStateInput,
+  )
+  return data
+}
+
+export async function draftPick(roomCode: string, category: string): Promise<GameLiveState> {
+  const { data } = await api.post<GameLiveState>(
+    `/games/rooms/${encodeURIComponent(roomCode)}/draft`,
+    { category } satisfies DraftPickInput,
+  )
+  return data
+}
+
+export async function submitScore(roomCode: string, points: number): Promise<GameLiveState> {
+  const { data } = await api.post<GameLiveState>(
+    `/games/rooms/${encodeURIComponent(roomCode)}/score`,
+    { points } satisfies ScoreInput,
+  )
+  return data
+}

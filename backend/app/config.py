@@ -68,6 +68,11 @@ class Settings(BaseSettings):
     # (`/auth/v1/.well-known/jwks.json`) cuando el token venga firmado con ES256/RS256.
     # "http://localhost" es un placeholder: en producción inyecta https://<ref>.supabase.co.
     supabase_url: str = "http://localhost"
+    # Anon key de Supabase (Project Settings › API) para los broadcasts de Realtime del Rosco
+    # (Sprint 3: `POST /realtime/v1/api/broadcast` → canal `room:{code}`). Si falta, el
+    # backend degrada con un warning: la partida funciona igual, pero el rival no recibe el
+    # estado en vivo por realtime.
+    supabase_anon_key: str = ""
     pool_min_size: int = 1
     pool_max_size: int = 5
     sentry_dsn: str = ""  # si está vacío, Sentry no se inicializa

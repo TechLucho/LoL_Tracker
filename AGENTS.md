@@ -60,7 +60,7 @@ npm run dev          # vite
 npm run build        # tsc -b && vite build
 npm run lint         # oxlint
 
-# Tests (from repo root) — 30 hermetic tests, no DB needed (contract + observability + rules engine).
+# Tests (from repo root) — 90 hermetic, no DB needed (contract + observability + rules engine + El Rosco).
 # tests/integration/ needs TEST_DATABASE_URL (ephemeral Postgres; applied by CI, skipped otherwise)
 & $PY -m pytest backend/tests -q
 
@@ -86,6 +86,8 @@ booting** — that is by design (the Streamlit monolith used to degrade silently
 | `DB_HOST` `DB_NAME` `DB_USER` `DB_PASSWORD` `DB_PORT` | Supabase Postgres (pooler host). `DB_USER` must be `postgres.<project-ref>`. |
 | `DISPLAY_TIMEZONE` | Zone used to interpret heatmap hours. Defaults to `Europe/Madrid`. |
 | `SUPABASE_JWT_SECRET` | HS256 JWT gateway secret from Supabase (Settings › API › JWT Settings). Used to decode the session token's `sub` claim. Default `super-secret-jwt-token-for-testing-only` is test/CI-only — set the real one in production. |
+| `SUPABASE_URL` | Project URL (`https://<ref>.supabase.co`). Used for the JWKS descarga and for the El Rosco realtime broadcasts (REST endpoint `/realtime/v1/api/broadcast`). Optional for boot, required for Multiplayer sync across browsers. |
+| `SUPABASE_ANON_KEY` | Anon key (Settings › API) used by the backend to broadcast El Rosco game state to `room:{code}`. If missing, broadcasts degrade to a warning and the rival won't get live updates. |
 | `CORS_ORIGINS` | JSON array. Defaults to the Vite dev server origins. |
 
 ## Backend behavior worth knowing

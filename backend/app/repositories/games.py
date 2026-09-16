@@ -34,6 +34,19 @@ WHERE room_code = %s
 RETURNING *
 """
 
+_GET_ROOM_BY_CODE_ANY = """
+SELECT * FROM game_rooms
+WHERE room_code = %s
+"""
+
+_UPDATE_STATUS = """
+UPDATE game_rooms
+SET status = %s
+WHERE room_code = %s
+  AND status = %s
+RETURNING *
+"""
+
 
 async def create_room(room_code: str, host_id: UUID) -> dict | None:
     """Crea una sala en 'lobby' con `host_id` como anfitrión y la devuelve (RETURNING *)."""
@@ -52,3 +65,16 @@ async def claim_guest(room_code: str, guest_id: UUID) -> dict | None:
     (el invitado no puede ser el host). Devuelve la sala resultante.
     """
     return await db.fetch_one(_CLAIM_GUEST, (guest_id, room_code, guest_id))
+
+
+async def get_room_by_code(room_code: str) -> dict | None:
+    """Devuelve la sala en CUALQUIER estado por su código, o None si no existe."""
+    return await db.fetch_one(_GET_ROOM_BY_CODE_ANY, (room_code,))
+
+
+async def update_status(room_code: str, new_status: str, expected_old: str) -> dict | None:
+    """Transición atómica de estado: cambia `status` solo si sigue siendo `expected_old`.
+
+    Devuelve la sala actualizada, o None si otro request ya la movió (conflicto de transición).
+    """
+    return await db.fetch_one(_UPDATE_STATUS, (new_status, room_code, expected_old))

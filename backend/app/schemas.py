@@ -658,3 +658,37 @@ class GameRoom(BaseModel):
     guest_id: UUID | None
     status: str
     created_at: datetime
+
+
+# Fase de Draft (Sprint 3): el host y el invitado eligen 1 categoría cada uno, de forma
+# alterna, desde `DRAFT_CATEGORIES` (services/live_game.py). El estado vivo de la partida
+# (elegidas, turno y banco de tiempo individual) NO se persiste: vive en memoria del proceso
+# (Regla 1 — la DB guarda emparejamiento y resultado final, no el estado en vivo).
+
+
+class StateInput(BaseModel):
+    status: str = Field(
+        description="Estado destino de la transición: drafting→minigames→rosco→finished"
+    )
+
+
+class DraftPick(BaseModel):
+    category: str = Field(min_length=1, max_length=40, description="Categoría de la lista DRAFT_CATEGORIES")
+
+
+class ScoreInput(BaseModel):
+    points: int = Field(
+        ge=1, le=100, description="Puntos ganados en el minijuego (Regla 3: 1 punto = 1 segundo)"
+    )
+
+
+class LiveGameState(BaseModel):
+    room_code: str
+    status: str
+    draft_turn: Literal["host", "guest"] | None = Field(
+        description="A quién le toca elegir categoría (None = draft completado)"
+    )
+    draft_picks: dict[str, str] = Field(description="Categoría elegida por rol: {role: categoria}")
+    time_banks: dict[str, float] = Field(
+        description="Banco de tiempo por rol en segundos (Regla 3: 100 base + segundos ganados)"
+    )

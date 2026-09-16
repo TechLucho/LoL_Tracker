@@ -10,6 +10,7 @@ import {
   SlidersHorizontal,
   TrendingUp,
   Calendar,
+  Users,
   X,
 } from 'lucide-react'
 import HealthBanner from './HealthBanner'
@@ -17,12 +18,18 @@ import PageError from './PageError'
 import PageLoader from './PageLoader'
 import { useSyncMatches } from '../hooks/useMatches'
 
+// Sección de análisis personal: el mapa de rendimiento en ranked del propio jugador.
 const navItems = [
   { to: '/', label: 'Centro de Mando', icon: LayoutDashboard },
   { to: '/weekly', label: 'Reporte Semanal', icon: Calendar },
   { to: '/heatmap', label: 'Horarios / Heatmap', icon: Clock },
   { to: '/matchups', label: 'Matchups', icon: Swords },
   { to: '/trends', label: 'KPIs / Progreso', icon: TrendingUp },
+]
+
+// Sección de minijuegos multijugador (El Rosco): separada visualmente del análisis.
+const gameItems = [
+  { to: '/rosco/lobby', label: 'El Rosco', icon: Users },
 ]
 
 const bottomItems = [
@@ -71,7 +78,11 @@ function SidebarContent({ onNavigate, onClose }: { onNavigate?: () => void; onCl
         )}
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 p-3">{navItems.map(renderLink)}</nav>
+      <nav className="flex flex-1 flex-col gap-1 p-3">
+        {navItems.map(renderLink)}
+        <hr className="my-2 border-t border-hairline" />
+        {gameItems.map(renderLink)}
+      </nav>
 
       <div className="mt-auto border-t border-hairline p-3">
         {bottomItems.map(renderLink)}
