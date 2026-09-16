@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -642,3 +643,18 @@ class EndpointMetric(BaseModel):
 class MetricsSnapshot(BaseModel):
     uptime_seconds: int
     endpoints: list[EndpointMetric]
+
+
+# ───────────────────────────── El Rosco ─────────────────────────────
+
+# Salas multijugador del Rosco (Sprint 1, v2.3). `status` sigue el ciclo de la partida:
+# lobby → drafting → minigames → rosco → finished (CHECK en la migración 015).
+
+
+class GameRoom(BaseModel):
+    id: UUID
+    room_code: str = Field(description="6 letras mayúsculas compartibles con el invitado")
+    host_id: UUID
+    guest_id: UUID | None
+    status: str
+    created_at: datetime
