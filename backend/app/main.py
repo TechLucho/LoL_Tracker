@@ -32,7 +32,6 @@ from backend.app.observability import (
 from backend.app.ratelimit import RateLimitMiddleware
 from backend.app.routers import (
     config,
-    constitution,
     health,
     matches,
     matchup_notes,
@@ -186,6 +185,5 @@ app.include_router(scout.router, dependencies=_protected)
 app.include_router(settings_router.router, dependencies=_protected)
 app.include_router(sync.router, dependencies=_protected)
 app.include_router(config.router, dependencies=_protected)
-app.include_router(constitution.router, dependencies=_protected)
 app.include_router(metadata.router, dependencies=_protected)
 app.include_router(metrics.router, dependencies=_protected)

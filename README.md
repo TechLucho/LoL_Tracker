@@ -11,7 +11,7 @@ Unlike traditional stat sites, this tool focuses on the **human factor**: managi
 ### 📊 Tab 1: Journal & Analysis
 - **LP Tracker:** Visualizes cumulative LP gains/losses (Net) over the last 20 games.
 - **Activity Heatmap:** Analyzes performance by "Day of Week vs. Hour" to identify biological patterns (e.g., "Do I play worse on Friday late nights?").
-- **The Constitution:** A "Stop-Loss" rule system that alerts the user to stop playing after consecutive losses to prevent tilt.
+- **Tilt Alert:** A "Stop-Loss" mechanism that warns the user after a losing streak (3+ consecutive Ranked losses) with a red Discord embed and an in-app toast to prevent feeding the tilt.
 
 ### 🔎 Tab 2: Smart Scout
 - **Nemesis Detector:** Automatically identifies enemy **Champions** (not players) against whom the user has the lowest historical Winrate.

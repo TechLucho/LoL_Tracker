@@ -1276,34 +1276,6 @@
         ]
       }
     },
-    "/api/constitution/status": {
-      "get": {
-        "tags": [
-          "constitution"
-        ],
-        "summary": "Constitution Status",
-        "operationId": "constitution_status_api_constitution_status_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response Constitution Status Api Constitution Status Get"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
     "/api/metadata/champions": {
       "get": {
         "tags": [

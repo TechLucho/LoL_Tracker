@@ -3,10 +3,8 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { ErrorBoundary } from 'react-error-boundary'
 import * as Sentry from '@sentry/react'
 import {
-  Crosshair,
   LayoutDashboard,
   Menu,
-  Shield,
   Clock,
   Swords,
   SlidersHorizontal,
@@ -22,9 +20,7 @@ import { useSyncMatches } from '../hooks/useMatches'
 const navItems = [
   { to: '/', label: 'Centro de Mando', icon: LayoutDashboard },
   { to: '/weekly', label: 'Reporte Semanal', icon: Calendar },
-  { to: '/constitution', label: 'La Constitución', icon: Shield },
   { to: '/heatmap', label: 'Horarios / Heatmap', icon: Clock },
-  { to: '/pool', label: 'Champion Pool', icon: Crosshair },
   { to: '/matchups', label: 'Matchups', icon: Swords },
   { to: '/trends', label: 'KPIs / Progreso', icon: TrendingUp },
 ]

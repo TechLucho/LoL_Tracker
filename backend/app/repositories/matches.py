@@ -136,9 +136,9 @@ async def update_details(user_id: str, game_id: str, changes: dict[str, Any]) ->
 
 
 async def last_results(user_id: str, limit: int = 3) -> list[dict[str, Any]]:
-    """Últimas partidas VÁLIDAS para La Constitución, más reciente primero.
+    """Últimas partidas VÁLIDAS (Ranked Solo/Duo ≥5 min), más reciente primero.
 
-    Dos filtros que el motor de disciplina exige:
+    Ventana que alimenta la Alerta de Tilt del sync (`losing_streak_warning`):
       * `game_duration_minutes >= 5`: un remake se registra pero no es una derrota real;
         contarla disparaba STOP obligatorios falsos. A diferencia de las queries agregadas,
         aquí NO se conservan las filas con duración NULL: la disciplina evalúa partidas
@@ -146,8 +146,8 @@ async def last_results(user_id: str, limit: int = 3) -> list[dict[str, Any]]:
       * `queue_id = 420`: sólo Ranked Solo/Duo cuenta para rachas y muertes; una normal o
         una flex relajan y no deben decidir si sigues jugando ranked.
 
-    Devuelve también champion/deaths/cs_min porque el motor completo de /api/constitution/status
-    comparte esta misma ventana.
+    Devuelve también champion/deaths/cs_min porque cualquier consumidor futuro de esta
+    ventana (rachas, fidelidad al pool, límite de muertes) comparte el mismo criterio.
     """
     return await db.fetch_all(
         """

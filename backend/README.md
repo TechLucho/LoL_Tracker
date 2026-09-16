@@ -63,7 +63,6 @@ del repo**, no desde `backend/` (los imports son `backend.app.*`).
 | `GET` | `/api/stats/weekly` | Resumen de la última semana (partidas, winrate, top campeón) |
 | `GET` | `/api/stats/meta-verdict` | Winrate por (tú vs enemigo) del parche actual contra el histórico: marca `meta_shift` (favorable ≥55% antes, <50% ahora, mín. 3 partidas del parche) |
 | `GET` | `/api/matches/{game_id}/scout-opponent` | 3 campeones más jugados del rival de línea (Champion Mastery de Riot), con caché 24h en `scout_cache` |
-| `GET` | `/api/constitution/status` | La Constitución: `STOP PLAYING` / `WARNING` / `SAFE TO PLAY` (motor en `services/constitution.py`) |
 | `GET` | `/api/scout/nemesis` | `?min_games=&limit=` |
 | `GET` | `/api/scout/matchups` | `?champion=&enemy=`, ambos `ILIKE` |
 

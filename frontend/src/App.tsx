@@ -14,8 +14,6 @@ import Login from './pages/Login'
 // ScoutPage retirado del nav (2026-08-24): el backend (/api/scout/*) sigue vivo y probado,
 // pero sin UI real era un ítem de navegación vacío. Vuelve cuando tenga tarjetas de verdad.
 const Dashboard = lazy(() => import('./pages/Dashboard'))
-const ChampionPoolPage = lazy(() => import('./pages/ChampionPoolPage'))
-const ConstitutionPage = lazy(() => import('./pages/Constitution'))
 const HeatmapPage = lazy(() => import('./pages/Heatmap'))
 const SettingsPage = lazy(() => import('./pages/Settings'))
 const MatchupsPage = lazy(() => import('./pages/Matchups'))
@@ -73,8 +71,6 @@ function App() {
             <Route element={<RequireLinked />}>
               <Route element={<Layout />}>
                 <Route index element={<Dashboard />} />
-                <Route path="pool" element={<ChampionPoolPage />} />
-                <Route path="constitution" element={<ConstitutionPage />} />
                 <Route path="heatmap" element={<HeatmapPage />} />
                 <Route path="matchups" element={<MatchupsPage />} />
                 <Route path="trends" element={<TrendsPage />} />

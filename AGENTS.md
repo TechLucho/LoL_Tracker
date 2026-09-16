@@ -24,8 +24,8 @@ backend/
     db.py            # psycopg3 AsyncConnectionPool (min 1 / max 5), sslmode=require
     deps.py          # get_current_user (JWT Supabase HS256), CurrentUserId, SettingsDep, RiotServiceDep
     schemas.py       # Pydantic models (Match, Participant, StatsSummary, ...)
-    routers/         # matches, stats, scout, sync, config, constitution, health, metadata
-    services/        # riot.py (sync + rating), datadragon.py, constitution.py
+    routers/         # matches, stats, scout, sync, config, health, metadata
+    services/        # riot.py (sync + rating), datadragon.py
     repositories/    # SQL lives here: matches, stats, scout, settings, lp
   migrations/        # versioned SQL applied manually (001…005)
   scripts/           # migrate_sqlite.py (legacy ETL), backup_supabase.py (pg_dump)

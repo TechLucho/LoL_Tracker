@@ -240,37 +240,6 @@ export async function updateMatchReview(gameId: string, review: MatchReviewUpdat
   return data
 }
 
-// ────────────────── ConstitutionStatus (shape diferente del backend) ──────────────────
-// El frontend transforma la respuesta del backend en una forma más rica con reglas
-// desglosadas y estadísticas. Este tipo NO viene del schema OpenAPI.
-
-export interface ConstitutionRule {
-  rule: string
-  status: 'PASS' | 'FAIL'
-  severity: 'pass' | 'fail' | 'warning'
-  message: string
-  detail: string
-}
-
-export interface ConstitutionStatus {
-  global_status: string
-  message: string
-  rules: ConstitutionRule[]
-  stats: {
-    games_analyzed: number
-    wins: number
-    losses: number
-    avg_deaths: number
-    avg_cs_min: number
-    consecutive_losses: number
-  }
-}
-
-export async function getConstitutionStatus(): Promise<ConstitutionStatus> {
-  const { data } = await api.get<ConstitutionStatus>('/constitution/status')
-  return data
-}
-
 // ────────────────── LpTrendPoint (computado en el router, no es schema Pydantic) ──────
 
 export interface LpTrendPoint {
