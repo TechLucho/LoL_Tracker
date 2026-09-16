@@ -28,7 +28,10 @@ export default function DraftingPhase({ room, role, live, onLive }: DraftingPhas
   const myPick = live?.draft_picks[role]
   const rivalPick = live?.draft_picks[role === 'host' ? 'guest' : 'host']
   const draftComplete = Boolean(live?.draft_picks.host && live?.draft_picks.guest)
-  const isMyTurn = live?.draft_turn === role
+  // El draft arranca por el host (LiveSession en el backend); si aún no ha llegado el estado
+  // vivo (live null), el turno por defecto es del host (Regla 1).
+  const draftTurn = live?.draft_turn ?? 'host'
+  const isMyTurn = draftTurn === role
 
   const pickMutation = useMutation({
     mutationFn: (category: string) => draftPick(room.room_code, category),
@@ -94,7 +97,7 @@ export default function DraftingPhase({ room, role, live, onLive }: DraftingPhas
       {!draftComplete && (
         <section className="rounded-xl border border-hairline bg-surface-1 p-6">
           <h4 className="mb-1 text-sm font-bold text-text-ink">
-            {isMyTurn ? '🎯 Te toca elegir' : `⏳ Esperando al ${live?.draft_turn === 'host' ? 'host' : 'invitado'}…`}
+            {isMyTurn ? '🎯 Es tu turno, elige categoría' : '⏳ Esperando a que el Rival elija…'}
           </h4>
           <p className="mb-4 text-xs text-text-mute">
             {isMyTurn

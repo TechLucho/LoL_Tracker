@@ -26,7 +26,7 @@ WHERE room_code = %s AND status = 'lobby'
 
 _CLAIM_GUEST = """
 UPDATE game_rooms
-SET guest_id = %s, status = 'drafting'
+SET guest_id = %s
 WHERE room_code = %s
   AND status = 'lobby'
   AND guest_id IS NULL
@@ -59,10 +59,12 @@ async def find_lobby_by_code(room_code: str) -> dict | None:
 
 
 async def claim_guest(room_code: str, guest_id: UUID) -> dict | None:
-    """Ocupa el asiento de invitado y mueve la sala a 'drafting'. None si ya no estaba libre.
+    """Ocupa el asiento de invitado SIN mover la sala de estado (sigue en 'lobby').
 
-    Guardas atómicas en el UPDATE: `status='lobby'`, `guest_id IS NULL`, `host_id <> guest`
-    (el invitado no puede ser el host). Devuelve la sala resultante.
+    El paso lobby → drafting lo dispara el host deliberadamente con POST /state, de modo que
+    el invitado no roza el draft antes de que el host esté listo (ver routers/games.py).
+    None si ya no estaba libre. Guardas atómicas en el UPDATE: `status='lobby'`,
+    `guest_id IS NULL`, `host_id <> guest` (el invitado no puede ser el host).
     """
     return await db.fetch_one(_CLAIM_GUEST, (guest_id, room_code, guest_id))
 

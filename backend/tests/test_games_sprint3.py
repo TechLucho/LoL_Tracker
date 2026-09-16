@@ -28,13 +28,13 @@ def client():
         yield c
 
 
-def make_room(status: str, code: str = "AAAAAA") -> dict:
+def make_room(status: str, code: str = "AAAAAA", guest_id: uuid.UUID | None = GUEST_UUID) -> dict:
     """Sala sintética tal y como la devolvería game_rooms (host = TEST_USER_UUID)."""
     return {
         "id": uuid.uuid4(),
         "room_code": code,
         "host_id": TEST_USER_UUID,
-        "guest_id": GUEST_UUID,
+        "guest_id": guest_id,
         "status": status,
         "created_at": None,  # LiveGameState no lo usa
     }
@@ -73,8 +73,8 @@ def rooms(monkeypatch):
     monkeypatch.setattr(repo, "get_room_by_code", get_room_by_code)
     monkeypatch.setattr(repo, "update_status", update_status)
 
-    def spawn(code: str, status: str = "drafting") -> dict:
-        room = make_room(status, code)
+    def spawn(code: str, status: str = "drafting", guest_id: uuid.UUID | None = GUEST_UUID) -> dict:
+        room = make_room(status, code, guest_id=guest_id)
         store[code] = room
         live_game.drop_session(code)  # estado vivo limpio por sala
         return room
@@ -165,6 +165,26 @@ def test_draft_para_no_miembros(client, rooms, _fake_db_and_bus):
 
 
 # ───────────────────────────── state ─────────────────────────────
+
+
+def test_state_no_avanza_sin_invitado_a_drafting(client, rooms, _fake_db_and_bus):
+    """lobby → drafting es decisión del host y exige un invitado en la sala (Regla 1)."""
+    rooms("NOGUEST", status="lobby", guest_id=None)
+    r = client.post("/api/games/rooms/NOGUEST/state", json={"status": "drafting"},
+                    headers=_headers())
+    assert r.status_code == 400
+    assert "invitado" in r.json()["detail"]
+
+
+def test_state_host_inicia_el_drafting_con_invitado(client, rooms, _fake_db_and_bus):
+    """El join ya no consume lobby → drafting; lo dispara el host deliberadamente."""
+    rooms("TODRAFT", status="lobby")
+    r = client.post("/api/games/rooms/TODRAFT/state", json={"status": "drafting"},
+                    headers=_headers())
+    assert r.status_code == 200
+    assert r.json()["status"] == "drafting"
+    assert r.json()["draft_turn"] == "host"
+    assert (_fake_db_and_bus["calls"][-1][0], _fake_db_and_bus["calls"][-1][1]) == ("TODRAFT", "state")
 
 
 def test_state_no_avanza_sin_draft_completo(client, rooms, _fake_db_and_bus):

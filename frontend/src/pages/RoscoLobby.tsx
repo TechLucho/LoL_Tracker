@@ -1,9 +1,15 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
-import { Copy, DoorClosed, Loader2, Plus } from 'lucide-react'
+import { Copy, DoorClosed, Loader2, Plus, Rocket } from 'lucide-react'
 import { toast } from 'sonner'
-import { createGameRoom, joinGameRoom, type GameLiveState, type GameRoom } from '../api/client'
+import {
+  advanceGameState,
+  createGameRoom,
+  joinGameRoom,
+  type GameLiveState,
+  type GameRoom,
+} from '../api/client'
 import { useAuth } from '../hooks/useAuth'
 import {
   GRACE_PERIOD_SECONDS,
@@ -80,6 +86,16 @@ export default function RoscoLobby() {
     }
     joinMutation.mutate(joinCode)
   }
+
+  // lobby → drafting es decisión DEL HOST (el join ya no avanza de fase): lo dispara este botón.
+  const advanceToDraftMutation = useMutation({
+    mutationFn: () => advanceGameState(room?.room_code ?? '', 'drafting'),
+    onSuccess: (state) => {
+      toast.success('🚀 ¡Empieza el Drafting!')
+      applyLive(state)
+    },
+    onError: (err) => toast.error(apiErrorDetail(err, 'No se pudo iniciar el Drafting.')),
+  })
 
   // ── canal Supabase Realtime de la sala ──────────────────────────────────────
 
@@ -303,8 +319,27 @@ export default function RoscoLobby() {
           </section>
 
           {playersReady && !paused && !forfeit && (
-            <section className="rounded-xl border border-emerald-500/30 bg-emerald-500/15 p-4">
+            <section className="space-y-4 rounded-xl border border-emerald-500/30 bg-emerald-500/15 p-4">
               <p className="text-sm font-bold text-emerald-400">✅ ¡Rival conectado! Sala lista.</p>
+              {myRole === 'host' ? (
+                <button
+                  type="button"
+                  onClick={() => advanceToDraftMutation.mutate()}
+                  disabled={advanceToDraftMutation.isPending}
+                  className="flex w-full items-center justify-center gap-2 rounded-full bg-accent-primary px-6 py-2.5 text-sm font-bold text-white shadow-[0_0_16px_rgba(168,85,247,0.4)] transition-all hover:bg-accent-primary/90 active:scale-95 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-text-mute disabled:shadow-none"
+                >
+                  {advanceToDraftMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Rocket className="h-4 w-4" />
+                  )}
+                  {advanceToDraftMutation.isPending ? 'Iniciando…' : 'Pasar a Fase de Drafting'}
+                </button>
+              ) : (
+                <p className="text-sm text-text-body">
+                  ⏳ El host iniciará el Drafting cuando ambos estéis conectados.
+                </p>
+              )}
             </section>
           )}
 

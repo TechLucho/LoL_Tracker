@@ -2,11 +2,12 @@
 
 Sprint 1:
   - POST /api/games/rooms                  → crea una sala en 'lobby' (host = tú) y la devuelve
-  - POST /api/games/rooms/{room_code}/join → el invitado ocupa el asiento libre (lobby → drafting)
+  - POST /api/games/rooms/{room_code}/join → el invitado ocupa el asiento libre y la sala SIGUE
+                                             en 'lobby'; el host decide cuándo pasar a 'drafting'
 
 Sprint 3 (draft + minijuegos + banco de tiempo, Regla 3):
   - POST /api/games/rooms/{room_code}/state → avanza la máquina de estados en la DB
-                                             (drafting → minigames → rosco → finished)
+                                             (lobby → drafting → minigames → rosco → finished)
   - POST /api/games/rooms/{room_code}/draft → host y guest eligen 1 categoría alternando turnos
   - POST /api/games/rooms/{room_code}/score → convierte puntos de minijuego en segundos y los
                                              suma al banco INDIVIDUAL en memoria (Servidor = árbitro)
@@ -36,9 +37,9 @@ _ROOM_CODE_LENGTH = 6
 _ROOM_CODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 _ROOM_CODE_TRIES = 5
 
-# Máquina de estados de la partida (Sprint 3): qué transiciones están permitidas. El join ya
-# consume lobby → drafting; aquí se avanza el resto. `drafting → minigames` exige además el
-# draft completo (las dos categorías elegidas), validado en el endpoint.
+# Máquina de estados de la partida (Sprint 3): qué transiciones están permitidas. `lobby →
+# drafting` solo la dispara el HOST (requiere invitado en la sala, validado en el endpoint);
+# `drafting → minigames` exige además el draft completo (las dos categorías elegidas).
 _STATE_TRANSITIONS: dict[str, set[str]] = {
     "lobby": {"drafting"},
     "drafting": {"minigames"},
@@ -91,8 +92,10 @@ async def create_room(user_id: CurrentUserId) -> GameRoom:
 
 @router.post("/rooms/{room_code}/join", response_model=GameRoom)
 async def join_room(room_code: str, user_id: CurrentUserId) -> GameRoom:
-    """El invitado reivindica el asiento libre; la sala pasa de 'lobby' a 'drafting'.
+    """El invitado reivindica el asiento libre; la sala permanece en 'lobby'.
 
+    Cuando el host esté listo, dispara el paso a 'drafting' con POST /state. De este modo el
+    invitado que se une no salta él solo al Draft antes de que el host lo inicie.
     Errores → HTTP 400 (sala inexistente/fuera de lobby, asiento ocupado, o el host intentando
     unirse a su propia sala).
     """
@@ -108,8 +111,7 @@ async def join_room(room_code: str, user_id: CurrentUserId) -> GameRoom:
     if claimed is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="La sala ya tiene invitado.")
-    # El host necesita ver la transición lobby → drafting sin refrescar: difunde el estado
-    # inicial de la fase (el flujo de Draft comienza por el host, Regla alterna de sprint 3).
+    # Difunde el estado de la sala por si el host tiene otra pestaña esperando en el lobby.
     session = live_game.ensure_session(code)
     await realtime_bus.broadcast(code, "state", _live_game_state(claimed, session).model_dump())
     return GameRoom(**claimed)
@@ -120,9 +122,10 @@ async def join_room(room_code: str, user_id: CurrentUserId) -> GameRoom:
 
 @router.post("/rooms/{room_code}/state", response_model=LiveGameState)
 async def advance_state(room_code: str, payload: StateInput, user_id: CurrentUserId) -> LiveGameState:
-    """Avanza la máquina de estados (drafting → minigames → rosco → finished).
+    """Avanza la máquina de estados (lobby → drafting → minigames → rosco → finished).
 
-    Solo puede llamarlo un miembro de la sala. `drafting → minigames` exige que el draft
+    Solo puede llamarlo un miembro de la sala. `lobby → drafting` requiere un invitado en la
+    sala (sin guest nadie puede jugar el Draft) y `drafting → minigames` exige que el draft
     esté completo (host y guest con su categoría). La transición se ejecuta con un UPDATE
     atómico sobre `game_rooms.status` (compare-and-swap) y se difunde por Realtime.
     """
@@ -143,6 +146,10 @@ async def advance_state(room_code: str, payload: StateInput, user_id: CurrentUse
             detail=f"Transición no permitida: {room['status']} → {target}. "
                    f"Permitidas: {sorted(allowed) or 'ninguna'}.",
         )
+
+    if target == "drafting" and room["guest_id"] is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="No se puede empezar el Drafting sin un invitado en la sala.")
 
     if target == "minigames" and not live_game.ensure_session(code).draft_complete:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
