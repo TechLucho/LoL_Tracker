@@ -301,6 +301,17 @@ def test_answer_acierto_mantiene_el_turno_y_difunde(client, games, _fake_bus):
     assert (_fake_bus["calls"][-1][0], _fake_bus["calls"][-1][1]) == ("ACIERT", "rosco")
 
 
+def test_answer_es_case_insensitive(client, games, _fake_bus):
+    """Regla 5: "campeona" debe dar por válido "CampeonA" (minúsculas en ambos lados)."""
+    games("MINUSC")
+    r = client.post("/api/games/rooms/MINUSC/rosco/answer",
+                    json={"letter": "A", "answer": "  campeona  "}, headers=_headers())
+    assert r.status_code == 200
+    body = r.json()
+    assert body["current_turn"] == "host"  # acierto = sigue el turno
+    assert body["players"]["host"]["letters"][0]["status"] == "success"
+
+
 def test_answer_que_acaba_la_partida_persiste_ganador_y_emite_game_over(
     client, games, _fake_bus,
 ):
@@ -351,6 +362,55 @@ def test_timeout_pasa_el_turno_y_el_fin_emite_game_over_con_empate(client, games
     assert body["winner"] is None
     assert body["draw"] is True  # sin aciertos y ambos a 0 → empate (Regla 4)
     assert games.finishes[-1] == ("TIMEOU", None)
+    assert _fake_bus["calls"][-1][1] == "game_over"
+
+
+def test_timeout_doble_resuelve_la_partida_sin_atascarse(client, games, _fake_bus):
+    """Regresión (deadlock): dos timeouts seguidos deben cerrar la partida, no dejarla colgada."""
+    games("DOBLOU")
+    first = client.post("/api/games/rooms/DOBLOU/rosco/timeout", headers=_headers())
+    assert first.status_code == 200
+    assert first.json()["status"] == "rosco"  # el rival aún tiene tiempo: rota el turno
+    assert first.json()["current_turn"] == "guest"
+
+    second = client.post("/api/games/rooms/DOBLOU/rosco/timeout", headers=_headers(GUEST_UUID))
+    assert second.status_code == 200
+    body = second.json()
+    assert body["status"] == "finished"
+    assert body["current_turn"] is None
+    assert body["draw"] is True  # 0 aciertos y ambos a 0s → empate (Regla 4)
+    assert games.finishes[-1] == ("DOBLOU", None)
+    assert _fake_bus["calls"][-1][1] == "game_over"
+
+
+def test_timeout_cierra_de_inmediato_si_el_rival_ya_estaba_fuera(client, games, _fake_bus):
+    """Si el rival ya agotó su tiempo, el primer timeout cierra la partida al instante."""
+    session = games("YAFUER")
+    session.rosco.players["guest"].time_remaining = 0.0  # rival ya fuera de combate
+
+    r = client.post("/api/games/rooms/YAFUER/rosco/timeout", headers=_headers())
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "finished"
+    assert body["current_turn"] is None
+    assert games.finishes[-1] == ("YAFUER", None)
+    assert _fake_bus["calls"][-1][1] == "game_over"
+
+
+def test_timeout_cierra_de_inmediato_si_el_rival_respondio_todas_sus_letras(
+    client, games, _fake_bus,
+):
+    """El rival también está fuera si ya respondió sus 26 letras, aunque conserve tiempo."""
+    session = games("TODASL")
+    for letter in _LETTERS:
+        session.rosco.players["guest"].letters[letter] = "success"
+
+    r = client.post("/api/games/rooms/TODASL/rosco/timeout", headers=_headers())
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "finished"
+    assert body["winner"] == "guest"  # 0 aciertos del host vs 26 del rival (Regla 4)
+    assert games.finishes[-1] == ("TODASL", GUEST_UUID)
     assert _fake_bus["calls"][-1][1] == "game_over"
 
 

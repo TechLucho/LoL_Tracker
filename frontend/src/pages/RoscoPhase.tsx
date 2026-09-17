@@ -14,6 +14,10 @@ import {
 } from '../api/client'
 import { useRoscoClock } from '../hooks/useRoscoClock'
 
+// 26 letras repartidas en 360º → una cada ~13.85º. La A arranca arriba (`-90`).
+const ROSCO_STEP_DEG = 360 / 26
+const LETTER_COUNT = 26
+
 function apiErrorDetail(err: unknown, fallback: string): string {
   if (isAxiosError(err)) {
     const detail = (err.response?.data as { detail?: string } | undefined)?.detail
@@ -22,17 +26,11 @@ function apiErrorDetail(err: unknown, fallback: string): string {
   return fallback
 }
 
-function fmtClock(totalSeconds: number): string {
-  const safe = Math.max(0, totalSeconds)
-  const m = Math.floor(safe / 60)
-  const s = Math.floor(safe % 60)
-  return `${m}:${String(s).padStart(2, '0')}`
-}
-
 function countStatus(letters: RoscoLetter[], target: RoscoLetterStatus): number {
   return letters.filter((l) => l.status === target).length
 }
 
+// Letras no activas: color por estado (pendiente gris, acierto verde, fallo rojo).
 const STATUS_CLASS: Record<RoscoLetterStatus, string> = {
   pending: 'border-hairline bg-surface-2 text-text-mute',
   success: 'border-emerald-500/40 bg-emerald-500/15 text-emerald-400',
@@ -147,26 +145,26 @@ export default function RoscoPhase({ room, role, rosco, onRosco }: RoscoPhasePro
 
   const scoreCard = (r: RoomRole, player: typeof me, seconds: number, active: boolean) => {
     const letters = player?.letters ?? []
+    const danger = seconds < 10 // rojo bajo 10s (incluye el 0 tras agotarse, Regla 3)
     return (
       <div
-        className={`rounded-xl border p-4 ${
+        className={`rounded-xl border p-4 text-center ${
           active ? 'border-accent-primary/40 bg-accent-primary/10' : 'border-hairline bg-surface-1'
         }`}
       >
-        <p className="mb-2 flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-widest text-text-mute">
+        <p className="mb-1 text-xs font-mono font-bold uppercase tracking-widest text-text-mute">
           {roleName(r)}
-          {active && <span className="text-accent-primary">● en turno</span>}
-        </p>
-        <p className="font-mono text-3xl font-black tracking-tight text-text-ink">
-          {countStatus(letters, 'success')}
-          <span className="ml-1 text-sm font-bold text-text-mute">/ {letters.length || 26}</span>
+          {active ? ' · en turno' : ''}
         </p>
         <p
-          className={`mt-1 font-mono text-sm font-bold ${
-            seconds <= 0 ? 'text-red-400' : active ? 'text-accent-primary' : 'text-text-body'
+          className={`font-mono text-5xl font-black tabular-nums tracking-tight sm:text-6xl ${
+            danger ? 'text-red-400' : active ? 'text-accent-primary' : 'text-text-ink'
           }`}
         >
-          ⏱ {seconds <= 0 ? 'Sin tiempo' : fmtClock(seconds)}
+          {Math.max(0, Math.ceil(seconds))}
+        </p>
+        <p className="mt-1 text-xs font-mono text-text-mute">
+          seg · {countStatus(letters, 'success')}/{letters.length || LETTER_COUNT} aciertos
         </p>
       </div>
     )
@@ -179,14 +177,9 @@ export default function RoscoPhase({ room, role, rosco, onRosco }: RoscoPhasePro
 
   return (
     <div className="space-y-6">
-      <section className="rounded-xl border border-hairline bg-surface-1 p-6">
-        <h3 className="mb-4 text-xs font-mono font-bold uppercase tracking-widest text-accent-primary/80">
-          Marcador — El Rosco
-        </h3>
-        <div className="grid grid-cols-2 gap-4">
-          {scoreCard(role, me, mySeconds, isMyTurn)}
-          {scoreCard(rival, rivalPlayer, rivalPlayer?.time_remaining ?? 0, currentTurn === rival)}
-        </div>
+      <section className="grid grid-cols-2 gap-4">
+        {scoreCard(role, me, mySeconds, isMyTurn)}
+        {scoreCard(rival, rivalPlayer, rivalPlayer?.time_remaining ?? 0, currentTurn === rival)}
       </section>
 
       {isFinished ? (
@@ -211,35 +204,53 @@ export default function RoscoPhase({ room, role, rosco, onRosco }: RoscoPhasePro
       ) : (
         <>
           <section className="rounded-xl border border-hairline bg-surface-1 p-6">
-            <h3 className="mb-4 text-xs font-mono font-bold uppercase tracking-widest text-accent-primary/80">
+            <h3 className="mb-4 text-center text-xs font-mono font-bold uppercase tracking-widest text-accent-primary/80">
               Rosco de {currentTurn ? roleName(currentTurn) : '—'}
             </h3>
-            <div className="flex flex-wrap justify-center gap-1.5">
-              {sortedLetters.map((l) => {
+
+            {/* Anillo real: 26 letras en órbita (ángulo = i · 360/26) con el texto siempre derecho. */}
+            <div className="overflow-x-auto">
+            <div className="relative mx-auto h-[26rem] w-[26rem] [--rosco-radius:11rem] sm:h-[32rem] sm:w-[32rem] sm:[--rosco-radius:14rem]">
+              {sortedLetters.map((l, i) => {
+                const angle = i * ROSCO_STEP_DEG - 90
                 const isActive = isMyTurn && activeLetter?.letter === l.letter
                 return (
-                  <span
+                  <div
                     key={l.letter}
-                    className={`flex h-8 w-8 items-center justify-center rounded-md border font-mono text-sm font-bold transition-colors ${
-                      STATUS_CLASS[l.status]
-                    } ${isActive ? 'ring-2 ring-accent-primary/70' : ''}`}
+                    className="absolute left-1/2 top-1/2"
+                    style={{
+                      transform: `translate(-50%, -50%) rotate(${angle}deg) translate(var(--rosco-radius)) rotate(${-angle}deg)`,
+                    }}
                   >
-                    {l.letter}
-                  </span>
+                    <span
+                      className={`flex h-9 w-9 items-center justify-center rounded-xl border font-mono text-sm font-bold transition-all duration-150 sm:h-11 sm:w-11 sm:text-base ${
+                        isActive
+                          ? 'z-10 scale-125 border-accent-primary bg-accent-primary/20 text-accent-primary ring-4 ring-accent-primary/70 shadow-[0_0_22px_rgba(168,85,247,0.85)]'
+                          : STATUS_CLASS[l.status]
+                      }`}
+                    >
+                      {l.letter}
+                    </span>
+                  </div>
                 )
               })}
+
+              {/* Pregunta en el centro absoluto del anillo. */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center px-16 text-center">
+                <span className="font-mono text-4xl font-black text-accent-primary sm:text-5xl">
+                  {activeLetter?.letter ?? '—'}
+                </span>
+                <p className="mt-2 text-sm font-semibold leading-snug text-text-ink sm:text-base">
+                  {activeLetter?.question ??
+                    (isMyTurn ? 'Sin preguntas pendientes.' : 'El rival no tiene preguntas pendientes.')}
+                </p>
+              </div>
+            </div>
             </div>
           </section>
 
           {isMyTurn ? (
             <section className="rounded-xl border border-accent-primary/30 bg-accent-primary/5 p-6">
-              <h3 className="mb-1 text-xs font-mono font-bold uppercase tracking-widest text-accent-primary/80">
-                Letra {activeLetter?.letter ?? '—'}
-              </h3>
-              <p className="mb-4 text-lg font-semibold text-text-ink">
-                {activeLetter?.question ?? 'Sin preguntas pendientes.'}
-              </p>
-
               <form onSubmit={submitAnswer} className="flex flex-col gap-3 sm:flex-row">
                 <input
                   ref={inputRef}
@@ -272,13 +283,7 @@ export default function RoscoPhase({ room, role, rosco, onRosco }: RoscoPhasePro
             </section>
           ) : (
             <section className="rounded-xl border border-hairline bg-surface-1 p-6">
-              <h3 className="mb-1 text-xs font-mono font-bold uppercase tracking-widest text-accent-primary/80">
-                Letra {activeLetter?.letter ?? '—'}
-              </h3>
-              <p className="mb-4 text-lg font-semibold text-text-ink">
-                {activeLetter?.question ?? 'El rival no tiene preguntas pendientes.'}
-              </p>
-              <p className="flex items-center gap-2 text-sm text-text-body">
+              <p className="flex items-center justify-center gap-2 text-sm text-text-body">
                 <Loader2 className="h-4 w-4 animate-spin text-accent-primary" />
                 ⏳ Turno del Rival… esperando su respuesta.
               </p>

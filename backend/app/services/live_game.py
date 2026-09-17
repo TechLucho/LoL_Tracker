@@ -197,6 +197,21 @@ def can_play(game: RoscoGame, role: Role) -> bool:
     return player.time_remaining > 0 and any(state == "pending" for state in player.letters.values())
 
 
+def out_of_combat(game: RoscoGame, role: Role) -> bool:
+    """Regla 2/3: `role` está fuera de combate si no le queda tiempo o no le quedan letras.
+
+    Es el complemento de `can_play`, pero con nombre propio para la comprobación de fin de
+    partida del timeout: un jugador puede quedar fuera por agotar el reloj (0s) o por haber
+    respondido ya sus 26 letras.
+    """
+    return not can_play(game, role)
+
+
+def both_out_of_combat(game: RoscoGame) -> bool:
+    """¿Ninguno de los dos jugadores puede seguir jugando? → toca cerrar la partida (Regla 4)."""
+    return out_of_combat(game, "host") and out_of_combat(game, "guest")
+
+
 def _other(role: Role) -> Role:
     return "guest" if role == "host" else "host"
 
@@ -211,9 +226,8 @@ def _transfer_turn(game: RoscoGame, first: Role) -> None:
     if can_play(game, first):
         game.current_turn = first
         return
-    second = _other(first)
-    if can_play(game, second):
-        game.current_turn = second
+    if can_play(game, _other(first)):
+        game.current_turn = _other(first)
         return
     _finish(game)
 
@@ -242,7 +256,10 @@ def answer(
     if not raw_answer.strip() or canonical == "pasapalabra":
         # Pasapalabra: la letra sigue pendiente y el turno cambia (Regla 2).
         _transfer_turn(game, _other(role))
-    elif canonical == game.questions[letter].answer:
+    elif canonical == game.questions[letter].answer.lower():
+        # `canonical` ya viene en minúsculas (normalize_answer); `.lower()` sobre la respuesta
+        # canónica de la BD blinda la comparación ante cualquier mayúscula persistida.
+        # "nasus" == "Nasus" (Regla 5).
         player.letters[letter] = "success"
         outcome.result = "success"
         if can_play(game, role):
@@ -269,7 +286,12 @@ def timeout(game: RoscoGame, role: Role) -> TimeoutOutcome:
     partida se da por acabada (Regla 4).
     """
     game.players[role].time_remaining = 0.0
-    _transfer_turn(game, _other(role))
+    # Fin inmediato si el rival ya estaba fuera (sin tiempo o sin letras): sin esta comprobación
+    # explícita la partida podría quedarse atascada esperando un segundo timeout que nunca llega.
+    if both_out_of_combat(game):
+        _finish(game)
+    else:
+        _transfer_turn(game, _other(role))
     return TimeoutOutcome(role=role, ended=game.ended, winner=game.winner, draw=game.draw)
 
 

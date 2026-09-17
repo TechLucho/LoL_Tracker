@@ -248,35 +248,26 @@ export default function RoscoLobby() {
   return (
     <div className="mx-auto max-w-xl space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-black uppercase tracking-wider text-accent-primary">
-          🎮 El Rosco
-        </h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-black uppercase tracking-wider text-accent-primary">
+            🎮 El Rosco
+          </h2>
+          {/* Código de sala discreto: badge junto al título en lugar de tarjeta gigante. */}
+          <button
+            type="button"
+            onClick={copyCode}
+            disabled={!canCopy}
+            aria-label="Copiar código de sala"
+            className="flex items-center gap-1.5 rounded-full border border-hairline bg-surface-2 px-2.5 py-1 font-mono text-xs font-bold tracking-[0.2em] text-text-body transition-colors hover:bg-canvas hover:text-text-ink disabled:cursor-default"
+          >
+            {room.room_code}
+            {canCopy && <Copy className="h-3 w-3" />}
+          </button>
+        </div>
         <span className="rounded-full bg-surface-2 px-3 py-1 text-xs font-mono font-bold uppercase tracking-widest text-text-body">
           {ROOM_STATUS_LABEL[room.status]}
         </span>
       </header>
-
-      {/* Código compartible */}
-      <section className="rounded-xl border border-hairline bg-surface-1 p-6">
-        <h3 className="mb-4 text-xs font-mono font-bold uppercase tracking-widest text-accent-primary/80">
-          Código de la Sala
-        </h3>
-        <div className="flex items-center justify-center gap-4 rounded-lg border border-hairline/50 bg-surface-2 p-5">
-          <span className="font-mono text-4xl font-black tracking-[0.3em] text-text-ink">
-            {room.room_code}
-          </span>
-          {canCopy && (
-            <button
-              type="button"
-              onClick={copyCode}
-              aria-label="Copiar código"
-              className="rounded-lg border border-hairline bg-transparent p-2 text-text-body transition-colors hover:bg-canvas hover:text-text-ink"
-            >
-              <Copy className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      </section>
 
       {/* Banners globales (Regla 6 + estado de la conexión) */}
       {connectionError && (
