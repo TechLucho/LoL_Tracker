@@ -54,13 +54,18 @@ export default function RoscoPhase({ room, role, rosco, onRosco }: RoscoPhasePro
   const isFinished = Boolean(rosco && currentTurn === null)
   const isMyTurn = !isFinished && currentTurn === role
 
-  // La "letra activa" es la primera pendiente del jugador EN TURNO: como los aciertos la marcan
-  // `success`, tras cada acierto la activa avanza sola a la siguiente letra.
+  // La "letra activa" la manda el BACKEND: es el puntero circular (`current_letter`) del jugador
+  // EN TURNO. Avanza tras cada respuesta (acierto/fallo/pasapalabra) saltando las ya resueltas y
+  // da la vuelta al abecedario hasta agotar las pendientes (Regla 2).
   const boardPlayer = currentTurn ? rosco?.players[currentTurn] ?? null : null
-  const activeLetter = boardPlayer?.letters.find((l) => l.status === 'pending') ?? null
+  const activeLetter = boardPlayer?.current_letter
+    ? boardPlayer.letters.find((l) => l.letter === boardPlayer.current_letter) ?? null
+    : null
 
   const [answer, setAnswer] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  // Garantiza un único POST de timeout por turno, aunque el reloj cruce 0 varias veces.
+  const expiredRef = useRef(false)
 
   // ── mutaciones ──────────────────────────────────────────────────────────────
 
@@ -77,7 +82,9 @@ export default function RoscoPhase({ room, role, rosco, onRosco }: RoscoPhasePro
     active: isMyTurn,
     initialRemaining: me?.time_remaining ?? 0,
     onExpire: () => {
-      if (!timeoutMutation.isPending) timeoutMutation.mutate()
+      if (expiredRef.current) return
+      expiredRef.current = true
+      timeoutMutation.mutate()
     },
   })
 
@@ -108,9 +115,11 @@ export default function RoscoPhase({ room, role, rosco, onRosco }: RoscoPhasePro
 
   // ── efectos ─────────────────────────────────────────────────────────────────
 
-  // Limpia el input al cambiar la letra activa o al recuperar/perder el turno.
+  // Limpia el input al cambiar la letra activa o al recuperar/perder el turno, y rearma el
+  // cerrojo del timeout: al recibir un turno nuevo puede volver a dispararse una vez.
   useEffect(() => {
     setAnswer('')
+    if (isMyTurn) expiredRef.current = false
   }, [activeLetter?.letter, isMyTurn])
 
   // El input se autoenfoca durante tu turno para que puedas jugar con el teclado sin ratón.
@@ -120,7 +129,10 @@ export default function RoscoPhase({ room, role, rosco, onRosco }: RoscoPhasePro
 
   // ── acciones ────────────────────────────────────────────────────────────────
 
-  const busy = answerMutation.isPending || timeoutMutation.isPending
+  // A los 0s el turno está muerto: bloquea input y botones de forma estricta mientras el
+  // backend confirma el timeout y pasa el turno al rival.
+  const timedOut = isMyTurn && clock <= 0
+  const busy = answerMutation.isPending || timeoutMutation.isPending || timedOut
 
   const submitAnswer = (e: FormEvent) => {
     e.preventDefault()
@@ -258,6 +270,7 @@ export default function RoscoPhase({ room, role, rosco, onRosco }: RoscoPhasePro
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}
                   onKeyDown={handleKeyDown}
+                  disabled={busy}
                   autoFocus
                   placeholder="Escribe tu respuesta… (Espacio = pasapalabra)"
                   aria-label="Respuesta del Rosco"

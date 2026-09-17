@@ -168,19 +168,56 @@ def test_fallo_pasa_el_turno_y_marca_letra_fallada():
     assert game.players["host"].letters["B"] == "failed"
 
 
-def test_pasapalabra_conserva_pending_y_se_reintenta_al_volver_el_turno():
+def test_pasapalabra_avanza_el_puntero_sin_quemar_la_letra():
     _, game = _new_game()
-    outcome = live_game.answer(game, "host", "C", "pasapalabra")
+    assert live_game.current_letter(game.players["host"]) == "A"
+
+    outcome = live_game.answer(game, "host", "A", "pasapalabra")
     assert outcome.result == "pending"
     assert outcome.turn_passed
-    assert game.players["host"].letters["C"] == "pending"  # no se quema la letra
+    assert game.players["host"].letters["A"] == "pending"  # no se quema la letra
+    assert live_game.current_letter(game.players["host"]) == "B"  # el puntero avanza
     assert game.current_turn == "guest"
 
-    live_game.answer(game, "guest", "C", "Equivocado")  # el guest falla → vuelve el host
+    # El rival falla → vuelve el host, que retoma en B (NO repite la A que pasó).
+    live_game.answer(game, "guest", "A", "Equivocado")
     assert game.current_turn == "host"
-    outcome = live_game.answer(game, "host", "C", "CampeonC")
+    assert live_game.current_letter(game.players["host"]) == "B"
+    outcome = live_game.answer(game, "host", "B", "CampeonB")
     assert outcome.result == "success"
-    assert game.players["host"].letters["C"] == "success"
+    assert live_game.current_letter(game.players["host"]) == "C"
+
+
+def test_puntero_circular_revisita_la_pendiente_tras_una_vuelta_completa():
+    _, game = _new_game()
+    live_game.answer(game, "host", "A", "pasapalabra")  # A queda pendiente, puntero → B
+    assert live_game.current_letter(game.players["host"]) == "B"
+
+    # Acierta B..Z manteniendo el turno: al resolver la Z el puntero vuelve a la A pendiente.
+    for letter in _LETTERS[1:]:
+        live_game.answer(game, "host", letter, _correct_answer(letter))
+    assert live_game.current_letter(game.players["host"]) == "A"
+    assert game.players["host"].completed is False
+    assert game.current_turn == "host"  # aún le queda una letra
+
+    outcome = live_game.answer(game, "host", "A", _correct_answer("A"))
+    assert outcome.result == "success"
+    assert game.players["host"].completed is True
+    assert live_game.current_letter(game.players["host"]) is None
+    assert game.current_turn == "guest"  # resolvió sus 26 letras
+
+
+def test_advance_to_next_pending_salta_resueltas_y_marca_completed():
+    player = live_game.RoscoPlayer(letters={ch: "success" for ch in _LETTERS})
+    player.letters["D"] = "pending"
+    player.current_letter_index = _LETTERS.index("B")
+    assert live_game.advance_to_next_pending(player) is True
+    assert player.current_letter_index == _LETTERS.index("D")
+    assert player.completed is False
+
+    player.letters["D"] = "success"
+    assert live_game.advance_to_next_pending(player) is False
+    assert player.completed is True
 
 
 def test_respuestas_se_normalizan_antes_de_comparar():
@@ -298,7 +335,21 @@ def test_answer_acierto_mantiene_el_turno_y_difunde(client, games, _fake_bus):
     assert body["current_turn"] == "host"  # acierto = sigue el turno (Regla 2)
     assert body["players"]["host"]["letters"][0]["letter"] == "A"
     assert body["players"]["host"]["letters"][0]["status"] == "success"
+    assert body["players"]["host"]["current_letter"] == "B"  # el puntero avanzó
+    assert body["players"]["host"]["completed"] is False
     assert (_fake_bus["calls"][-1][0], _fake_bus["calls"][-1][1]) == ("ACIERT", "rosco")
+
+
+def test_answer_pasapalabra_avanza_el_puntero_y_conserva_pending(client, games, _fake_bus):
+    """Regresión del playtest: pasapalabra mueve el puntero a la siguiente letra pendiente."""
+    games("PUNTER")
+    r = client.post("/api/games/rooms/PUNTER/rosco/answer",
+                    json={"letter": "A", "answer": "", "time_remaining": 50.0}, headers=_headers())
+    assert r.status_code == 200
+    body = r.json()
+    assert body["current_turn"] == "guest"
+    assert body["players"]["host"]["current_letter"] == "B"
+    assert body["players"]["host"]["letters"][0]["status"] == "pending"
 
 
 def test_answer_es_case_insensitive(client, games, _fake_bus):

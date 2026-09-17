@@ -120,6 +120,8 @@ def _rosco_state(room: dict, session: live_game.LiveSession) -> RoscoState:
         player = game.players[role]
         players[role] = RoscoPlayerState(
             time_remaining=player.time_remaining,
+            current_letter=live_game.current_letter(player),
+            completed=player.completed,
             letters=[
                 RoscoLetter(letter=letter,
                             question=game.questions[letter].text,

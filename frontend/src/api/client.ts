@@ -441,6 +441,8 @@ export interface RoscoLetter {
 
 export interface RoscoPlayerState {
   time_remaining: number
+  current_letter: string | null
+  completed: boolean
   letters: RoscoLetter[]
 }
 

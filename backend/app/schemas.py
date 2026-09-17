@@ -732,6 +732,14 @@ class RoscoLetter(BaseModel):
 
 class RoscoPlayerState(BaseModel):
     time_remaining: float
+    current_letter: str | None = Field(
+        default=None,
+        description="Letra activa del puntero circular (Regla 2). None = completó sus 26 letras.",
+    )
+    completed: bool = Field(
+        default=False,
+        description="True cuando el jugador ya resolvió (acierto/fallo) sus 26 letras.",
+    )
     letters: list[RoscoLetter]
 
 

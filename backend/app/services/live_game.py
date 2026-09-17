@@ -123,6 +123,11 @@ class RoscoQuestion:
 class RoscoPlayer:
     time_remaining: float = 0.0
     letters: dict[str, LetterStatus] = field(default_factory=dict)
+    # Regla 2 (puntero circular): posición actual en el abecedario A-Z (0=A … 25=Z). Avanza tras
+    # cada respuesta (acierto/fallo/pasapalabra) saltando las letras ya resueltas; al dar una
+    # vuelta completa sin pendientes, el jugador queda `completed`.
+    current_letter_index: int = 0
+    completed: bool = False
 
 
 @dataclass
@@ -191,25 +196,39 @@ def pending_letters(game: RoscoGame, role: Role) -> list[str]:
     return [letter for letter, state in game.players[role].letters.items() if state == "pending"]
 
 
+def current_letter(player: RoscoPlayer) -> str | None:
+    """Letra activa del puntero circular (None si el jugador ya completó sus 26 letras)."""
+    if player.completed:
+        return None
+    return ROSCO_LETTERS[player.current_letter_index % len(ROSCO_LETTERS)]
+
+
+def advance_to_next_pending(player: RoscoPlayer) -> bool:
+    """Regla 2 (puntero circular): mueve el puntero a la siguiente letra `pending`.
+
+    Incrementa `current_letter_index` (módulo 26) y salta las letras ya resueltas. Da una vuelta
+    entera como máximo: si las 26 letras dejan de estar pendientes, marca al jugador como
+    `completed` y devuelve `False`. Devuelve `True` si encontró una letra pendiente.
+    """
+    total = len(ROSCO_LETTERS)
+    checked = 0
+    while checked < total:
+        player.current_letter_index = (player.current_letter_index + 1) % total
+        checked += 1
+        if player.letters.get(ROSCO_LETTERS[player.current_letter_index]) == "pending":
+            return True
+    player.completed = True
+    return False
+
+
 def can_play(game: RoscoGame, role: Role) -> bool:
     """¿`role` puede seguir jugando? Solo si le queda tiempo Y alguna letra pendiente."""
     player = game.players[role]
-    return player.time_remaining > 0 and any(state == "pending" for state in player.letters.values())
-
-
-def out_of_combat(game: RoscoGame, role: Role) -> bool:
-    """Regla 2/3: `role` está fuera de combate si no le queda tiempo o no le quedan letras.
-
-    Es el complemento de `can_play`, pero con nombre propio para la comprobación de fin de
-    partida del timeout: un jugador puede quedar fuera por agotar el reloj (0s) o por haber
-    respondido ya sus 26 letras.
-    """
-    return not can_play(game, role)
-
-
-def both_out_of_combat(game: RoscoGame) -> bool:
-    """¿Ninguno de los dos jugadores puede seguir jugando? → toca cerrar la partida (Regla 4)."""
-    return out_of_combat(game, "host") and out_of_combat(game, "guest")
+    return (
+        player.time_remaining > 0
+        and not player.completed
+        and any(state == "pending" for state in player.letters.values())
+    )
 
 
 def _other(role: Role) -> Role:
@@ -255,20 +274,25 @@ def answer(
 
     if not raw_answer.strip() or canonical == "pasapalabra":
         # Pasapalabra: la letra sigue pendiente y el turno cambia (Regla 2).
-        _transfer_turn(game, _other(role))
+        pass
     elif canonical == game.questions[letter].answer.lower():
         # `canonical` ya viene en minúsculas (normalize_answer); `.lower()` sobre la respuesta
         # canónica de la BD blinda la comparación ante cualquier mayúscula persistida.
         # "nasus" == "Nasus" (Regla 5).
         player.letters[letter] = "success"
         outcome.result = "success"
-        if can_play(game, role):
-            game.current_turn = role  # acierto = mantiene el turno (Regla 2)
-        else:
-            _transfer_turn(game, _other(role))  # resolvió todas sus letras
     else:
         player.letters[letter] = "failed"
         outcome.result = "failed"
+
+    # Regla 2 (puntero circular): tras resolver (o pasar) la letra, el puntero avanza a la
+    # siguiente pendiente. En un pasapalabra la letra queda `pending` y se revisitará al
+    # completar la vuelta, en vez de repetirse de inmediato al recuperar el turno.
+    advance_to_next_pending(player)
+
+    if outcome.result == "success" and can_play(game, role):
+        game.current_turn = role  # acierto = mantiene el turno (Regla 2)
+    else:
         _transfer_turn(game, _other(role))
 
     outcome.turn_passed = game.current_turn is None or game.current_turn != role
@@ -286,12 +310,15 @@ def timeout(game: RoscoGame, role: Role) -> TimeoutOutcome:
     partida se da por acabada (Regla 4).
     """
     game.players[role].time_remaining = 0.0
-    # Fin inmediato si el rival ya estaba fuera (sin tiempo o sin letras): sin esta comprobación
-    # explícita la partida podría quedarse atascada esperando un segundo timeout que nunca llega.
-    if both_out_of_combat(game):
-        _finish(game)
+    # El jugador que agota el reloj queda fuera de combate: el turno pasa AL RIVAL
+    # incondicionalmente si aún puede jugar (tiempo > 0 y letras pendientes); si el rival ya
+    # estaba fuera, se cierra la partida por la Regla 4. Esta comprobación explícita evita el
+    # deadlock de esperar un segundo timeout que nunca llega.
+    rival = _other(role)
+    if can_play(game, rival):
+        game.current_turn = rival
     else:
-        _transfer_turn(game, _other(role))
+        _finish(game)
     return TimeoutOutcome(role=role, ended=game.ended, winner=game.winner, draw=game.draw)
 
 
