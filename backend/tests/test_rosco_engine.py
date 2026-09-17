@@ -243,6 +243,24 @@ def test_regla_4_desempata_por_aciertos():
     assert outcome.winner == "host"  # 2 aciertos > 1
 
 
+def test_out_of_combat_no_deja_turnos_a_un_muerto():
+    """Hard-fix del deadlock: fuera de combate = a 0s O sin letras pendientes.
+
+    `timeout` usa esta verdad para cerrar la partida de inmediato cuando el rival ya no puede
+    jugar: nunca entrega el turno a un jugador que no puede mover la partida (estado zombi).
+    """
+    _, game = _new_game()
+    assert not live_game.out_of_combat(game, "host")  # 100s y 26 letras: vive
+    game.players["host"].time_remaining = 0.0
+    assert live_game.out_of_combat(game, "host")  # a 0s: fuera
+
+    # Rival con tiempo pero con las 26 letras respondidas: también está fuera.
+    _, game = _new_game()
+    for letter in _LETTERS:
+        game.players["host"].letters[letter] = "success"
+    assert live_game.out_of_combat(game, "host")  # 26 letras: fuera aunque conserve tiempo
+
+
 def test_regla_4_desempata_por_tiempo_restante():
     _, game = _new_game()
     # Ambos resuelven las 26 letras: el host lo hace conservando más tiempo → gana por el 2º

@@ -231,6 +231,15 @@ def can_play(game: RoscoGame, role: Role) -> bool:
     )
 
 
+def out_of_combat(game: RoscoGame, role: Role) -> bool:
+    """¿`role` está fuera de combate? Sin tiempo o sin letras pendientes (26 respondidas).
+
+    Es la negación exacta de `can_play`: un rival fuera NO puede recibir el turno; si lo
+    recibe, el estado quedaría zombi (nadie jugando y nadie capaz de mover la partida).
+    """
+    return not can_play(game, role)
+
+
 def _other(role: Role) -> Role:
     return "guest" if role == "host" else "host"
 
@@ -306,19 +315,20 @@ def timeout(game: RoscoGame, role: Role) -> TimeoutOutcome:
     """Un jugador agotó su tiempo: se congela a 0, termina su participación y pasa el turno.
 
     Solo puede agotarse el reloj del jugador EN TURNO (los relojes se congelan al pasar el
-    turno, Regla 2); el router valida ese pre-requisito. Si el rival tampoco puede jugar, la
-    partida se da por acabada (Regla 4).
+    turno, Regla 2); el router valida ese pre-requisito. Hard-fix del estado zombi: jamás se
+    deja el turno en un jugador muerto.
+      * Si el rival también está `out_of_combat` (a 0s o con sus 26 letras respondidas), la
+        partida acaba ahora mismo vía `_finish` (Regla 4), sin esperar un segundo timeout.
+      * Si el rival sigue vivo, `_transfer_turn` le entrega el turno SOLO si `can_play`; su
+        rama de cierre garantiza que si nadie puede jugar la partida termina (current_turn
+        nunca queda apuntando a un muerto).
     """
     game.players[role].time_remaining = 0.0
-    # El jugador que agota el reloj queda fuera de combate: el turno pasa AL RIVAL
-    # incondicionalmente si aún puede jugar (tiempo > 0 y letras pendientes); si el rival ya
-    # estaba fuera, se cierra la partida por la Regla 4. Esta comprobación explícita evita el
-    # deadlock de esperar un segundo timeout que nunca llega.
     rival = _other(role)
-    if can_play(game, rival):
-        game.current_turn = rival
-    else:
+    if out_of_combat(game, rival):
         _finish(game)
+    else:
+        _transfer_turn(game, rival)
     return TimeoutOutcome(role=role, ended=game.ended, winner=game.winner, draw=game.draw)
 
 

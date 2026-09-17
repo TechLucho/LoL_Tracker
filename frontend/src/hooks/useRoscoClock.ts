@@ -24,6 +24,11 @@ interface UseRoscoClockOptions {
  * `initialRemaining` solo se aplica en la transición `active` false → true (cuando recuperas el
  * turno): así un acierto, que mantiene el turno y hace llegar un nuevo estado del servidor, NO
  * reinicia el contador — sigue corriendo desde el deadline original.
+ *
+ * Hard-fix del estado zombi: el disparo de `onExpire` está blindado por un `useRef` que garantiza
+ * UN solo timeout por activación del reloj. El ref sobrevive a re-renders y a re-ejecuciones del
+ * efecto (a diferencia de una variable local del closure), así que aunque el intervalo se limpie y
+ * se monte de nuevo el endpoint se dispara exactamente una vez por turno.
  */
 export function useRoscoClock({
   active,
@@ -35,25 +40,31 @@ export function useRoscoClock({
   initialRef.current = initialRemaining
   const onExpireRef = useRef(onExpire)
   onExpireRef.current = onExpire
+  // Rastrea si el timeout ya se emitió en esta activación (false = aún puede dispararse).
+  const expiredRef = useRef(false)
 
   useEffect(() => {
     if (!active) return
 
+    // Nueva activación del reloj (turno nuevo): se puede volver a expirar una vez.
+    expiredRef.current = false
     const start = Math.max(0, initialRef.current)
     setRemaining(start)
     if (start <= 0) {
-      // Ya entró sin tiempo (banco agotado): no hay nada que contar.
-      onExpireRef.current?.()
+      // Ya entró sin tiempo (banco agotado): el timeout de este turno se dispara ya mismo.
+      if (!expiredRef.current) {
+        expiredRef.current = true
+        onExpireRef.current?.()
+      }
       return
     }
 
     const deadline = Date.now() + start * 1000
-    let expired = false
     const timer = setInterval(() => {
       const left = Math.max(0, (deadline - Date.now()) / 1000)
       setRemaining(left)
-      if (left <= 0 && !expired) {
-        expired = true
+      if (left <= 0 && !expiredRef.current) {
+        expiredRef.current = true
         clearInterval(timer)
         onExpireRef.current?.()
       }
