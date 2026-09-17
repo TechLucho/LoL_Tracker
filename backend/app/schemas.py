@@ -658,6 +658,7 @@ class GameRoom(BaseModel):
     guest_id: UUID | None
     status: str
     created_at: datetime
+    winner_id: UUID | None = Field(default=None, description="Ganador persistido (Sprint 4); NULL = empate")
 
 
 # Fase de Draft (Sprint 3): el host y el invitado eligen 1 categoría cada uno, de forma
@@ -692,3 +693,59 @@ class LiveGameState(BaseModel):
     time_banks: dict[str, float] = Field(
         description="Banco de tiempo por rol en segundos (Regla 3: 100 base + segundos ganados)"
     )
+
+
+# ───────────────────────────── El Rosco (Sprint 4) ─────────────────────────────
+
+# El Rosco juega sobre las 26 letras A-Z cargadas de `rosco_questions` (una pregunta por
+# letra). Cada jugador tiene SU propio estado de letras (success/failed/pending) y su reloj
+# individual que solo corre en SU turno (Regla 2: al fallar/pasar, el reloj se congela y pasa
+# el turno). El estado vivo NO se persiste (Regla 1): viaja por los broadcasts Realtime.
+
+
+class RoscoAnswerInput(BaseModel):
+    """Respuesta del jugador en turno a la pregunta de una letra.
+
+    `answer` vacío o 'pasapalabra' = pasar (la letra sigue `pending`). `time_remaining` es
+    opcional: el reloj lo lleva el frontend (el backend no corre timers) y se guarda aquí
+    para el desempate de la Regla 4 (más tiempo restante gana cuando hay empate de aciertos).
+    """
+
+    letter: str = Field(min_length=1, max_length=1, description="Letra del rosco (A-Z)")
+    answer: str = Field(
+        default="",
+        max_length=300,
+        description="Respuesta; vacío o 'pasapalabra' = pasar la letra",
+    )
+    time_remaining: float | None = Field(
+        default=None,
+        ge=0,
+        description="Segundos que le quedaban al reloj (Regla 4: desempate por tiempo)",
+    )
+
+
+class RoscoLetter(BaseModel):
+    letter: str
+    question: str = Field(description="Texto de la pregunta de esa letra")
+    status: Literal["pending", "success", "failed"]
+
+
+class RoscoPlayerState(BaseModel):
+    time_remaining: float
+    letters: list[RoscoLetter]
+
+
+class RoscoState(BaseModel):
+    """Estado completo del Rosco que difunden los broadcasts `rosco` / `game_over`.
+
+    `status` repite el estado de la sala ('rosco' durante la partida, 'finished' al terminar).
+    `winner` y `draw` solo se rellenan al terminar (Regla 4); `current_turn` vale None
+    cuando nadie puede jugar (partida acabada).
+    """
+
+    room_code: str
+    status: str
+    current_turn: Literal["host", "guest"] | None
+    players: dict[str, RoscoPlayerState]
+    winner: Literal["host", "guest"] | None = Field(default=None, description="Ganador (None = empate)")
+    draw: bool = Field(default=False, description="True si la Regla 4 no pudo desempatar")

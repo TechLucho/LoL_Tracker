@@ -47,6 +47,20 @@ WHERE room_code = %s
 RETURNING *
 """
 
+_GET_ROSCO_QUESTIONS = """
+SELECT letter, question_text, answer, category
+FROM rosco_questions
+ORDER BY letter
+"""
+
+_FINISH_GAME = """
+UPDATE game_rooms
+SET status = 'finished', winner_id = %s
+WHERE room_code = %s
+  AND status = 'rosco'
+RETURNING *
+"""
+
 
 async def create_room(room_code: str, host_id: UUID) -> dict | None:
     """Crea una sala en 'lobby' con `host_id` como anfitrión y la devuelve (RETURNING *)."""
@@ -80,3 +94,17 @@ async def update_status(room_code: str, new_status: str, expected_old: str) -> d
     Devuelve la sala actualizada, o None si otro request ya la movió (conflicto de transición).
     """
     return await db.fetch_one(_UPDATE_STATUS, (new_status, room_code, expected_old))
+
+
+async def get_rosco_questions() -> list[dict]:
+    """Devuelve las 26 preguntas del banco (A-Z) para arrancar el Rosco en memoria."""
+    return await db.fetch_all(_GET_ROSCO_QUESTIONS)
+
+
+async def finish_game(room_code: str, winner_id: UUID | None) -> dict | None:
+    """Cierra la partida (Sprint 4): `status` → 'finished' y persiste `winner_id` (Regla 4).
+
+    Guarda atómica: solo transiciona si la sala sigue en 'rosco'; `winner_id` None = empate.
+    Devuelve la sala actualizada, o None si otro broadcast ya la terminó (carrera).
+    """
+    return await db.fetch_one(_FINISH_GAME, (winner_id, room_code))
