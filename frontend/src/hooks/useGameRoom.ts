@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import type { GameLiveState, GameRoom } from '../api/client'
+import type { GameLiveState, GameRoom, RoscoState } from '../api/client'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 // Regla 6 (CHECKLIST 2026-09-13): grace period estricto de 60 segundos.
@@ -39,6 +39,12 @@ export interface GameBroadcast {
   payload: GameLiveState
 }
 
+/** Broadcast del Rosco (Sprint 4): `game_over` llega cuando la Regla 4 cierra la partida. */
+export interface RoscoBroadcast {
+  event: 'rosco' | 'game_over'
+  payload: RoscoState
+}
+
 export interface UseGameRoomState {
   status: RoomLinkStatus
   connectionError: boolean
@@ -56,6 +62,8 @@ export interface UseGameRoomState {
   forfeit: ForfeitResult | null
   /** Último evento de estado vivo emitido por el backend (nulo si aún no llegó ninguno). */
   lastBroadcast: GameBroadcast | null
+  /** Último estado del Rosco difundido (nulo mientras la sala no llegue a la fase `rosco`). */
+  lastRosco: RoscoState | null
 }
 
 // ─── Opciones ─────────────────────────────────────────────────────────────────
@@ -67,6 +75,8 @@ interface UseGameRoomOptions {
   onForfeit?: (result: ForfeitResult) => void
   /** Se dispara con cada broadcast de estado vivo emitido por el backend (árbitro). */
   onBroadcast?: (broadcast: GameBroadcast) => void
+  /** Se dispara con cada broadcast del Rosco (Sprint 4): `rosco` o `game_over`. */
+  onRosco?: (broadcast: RoscoBroadcast) => void
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -77,6 +87,7 @@ export function useGameRoom({
   role,
   onForfeit,
   onBroadcast,
+  onRosco,
 }: UseGameRoomOptions): UseGameRoomState {
   const [subscribed, setSubscribed] = useState(false)
   const [connectionError, setConnectionError] = useState(false)
@@ -89,6 +100,7 @@ export function useGameRoom({
   const [graceRemaining, setGraceRemaining] = useState<number | null>(null)
   const [forfeit, setForfeit] = useState<ForfeitResult | null>(null)
   const [lastBroadcast, setLastBroadcast] = useState<GameBroadcast | null>(null)
+  const [lastRosco, setLastRosco] = useState<RoscoState | null>(null)
 
   // refs — actualizados por las funciones internas sin causar re-subscription
   const roleRef = useRef(role)
@@ -97,6 +109,8 @@ export function useGameRoom({
   onForfeitRef.current = onForfeit
   const onBroadcastRef = useRef(onBroadcast)
   onBroadcastRef.current = onBroadcast
+  const onRoscoRef = useRef(onRosco)
+  onRoscoRef.current = onRosco
   const forfeitedRef = useRef(false)
   const sessionStartedRef = useRef(false)
   const graceEndsAtRef = useRef<number | null>(null)
@@ -114,6 +128,7 @@ export function useGameRoom({
     setGraceRemaining(null)
     setForfeit(null)
     setLastBroadcast(null)
+    setLastRosco(null)
     forfeitedRef.current = false
     sessionStartedRef.current = false
     graceEndsAtRef.current = null
@@ -227,6 +242,18 @@ export function useGameRoom({
         if (!disposed) setLastBroadcast(broadcast)
         onBroadcastRef.current?.(broadcast)
       })
+      // Rosco (Sprint 4): el backend difunde el estado completo del motor tras cada respuesta y
+      // `game_over` cuando la Regla 4 cierra la partida (con `winner`/`draw` ya resueltos).
+      .on('broadcast', { event: 'rosco' }, (message: { payload: RoscoState }) => {
+        const broadcast: RoscoBroadcast = { event: 'rosco', payload: message.payload }
+        if (!disposed) setLastRosco(message.payload)
+        onRoscoRef.current?.(broadcast)
+      })
+      .on('broadcast', { event: 'game_over' }, (message: { payload: RoscoState }) => {
+        const broadcast: RoscoBroadcast = { event: 'game_over', payload: message.payload }
+        if (!disposed) setLastRosco(message.payload)
+        onRoscoRef.current?.(broadcast)
+      })
       .subscribe((status) => {
         if (disposed) return
         if (status === 'SUBSCRIBED') {
@@ -270,5 +297,6 @@ export function useGameRoom({
     graceRemaining,
     forfeit,
     lastBroadcast,
+    lastRosco,
   }
 }

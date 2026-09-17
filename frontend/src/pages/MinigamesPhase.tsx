@@ -84,7 +84,8 @@ export default function MinigamesPhase({ room, role, live, onLive }: MinigamesPh
           {bankCard(`Rival (${rival === 'host' ? 'host' : 'invitado'})`, rivalBank, false)}
         </div>
         <p className="mt-3 text-center text-xs text-text-mute">
-          El queue de 100s + lo acumulado alimentará la ronda final del Rosco (Sprint 4).
+          El banco de 100s + lo acumulado alimenta tu reloj continuo de la ronda final del Rosco
+          (Regla 3).
         </p>
       </section>
 
@@ -127,7 +128,7 @@ export default function MinigamesPhase({ room, role, live, onLive }: MinigamesPh
               {advanceMutation.isPending ? 'Avanzando…' : 'Terminar Minijuegos → El Rosco'}
             </button>
             <p className="mt-3 text-center text-xs text-text-mute">
-              El Rosco (la ronda alfabética final) llega en el Sprint 4.
+              Al pulsarlo empieza El Rosco: la ronda alfabética que decide al campeón.
             </p>
           </>
         ) : (

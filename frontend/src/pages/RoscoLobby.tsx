@@ -9,6 +9,7 @@ import {
   joinGameRoom,
   type GameLiveState,
   type GameRoom,
+  type RoscoState,
 } from '../api/client'
 import { useAuth } from '../hooks/useAuth'
 import {
@@ -19,6 +20,7 @@ import {
 } from '../hooks/useGameRoom'
 import DraftingPhase from './DraftingPhase'
 import MinigamesPhase from './MinigamesPhase'
+import RoscoPhase from './RoscoPhase'
 
 function apiErrorDetail(err: unknown, fallback: string): string {
   if (isAxiosError(err)) {
@@ -48,13 +50,25 @@ export default function RoscoLobby() {
   const [room, setRoom] = useState<GameRoom | null>(null)
   const [joinCode, setJoinCode] = useState('')
   const [live, setLive] = useState<GameLiveState | null>(null)
+  const [roscoLive, setRoscoLive] = useState<RoscoState | null>(null)
 
-  const leaveRoom = () => setRoom(null)
+  const leaveRoom = () => {
+    setRoom(null)
+    setLive(null)
+    setRoscoLive(null)
+  }
 
   // El backend es el árbitro (Regla 1): su estado vivo (status, draft, bancos) llega tanto en
   // las respuestas REST como en los broadcasts Realtime; ambos caminos lo aplican igual.
   const applyLive = (state: GameLiveState) => {
     setLive(state)
+    setRoom((r) => (r && r.status !== state.status ? { ...r, status: state.status } : r))
+  }
+
+  // Sprint 4: el estado completo del Rosco llega en los broadcasts `rosco`/`game_over` y en las
+  // respuestas REST de answer/timeout. `status` sincroniza también la fase de la sala.
+  const applyRosco = (state: RoscoState) => {
+    setRoscoLive(state)
     setRoom((r) => (r && r.status !== state.status ? { ...r, status: state.status } : r))
   }
 
@@ -64,6 +78,8 @@ export default function RoscoLobby() {
     mutationFn: createGameRoom,
     onSuccess: (created) => {
       setRoom(created)
+      setLive(null)
+      setRoscoLive(null)
       toast.success(`✅ Sala ${created.room_code} creada. Comparte el código con tu rival.`)
     },
     onError: (err) => toast.error(apiErrorDetail(err, 'No se pudo crear la sala.')),
@@ -73,6 +89,8 @@ export default function RoscoLobby() {
     mutationFn: (code: string) => joinGameRoom(code),
     onSuccess: (joined) => {
       setRoom(joined)
+      setLive(null)
+      setRoscoLive(null)
       toast.success(`✅ Te uniste a la sala ${joined.room_code}.`)
     },
     onError: (err) => toast.error(apiErrorDetail(err, 'No se pudo unir a la sala.')),
@@ -120,6 +138,7 @@ export default function RoscoLobby() {
       }
     },
     onBroadcast: (broadcast) => applyLive(broadcast.payload),
+    onRosco: (broadcast) => applyRosco(broadcast.payload),
   })
 
   // ── pantalla de inicio (crear / unirse) ─────────────────────────────────────
@@ -363,17 +382,8 @@ export default function RoscoLobby() {
         <MinigamesPhase room={room} role={myRole} live={live} onLive={applyLive} />
       )}
 
-      {(room.status === 'rosco' || room.status === 'finished') && (
-        <section className="rounded-xl border border-hairline bg-surface-1 p-6 text-center">
-          <h3 className="mb-2 text-sm font-bold text-text-ink">
-            {room.status === 'rosco' ? '🧩 El Rosco (Sprint 4)' : '🏁 Partida terminada'}
-          </h3>
-          <p className="text-xs text-text-mute">
-            {room.status === 'rosco'
-              ? 'La ronda alfabética que decide al campeón llega en el Sprint 4.'
-              : 'Gracias por jugar. El resultado final se registrará cuando exista la máquina de estados del Rosco.'}
-          </p>
-        </section>
+      {(room.status === 'rosco' || room.status === 'finished') && myRole && (
+        <RoscoPhase room={room} role={myRole} rosco={roscoLive} onRosco={applyRosco} />
       )}
 
       <div className="flex justify-end">

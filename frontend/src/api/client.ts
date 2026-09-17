@@ -360,6 +360,7 @@ export interface GameRoom {
   guest_id: string | null
   status: GameRoomStatus
   created_at: string
+  winner_id: string | null
 }
 
 export async function createGameRoom(): Promise<GameRoom> {
@@ -421,6 +422,54 @@ export async function submitScore(roomCode: string, points: number): Promise<Gam
   const { data } = await api.post<GameLiveState>(
     `/games/rooms/${encodeURIComponent(roomCode)}/score`,
     { points } satisfies ScoreInput,
+  )
+  return data
+}
+
+// ──────────────────── El Rosco (Sprint 4 backend: motor y turnos) ────────────────────
+// Contrato del estado completo del Rosco que devuelven answer/timeout y difunden los
+// broadcasts `rosco` / `game_over`. `current_turn` None = nadie puede jugar (partida acabada);
+// `winner` None con `draw` False solo mientras la partida sigue en curso.
+
+export type RoscoLetterStatus = 'pending' | 'success' | 'failed'
+
+export interface RoscoLetter {
+  letter: string
+  question: string
+  status: RoscoLetterStatus
+}
+
+export interface RoscoPlayerState {
+  time_remaining: number
+  letters: RoscoLetter[]
+}
+
+export interface RoscoState {
+  room_code: string
+  status: GameRoomStatus
+  current_turn: RoomRole | null
+  players: Record<RoomRole, RoscoPlayerState>
+  winner: RoomRole | null
+  draw: boolean
+}
+
+export interface RoscoAnswerInput {
+  letter: string
+  answer: string
+  time_remaining?: number
+}
+
+export async function roscoAnswer(roomCode: string, payload: RoscoAnswerInput): Promise<RoscoState> {
+  const { data } = await api.post<RoscoState>(
+    `/games/rooms/${encodeURIComponent(roomCode)}/rosco/answer`,
+    payload,
+  )
+  return data
+}
+
+export async function roscoTimeout(roomCode: string): Promise<RoscoState> {
+  const { data } = await api.post<RoscoState>(
+    `/games/rooms/${encodeURIComponent(roomCode)}/rosco/timeout`,
   )
   return data
 }
