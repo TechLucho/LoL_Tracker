@@ -119,6 +119,10 @@ export function useGameRoom({
   const forfeitedRef = useRef(false)
   const sessionStartedRef = useRef(false)
   const graceEndsAtRef = useRef<number | null>(null)
+  // Estatus actual de la sala (ref para leerlo dentro de presence/grace SIN re-suscribir). La
+  // partida ya acabada ('finished') NO pausa: un jugador que se va tras el fin no abandona nada.
+  const roomStatusRef = useRef(room?.status)
+  roomStatusRef.current = room?.status
 
   useEffect(() => {
     const code = room?.room_code
@@ -174,6 +178,8 @@ export function useGameRoom({
 
     function startGrace(missing: RoomRole): void {
       if (!sessionStartedRef.current || forfeitedRef.current) return
+      // Partida ya terminada: la desconexión tras el fin no pausa la sala (nada que esperar).
+      if (roomStatusRef.current === 'finished') return
       if (graceEndsAtRef.current !== null) return // ya en curso
       graceEndsAtRef.current = Date.now() + GRACE_PERIOD_SECONDS * 1000
       setGraceRemaining(GRACE_PERIOD_SECONDS)
@@ -184,6 +190,8 @@ export function useGameRoom({
       graceTimer = setInterval(() => {
         const endsAt = graceEndsAtRef.current
         if (endsAt === null) { clearGraceTimer(); return }
+        // La sala cerró durante el grace (se acabó la partida): desmontar la pausa sin castigo.
+        if (roomStatusRef.current === 'finished') { clearGraceTimer(); return }
         const remaining = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000))
         setGraceRemaining(remaining)
         if (remaining > 0) return
@@ -217,6 +225,9 @@ export function useGameRoom({
         clearGraceTimer()
         return
       }
+
+      // Partida cerrada: una presencia ausente ya no pausa ni arranca la cuenta atrás.
+      if (roomStatusRef.current === 'finished') return
 
       // Alguien falta → iniciar grace period si la sesión ya había comenzado.
       const missing: RoomRole | null = profiles.host ? 'guest' : profiles.guest ? 'host' : null

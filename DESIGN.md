@@ -12,6 +12,7 @@
 6. [Semántica de Color](#6-semántica-de-color-el-neón-de-datos)
 7. [Do's & Don'ts](#7-dos--donts)
 8. [Cambios Clave](#8-cambios-clave)
+9. [El Rosco — Minijuegos y Economía](#9-el-rosco--minijuegos-y-economía)
 
 ---
 
@@ -151,3 +152,43 @@ El fondo oscuro hace que estos colores brillen intensamente. Solo aplicables a n
 1. **La "Ceja" (Eyebrow):** Tomado directamente de Vercel, los títulos de las tarjetas dejarán de ser un gris diminuto. Ahora serán de fuente monoespaciada, en mayúsculas, con letras muy separadas (`tracking-widest`) y con un sutil color púrpura. Es el toque más premium que se le puede dar a un panel de control.
 2. **Textos Legibles:** Se ha erradicado el `text-[10px]`. El texto base pasará a ser `text-sm` (14px) o `text-base` (16px), haciendo la app mucho más cómoda de leer sin perder el aspecto denso de datos.
 3. **El Botón "Pill":** Tomado de Vercel y Raycast, el botón primario de acciones importantes (como Iniciar Sesión o Conectar Riot ID) tendrá `rounded-full` y un brillo neón (`shadow-[0_0_16px_rgba(...)]`), mientras que los botones internos de la tabla se mantendrán cuadrados (`rounded-lg`) para no saturar la vista.
+
+## 9. El Rosco — Minijuegos y Economía
+
+Reglas de producto y patrón de UI para la Fase Previa de El Rosco. La fuente de verdad del juego
+(reglas numeradas) está en `CHECKLIST.md`; aquí solo se recoge la **expresión visual** de esas
+reglas para mantener una interfaz coherente entre los minijuegos.
+
+### Economía (soporte visual)
+
+- **Ambos jugadores empiezan con 100 segundos base** de banco individual, mostrado en mono
+  (`data-huge`) y neutro (`text-text-ink`).
+- **Los puntos ganados en los minijuegos se suman como segundos extra** (1 punto = 1 segundo):
+  los incrementos se animan en `emerald-400` (semántica "Victoria/Bueno" de la sección 6) y los
+  descuentos de presión en `amber-400`/`red-400`.
+- Los **26 aciertos del Rosco** son **independientes y diferentes por jugador** (pool masivo sin
+  repeticiones): la UI nunca muestra la letra del rival como si fuera la tuya.
+
+### Fase Previa (Draft) — patrón "Carta Misteriosa"
+
+1. **3 cartas misteriosas** en rejilla (`grid-cols-3`): la categoría se oculta tras un `?` grande
+   (`text-4xl font-black`); la carta usa `rounded-xl` + `border-hairline` + `bg-surface-2`.
+2. Al **elegir** (tu turno), la carta se revela con la categoría + rol (`Host`/`Invitado`) en
+   `text-accent-primary` (`bg-accent-primary/10` + glow sutil), como marca de "estado activo".
+3. La carta **descartada** (la 3ª) se tacha (`line-through`) y se atenúa (`opacity-50`) al
+   completar el draft.
+4. Al completarse el draft: animación corta ("Montando los minijuegos…", `animate-spin` del
+   loader) y, tras ella, el **host avanza solo** a `minigames`; el botón de retry del host es el
+   Pill canónico de la sección 4.
+
+### Catálogo (Sprint 5 y 6) — resumen de puntuación
+
+- **La Fecha Justa** (Sprint 5): *timer de presión* — barra de progreso en `accent-primary`
+  decreciente (20 s) disparada por el primer envío; +3 cercano, +10 exacta.
+- **Letras Desordenadas** / **El Herrero** (Sprint 5): carreras con barra de posición y hit
+  "tu turno" resaltado en `accent-primary`; +3 el primero en acertar.
+- **TOPS** (Sprint 6): puntos decrecientes **10 → 1** en mono, con el acierto rápido en
+  `emerald-400`.
+- **Siluetas** (Sprint 6): imagen en negro que se aclara **20% cada 3 s**; el acierto temprano
+  vale más (más oscura = más puntos).
+- **Sonidos** (Sprint 6): *pendiente infraestructura de audio*; puntos **5 / 3 / 2 / 1**.

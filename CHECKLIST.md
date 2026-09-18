@@ -375,6 +375,33 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
    preguntas, una por letra** del abecedario) para poder testear El Rosco en el **Sprint 4**;
    la integración masiva con Riot queda para el **Sprint 5**.
 
+#### Economía del Rosco (cerrada antes del Sprint 5)
+
+- **Ambos jugadores empiezan con 100 segundos base** de banco individual (regla 3).
+- **Los puntos ganados en los minijuegos se suman como segundos extra** al banco de tiempo
+  (1 punto = 1 segundo, regla 3).
+- **Las preguntas del Rosco (26 letras) son INDEPENDIENTES y diferentes para cada jugador**:
+  el seed genera un **pool masivo** para evitar repeticiones entre rivales (regla 8).
+
+#### Catálogo de Minijuegos (Fase Previa · Sprint 5 y 6)
+
+Estructura de la **Fase Previa (Draft)**: 3 cartas misteriosas → cada jugador revela **1** (sin
+repetir la del rival) → las **2 elegidas** se disputan como minijuegos y la 3ª se descarta →
+el host avanza a la fase `minigames`.
+
+- **El Herrero** (Sprint 5) — Carrera realtime de builds: encadena los objetos correctos desde
+  los ítems base hasta el objeto mítico/legendario.
+- **Letras Desordenadas** (Sprint 5) — Carrera realtime: el primero que envíe la respuesta
+  correcta se lleva **3 puntos**.
+- **La Fecha Justa** (Sprint 5) — Apuesta ciega: al primer envío se activa un timer de presión
+  de **20 segundos** para el rival; el que más se acerque suma **3 puntos** y la fecha exacta **10**.
+- **TOPS** (Sprint 6) — Turnos enfrentados con rebote: cuanto más rápido respondas, más puntos
+  (**10 → 1**).
+- **Siluetas** (Sprint 6) — Splash art en negro que se aclara **20% cada 3 s**; más puntos
+  cuanto más oscura esté la imagen cuando aciertas.
+- **Sonidos** (Sprint 6) — *PENDIENTE: infraestructura de audio en Supabase*. Reconocer los
+  audios con puntuación **5 / 3 / 2 / 1**.
+
 #### Restricciones Técnicas
 
 - Sin matchmaking público por ahora: solo **salas privadas por código** de 6 letras.
@@ -385,8 +412,9 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 - [x] **Sprint 1: Infraestructura y Lobby (REST).** Migración SQL para `game_rooms` (id, room_code, host, guest, status) y `rosco_questions`. Endpoints en FastAPI para crear sala y unirse por código de 6 letras. Normalizador de texto (regla 5) + **semilla mínima de 26 preguntas** (regla 8).
 - [x] **Sprint 2: Conexión Realtime (Frontend).** UI del Lobby. Conexión de React al canal `room:{code}` de Supabase. Sincronización de presencia (Host avisa cuando entra el Guest) y **pausa por desconexión con grace period de 60s → forfeit** (regla 6).
 - [x] **Sprint 3: Sistema de Draft y Minijuegos.** Máquina de estados en la DB (`lobby` -> `drafting` -> `minigames`). Sistema de selección de 2 categorías alternando turnos. Motor de conversión de puntos a segundos que alimenta el banco de tiempo (regla 3).
-- [ ] **Sprint 4: El Rosco (Core Game).** Estado alfabético (A-Z, Pasapalabra, Acierto, Fallo) mediante broadcasts de Supabase con **validación estricta en backend y estado vivo en memoria** (`dict[room_code, GameState]`, regla 1). Turnos "a la contra" con múltiples vueltas (regla 2), banco individual de 100s y contador continuo (regla 3), tiebreaker de victoria/empate (regla 4) y normalización extrema (regla 5). Probado contra la semilla de 26 letras.
-- [ ] **Sprint 5: Seed de Contenido (DataDragon).** Script Python que extrae campeones, habilidades, lore y fechas desde la API estática de Riot con locale `es_ES` (regla 7) e inyecta cientos de preguntas base en PostgreSQL.
+- [x] **Sprint 4: El Rosco (Core Game).** Estado alfabético (A-Z, Pasapalabra, Acierto, Fallo) mediante broadcasts de Supabase con **validación estricta en backend y estado vivo en memoria** (`dict[room_code, GameState]`, regla 1). Turnos "a la contra" con múltiples vueltas (regla 2), banco individual de 100s y contador continuo (regla 3), tiebreaker de victoria/empate (regla 4) y normalización extrema (regla 5). Probado contra la semilla de 26 letras. Rejoin de miembros en cualquier fase + sin pausa cuando la partida ya terminó (regla 6) + Fase Previa del Draft con cartas misteriosas.
+- [ ] **Sprint 5: Seed de Contenido (DataDragon).** Script Python que extrae campeones, habilidades, lore y fechas desde la API estática de Riot con locale `es_ES` (regla 7) e inyecta cientos de preguntas base en PostgreSQL. El seed genera el **pool masivo e independiente por jugador** (26 preguntas diferentes para cada rival en la misma partida, ver Economía). Minijuegos sin infraestructura nueva: **El Herrero**, **Letras Desordenadas** y **La Fecha Justa** (ver Catálogo).
+- [ ] **Sprint 6: Minijuegos con assets e infraestructura.** **TOPS**, **Siluetas** y **Sonidos** (ver Catálogo); Sonidos exige montar la infraestructura de audio en Supabase Storage. Recorrido de los minijuegos elegidos en el draft con la puntuación de la regla de cada uno.
 
 ### Ideas Congeladas (Prioridad Nula)
 

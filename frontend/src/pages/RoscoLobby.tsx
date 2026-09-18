@@ -301,9 +301,6 @@ export default function RoscoLobby() {
                 ? '🏳️ El host desapareció: la sala se cierra y el invitado queda expulsado.'
                 : '🚪 El invitado abandonó la sala: el host gana por incomparecencia.'}
           </p>
-          <p className="mb-4 text-xs text-text-mute">
-            El resultado se registrará por el árbitro del backend (Sprint 4).
-          </p>
           <button
             type="button"
             onClick={leaveRoom}

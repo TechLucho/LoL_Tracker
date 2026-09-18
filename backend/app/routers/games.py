@@ -2,8 +2,9 @@
 
 Sprint 1:
   - POST /api/games/rooms                  → crea una sala en 'lobby' (host = tú) y la devuelve
-  - POST /api/games/rooms/{room_code}/join → el invitado ocupa el asiento libre y la sala SIGUE
-                                             en 'lobby'; el host decide cuándo pasar a 'drafting'
+  - POST /api/games/rooms/{room_code}/join → el invitado ocupa el asiento libre en 'lobby', o un
+                                             miembro (host/invitado) reconecta en CUALQUIER fase
+                                             (rejoin, Regla 1)
 
 Sprint 3 (draft + minijuegos + banco de tiempo, Regla 3):
   - POST /api/games/rooms/{room_code}/state → avanza la máquina de estados en la DB
@@ -159,21 +160,41 @@ async def create_room(user_id: CurrentUserId) -> GameRoom:
 
 @router.post("/rooms/{room_code}/join", response_model=GameRoom)
 async def join_room(room_code: str, user_id: CurrentUserId) -> GameRoom:
-    """El invitado reivindica el asiento libre; la sala permanece en 'lobby'.
+    """Devuelve la sala al que la pide: rejoin de miembros + entrada de invitados en 'lobby'.
 
-    Cuando el host esté listo, dispara el paso a 'drafting' con POST /state. De este modo el
-    invitado que se une no salta él solo al Draft antes de que el host lo inicie.
-    Errores → HTTP 400 (sala inexistente/fuera de lobby, asiento ocupado, o el host intentando
-    unirse a su propia sala).
+    Rejoin (Regla 1): un MIEMBRO (host o invitado) reconecta en cualquier fase de la partida
+    — pérdida de transporte, reinicio del frontend, salida y vuelta — y recibe la sala con 200
+    para volver a suscribirse al canal Realtime; se re-difunden el estado de sala y, si la
+    partida ya cerró, `game_over`.
+
+    Entrada nueva: solo en 'lobby' un usuario nuevo puede ocupar el asiento libre de invitado
+    (claim_guest con guardas atómicas); la sala no avanza de fase por este POST — cuando el host
+    esté listo dispara el paso a 'drafting' con POST /state.
+
+    Errores → HTTP 400 (sala inexistente, partida ya empezada para un no-miembro, asiento ocupado).
     """
     code = room_code.strip().upper()
-    room = await repo.find_lobby_by_code(code)
+
+    # Un MIEMBRO (host o invitado) puede RECONECTARSE en cualquier fase (Regla 1: perdidas de
+    # transporte, reinicios del frontend o errores de red). Recibe la sala con 200 para volver a
+    # suscribirse al canal Realtime; el estado vivo se lo traspasa el árbitro por broadcast y, si
+    # hace falta, por el snapshot (rosco) que suele pedir el frontend al reconectar.
+    room = await repo.get_room_by_code(code)
     if room is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="La sala no existe o ya no está en 'lobby'.")
-    if room["host_id"] == user_id:
+                            detail="La sala no existe.")
+    if _role_of(room, user_id) is not None:
+        # Re-difundir el estado de la sala: un miembro que reconecta puede haberse perdido el
+        # último broadcast (Regla 1). Si la partida ya cerró, _rosco_already_ended re-emite
+        # game_over (solo si el motor en memoria fue quien la cerró) para curar al cliente.
+        session = live_game.ensure_session(code)
+        await realtime_bus.broadcast(code, "state", _live_game_state(room, session).model_dump())
+        if room["status"] == "finished":
+            await _rosco_already_ended(room, session, code)
+        return GameRoom(**room)
+    if room["status"] != "lobby":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="No puedes unirte a tu propia sala.")
+                            detail="La partida ya ha empezado en esta sala.")
     claimed = await repo.claim_guest(code, user_id)
     if claimed is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,

@@ -8,6 +8,7 @@ para que ningún test toque Postgres/Supabase; el estado en vivo sí es el real
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -36,7 +37,7 @@ def make_room(status: str, code: str = "AAAAAA", guest_id: uuid.UUID | None = GU
         "host_id": TEST_USER_UUID,
         "guest_id": guest_id,
         "status": status,
-        "created_at": None,  # LiveGameState no lo usa
+        "created_at": datetime.now(timezone.utc),  # GameRoom lo exige en la respuesta de join
     }
 
 
@@ -70,8 +71,26 @@ def rooms(monkeypatch):
         store[code] = room
         return room
 
+    async def find_lobby_by_code(code: str) -> dict | None:
+        room = store.get(code)
+        return dict(room) if room is not None and room["status"] == "lobby" else None
+
+    async def claim_guest(code: str, guest_id: uuid.UUID) -> dict | None:
+        """Misma semántica atómica que repositories/games.py: solo en 'lobby', asiento libre, no-host."""
+        room = store.get(code)
+        if room is None or room["status"] != "lobby" or room["guest_id"] is not None:
+            return None
+        if room["host_id"] == guest_id:
+            return None
+        room = dict(room)
+        room["guest_id"] = guest_id
+        store[code] = room
+        return room
+
     monkeypatch.setattr(repo, "get_room_by_code", get_room_by_code)
     monkeypatch.setattr(repo, "update_status", update_status)
+    monkeypatch.setattr(repo, "find_lobby_by_code", find_lobby_by_code)
+    monkeypatch.setattr(repo, "claim_guest", claim_guest)
 
     def spawn(code: str, status: str = "drafting", guest_id: uuid.UUID | None = GUEST_UUID) -> dict:
         room = make_room(status, code, guest_id=guest_id)
@@ -266,3 +285,56 @@ def test_score_no_miembro(client, rooms, _fake_db_and_bus):
     r = client.post("/api/games/rooms/ALIENN/score", json={"points": 3},
                     headers=_headers(OUTSIDER_UUID))
     assert r.status_code == 400
+
+
+# ───────────────────────────── join / rejoin (Regla 1) ─────────────────────────────
+
+
+def test_join_asigna_el_asiento_de_invitado_en_lobby(client, rooms, _fake_db_and_bus):
+    """Un usuario nuevo ocupa el asiento libre en 'lobby' y se difunde el estado de sala."""
+    rooms("JOINUP", status="lobby", guest_id=None)
+    r = client.post("/api/games/rooms/JOINUP/join", headers=_headers(GUEST_UUID))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["guest_id"] == str(GUEST_UUID)
+    assert body["status"] == "lobby"
+    assert (_fake_db_and_bus["calls"][-1][0], _fake_db_and_bus["calls"][-1][1]) == ("JOINUP", "state")
+
+
+def test_join_no_deja_entrar_a_un_nuevo_invitado_fuera_de_lobby(client, rooms, _fake_db_and_bus):
+    """Un no-miembro no puede colarse en una partida ya empezada: solo hay rejoin para miembros."""
+    rooms("PLYNG1", status="minigames")
+    r = client.post("/api/games/rooms/PLYNG1/join", headers=_headers(OUTSIDER_UUID))
+    assert r.status_code == 400
+    assert "empezado" in r.json()["detail"]
+
+
+def test_join_no_deja_entrar_a_un_nuevo_invitado_con_asiento_ocupado(client, rooms, _fake_db_and_bus):
+    """En 'lobby' el asiento de invitado es único: un segundo invitado es rechazado."""
+    rooms("OCCUPD", status="lobby", guest_id=GUEST_UUID)
+    r = client.post("/api/games/rooms/OCCUPD/join", headers=_headers(OUTSIDER_UUID))
+    assert r.status_code == 400
+    assert "invitado" in r.json()["detail"]
+
+
+def test_rejoin_del_host_devuelve_la_sala_en_cualquier_fase(client, rooms, _fake_db_and_bus):
+    """El host reconecta a mitad de partida y recibe la sala con 200 para re-suscribirse."""
+    rooms("RECONH", status="rosco")
+    r = client.post("/api/games/rooms/RECONH/join", headers=_headers())
+    assert r.status_code == 200
+    assert r.json()["status"] == "rosco"
+    assert (_fake_db_and_bus["calls"][-1][0], _fake_db_and_bus["calls"][-1][1]) == ("RECONH", "state")
+
+
+def test_rejoin_del_guest_devuelve_la_sala_acabada(client, rooms, _fake_db_and_bus):
+    """El invitado reconecta cuando la partida ya terminó: recibe la sala 'finished' (200)."""
+    rooms("FINLAP", status="finished")
+    r = client.post("/api/games/rooms/FINLAP/join", headers=_headers(GUEST_UUID))
+    assert r.status_code == 200
+    assert r.json()["status"] == "finished"
+
+
+def test_join_de_sala_inexistente_da_400(client, rooms, _fake_db_and_bus):
+    r = client.post("/api/games/rooms/NOPE01/join", headers=_headers(GUEST_UUID))
+    assert r.status_code == 400
+    assert "no existe" in r.json()["detail"]
