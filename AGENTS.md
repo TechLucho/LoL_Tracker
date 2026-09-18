@@ -51,6 +51,7 @@ interpreter:
 $PY = "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe"
 
 # Backend (from repo root) — API on http://localhost:8000, docs at /docs
+# NOTA: --reload-exclude evita que el watcher reinicie el proceso por escrituras .db/.sqlite
 & $PY -m pip install -r backend/requirements.txt
 & $PY -m uvicorn backend.app.main:app --reload --reload-exclude "*.db" --reload-exclude "*.sqlite"
 

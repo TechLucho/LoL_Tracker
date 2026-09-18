@@ -17,8 +17,10 @@ Built on **FastAPI** (backend) + **React 19 SPA** (frontend), backed by **Supaba
 ## Quick start
 
 ```bash
-# Backend (Python 3.13, uvicorn) — `--reload-exclude` evita que tocar DBs (*.db/*.sqlite) reinicie el dev server
-python -m uvicorn backend.app.main:app --reload --reload-exclude "*.db" --reload-exclude "*.sqlite"   # http://localhost:8000
+# Backend (Python 3.13, uvicorn)
+# --reload-exclude: keep the watcher from reloading the process when local data
+# files (.db / .sqlite, e.g. the legacy SQLite archive) change on disk.
+python -m uvicorn backend.app.main:app --reload --reload-exclude "*.db" --reload-exclude "*.sqlite" --port 8000  # http://localhost:8000
 
 # Frontend (Node >= 20, Vite)
 cd frontend && npm install && npm run dev          # http://localhost:5173

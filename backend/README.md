@@ -9,6 +9,7 @@ de Riot al frontend, sin que ninguna credencial llegue al navegador.
 $PY = "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe"   # el `python` del PATH es el stub de Store
 
 & $PY -m pip install -r backend/requirements.txt
+# --reload-exclude: el watcher no debe reiniciar el proceso por escrituras de ficheros .db/.sqlite
 & $PY -m uvicorn backend.app.main:app --reload --reload-exclude "*.db" --reload-exclude "*.sqlite"
 ```
 

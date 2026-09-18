@@ -19,10 +19,6 @@ import { useRoscoClock } from '../hooks/useRoscoClock'
 const ROSCO_STEP_DEG = 360 / 26
 const LETTER_COUNT = 26
 
-// Espera antes de enfocar el input: en un cambio de turno el input se remonta y el focus a 10ms
-// competía con el paint del anillo → había que clicar a mano. 150ms + rAF aterriza tras el paint.
-const AUTOFOCUS_DELAY_MS = 150
-
 // ── resiliencia anti-limbo ────────────────────────────────────────────────────
 // Los POST answer/timeout se reintentan SOLO cuando el fallo es de transporte (sin respuesta
 // HTTP: red caída, uvicorn reiniciado con --reload, etc.). Un 4xx con `detail` es una decisión
@@ -196,22 +192,37 @@ export default function RoscoPhase({ room, role, rosco, onRosco }: RoscoPhasePro
     setAnswer('')
   }, [activeLetter?.letter, isMyTurn])
 
-  // El input se autoenfoca durante tu turno para que puedas jugar con el teclado sin ratón. En un
-  // cambio de turno (fallo/pasapalabra) el input se REMONTA: cuando `isMyTurn` vuelve a `true`,
-  // React hace commit del re-render y el DOM ya tiene el nodo, pero el montaje compite con el
-  // paint del anillo + marcadores y un focus síncrono (o a 10ms) aterrizaba demasiado pronto → el
-  // jugador tenía que hacer clic manualmente. `setTimeout` de 150ms + `requestAnimationFrame`
-  // garantiza que el DOM esté listo y pintado cuando el focus llega. El cleanup aborta el focus
-  // espurio si el turno muere antes de que se dispare (también cubre StrictMode).
+  // El input se autoenfoca durante tu turno para que puedas jugar con el teclado sin ratón.
+  // Histórico de la heurística: un `focus()` síncrono en el efecto corre ANTES de que el
+  // navegador pinte el nodo (StrictMode y re-mounts) y no hace nada; con un `setTimeout` de 10ms
+  // fallaba al RECUPERAR el turno tras un cambio (fallo o pasapalabra), porque React tarda más en
+  // re-montar el `<form>`. La solución reintenta el foco en cada frame de animación (rAF = el DOM
+  // ya está pintado) hasta confirmar que el input es el foco activo, con un último intento de
+  // seguridad a 150ms. El cleanup cancela todo si el turno muere antes de que se dispare.
   useEffect(() => {
     if (!isMyTurn) return
+    let cancelled = false
+    let attempts = 0
+    const MAX_ATTEMPTS = 12
+
     let rafId = 0
-    const timer = window.setTimeout(() => {
-      rafId = window.requestAnimationFrame(() => inputRef.current?.focus())
-    }, AUTOFOCUS_DELAY_MS)
+    const focusRetry = () => {
+      if (cancelled || attempts >= MAX_ATTEMPTS) return
+      attempts += 1
+      const el = inputRef.current
+      if (el) {
+        el.focus()
+        if (document.activeElement === el) return
+      }
+      rafId = requestAnimationFrame(focusRetry)
+    }
+
+    rafId = requestAnimationFrame(focusRetry)
+    const safetyTimer = window.setTimeout(focusRetry, 150)
     return () => {
-      window.cancelAnimationFrame(rafId)
-      window.clearTimeout(timer)
+      cancelled = true
+      cancelAnimationFrame(rafId)
+      clearTimeout(safetyTimer)
     }
   }, [isMyTurn, activeLetter?.letter])
 
