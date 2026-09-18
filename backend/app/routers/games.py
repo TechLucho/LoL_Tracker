@@ -323,11 +323,50 @@ async def submit_score(room_code: str, payload: ScoreInput, user_id: CurrentUser
 # ───────────────────────────── Sprint 4: el Rosco ─────────────────────────────
 
 
-def _winner_id_for(room: dict, outcome: live_game.RoscoOutcome | live_game.TimeoutOutcome) -> object:
-    """UUID del ganador persistible según la Regla 4 (None si hay empate)."""
-    if outcome.winner is None:
+def _winner_id_for(room: dict, outcome: object) -> object:
+    """UUID del ganador persistible según la Regla 4 (None si hay empate).
+
+    `outcome` puede ser un `RoscoOutcome`/`TimeoutOutcome` (fin de partida normal) o el propio
+    `RoscoGame` (cuando una acción tardía descubre que la partida YA estaba cerrada y hay que
+    re-persistir el ganador): todos exponen `winner` (`RoomRole | None`).
+    """
+    winner = getattr(outcome, "winner", None)
+    if winner is None:
         return None
-    return room[f"{outcome.winner}_id"]
+    return room[f"{winner}_id"]
+
+
+async def _rosco_already_ended(room: dict, session: live_game.LiveSession,
+                               code: str) -> RoscoState | None:
+    """Si la partida ya acabó en el motor, devuelve su estado final y re-difunde `game_over`.
+
+    Un frontend puede quedarse desincronizado al perder el broadcast de cierre (Regla 1: el
+    estado vive en memoria del proceso). En vez de congelarlo con un 400 "El Rosco ya
+    terminó", cualquier answer/timeout (o snapshot) tardío recibe la verdad del árbitro con
+    200 y se re-emite `game_over` para que el rival atascado también salga de la pantalla.
+    Devuelve None si la partida sigue en curso.
+    """
+    game = session.rosco
+    if game is None or not game.ended:
+        return None
+    if room["status"] != "finished":
+        # El cierre original no llegó a la DB (p. ej. el proceso murió a medias): se re-persiste.
+        finished = await repo.finish_game(code, _winner_id_for(room, game))
+        if finished is not None:
+            room = finished
+    state = _final_rosco_state(room, session)
+    await realtime_bus.broadcast(code, "game_over", state.model_dump())
+    return state
+
+
+def _final_rosco_state(room: dict, session: live_game.LiveSession) -> RoscoState:
+    """Estado FINAL del Rosco para clientes que llegan tarde a una partida ya cerrada.
+
+    A diferencia de `_rosco_state`, fuerza `status='finished'` aunque la persistencia del
+    cierre no haya llegado a la DB: `current_turn` ya es None por el motor (Regla 4) y un
+    `status` coherente evita que el frontend pinte la sala como en curso.
+    """
+    return _rosco_state({**room, "status": "finished"}, session)
 
 
 @router.post("/rooms/{room_code}/rosco/answer", response_model=RoscoState)
@@ -349,15 +388,19 @@ async def rosco_answer(room_code: str, payload: RoscoAnswerInput,
     if role is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="No estás en esta sala.")
+
+    # Nota sobre el orden: el branch de "partida ya acabada" va ANTES que el control de fase.
+    # Una sala persistida como 'finished' no pasa `status != 'rosco'`, y precisamente es el
+    # cliente desincronizado de UNA partida cerrada el que debe recibir aquí el estado final.
+    session = live_game.ensure_session(code)
+    ended = await _rosco_already_ended(room, session, code)
+    if ended is not None:
+        return ended
     if room["status"] != "rosco":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="El Rosco no está en curso (fase 'rosco').")
 
-    session = live_game.ensure_session(code)
     game = await _ensure_rosco(room, session)
-    if game.ended:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="El Rosco ya terminó.")
     if game.current_turn != role:
         opp = "El host" if game.current_turn == "host" else "El invitado"
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
@@ -405,15 +448,18 @@ async def rosco_timeout(room_code: str, user_id: CurrentUserId) -> RoscoState:
     if role is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="No estás en esta sala.")
+
+    # Mismo orden que en answer: el branch de "partida ya acabada" va ANTES que el control de
+    # fase para que un timeout tardío de un cliente desincronizado reciba el estado final (200).
+    session = live_game.ensure_session(code)
+    ended = await _rosco_already_ended(room, session, code)
+    if ended is not None:
+        return ended
     if room["status"] != "rosco":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="El Rosco no está en curso (fase 'rosco').")
 
-    session = live_game.ensure_session(code)
     game = await _ensure_rosco(room, session)
-    if game.ended:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="El Rosco ya terminó.")
     if game.current_turn != role:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Tu reloj no corre: no es tu turno.")
@@ -433,3 +479,30 @@ async def rosco_timeout(room_code: str, user_id: CurrentUserId) -> RoscoState:
     state = _rosco_state(room, session)
     await realtime_bus.broadcast(code, "rosco", state.model_dump())
     return state
+
+
+@router.get("/rooms/{room_code}/rosco", response_model=RoscoState)
+async def get_rosco_snapshot(room_code: str, user_id: CurrentUserId) -> RoscoState:
+    """Snapshot actual del Rosco para re-sincronizar a un cliente desincronizado (Regla 1).
+
+    El estado en vivo solo viaja por broadcasts Realtime, que pueden perderse en redes
+    inestables: un frontend atascado (letra ya resuelta, su turno cambiado sin enterarse, o la
+    partida cerrada sin haber recibido `game_over`) puede pedir aquí la verdad del árbitro SIN
+    mutar el juego. Si la partida ya acabó devuelve el estado final, lo que cura a ese cliente
+    y, de propina, re-difunde `game_over` hacia el rival atascado.
+    """
+    code = room_code.strip().upper()
+    room = await repo.get_room_by_code(code)
+    if room is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="La sala no existe.")
+    if _role_of(room, user_id) is None:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="No estás en esta sala.")
+    session = live_game.ensure_session(code)
+    game = await _ensure_rosco(room, session)
+    if game.ended:
+        ended = await _rosco_already_ended(room, session, code)
+        if ended is not None:
+            return ended
+    return _rosco_state(room, session)

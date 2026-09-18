@@ -475,3 +475,13 @@ export async function roscoTimeout(roomCode: string): Promise<RoscoState> {
   )
   return data
 }
+
+// Foto actual del Rosco (Regla 1): los broadcasts Realtime pueden perderse y un frontend que se
+// quedó atrás (400 de letra resuelta, turno cambiado o partida cerrada sin `game_over`) puede
+// pedir aquí la verdad del árbitro para desatascarse sin mutar nada.
+export async function getRoscoSnapshot(roomCode: string): Promise<RoscoState> {
+  const { data } = await api.get<RoscoState>(
+    `/games/rooms/${encodeURIComponent(roomCode)}/rosco`,
+  )
+  return data
+}

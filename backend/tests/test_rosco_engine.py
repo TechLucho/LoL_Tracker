@@ -498,3 +498,150 @@ def test_transicion_a_rosco_carga_preguntas_y_difunde_el_rosco(client, games, _f
     rosco = _fake_bus["calls"][-1][2]
     assert len(rosco["players"]["host"]["letters"]) == 26
     assert rosco["current_turn"] == "host"
+
+
+# ────────────────── regresión del playtest: fin de partida sin desync ──────────────────
+
+
+def test_regresion_playtest_un_jugador_completa_y_el_rival_sigue_jugando(
+    client, games, _fake_bus,
+):
+    """Regresión del playtest: que el Jugador 1 complete sus 26 letras NO cierra la partida
+    mientras el rival tenga letras pendientes y tiempo. El rival sigue jugando vía API sin
+    recibir ningún 400 (el bug reportado fue la pantalla congelada en 'El Rosco ya terminó')."""
+    session = games("COMPLE")
+
+    # El host pasa la A (pasapalabra) → el turno rota al guest.
+    r = client.post("/api/games/rooms/COMPLE/rosco/answer",
+                    json={"letter": "A", "answer": ""}, headers=_headers())
+    assert r.status_code == 200
+    assert r.json()["current_turn"] == "guest"
+
+    # El guest acierta sus 26 letras seguidas (Regla 2: el acierto mantiene el turno).
+    last = None
+    for letter in _LETTERS:
+        last = client.post("/api/games/rooms/COMPLE/rosco/answer",
+                           json={"letter": letter, "answer": _correct_answer(letter),
+                                 "time_remaining": 90.0},
+                           headers=_headers(GUEST_UUID))
+        assert last.status_code == 200, last.text
+    assert last.json()["current_turn"] == "host"  # el guest ya no puede jugar: le toca al host
+    assert last.json()["status"] == "rosco"       # y la partida SIGUE viva
+
+    # El host sigue jugando sin problemas: su letra no se vio afectada por el guest.
+    r = client.post("/api/games/rooms/COMPLE/rosco/answer",
+                    json={"letter": "B", "answer": "CampeonB", "time_remaining": 95.0},
+                    headers=_headers())
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "rosco"
+    assert body["current_turn"] == "host"
+    assert body["players"]["host"]["letters"][1]["status"] == "success"
+
+
+def test_answer_tardia_sobre_partida_acabada_devuelve_estado_final_y_redifunde(
+    client, games, _fake_bus,
+):
+    """Un cliente que perdió el broadcast `game_over` reenvía su answer estancado: recibe el
+    estado final con 200 y el backend re-difunde `game_over`. Nada de congelar la pantalla con
+    un 400 'El Rosco ya terminó'."""
+    session = games("TARDI1")
+    game = session.rosco
+    # Cierro la partida por el flujo normal: el host responde su última letra con el guest a 0s.
+    for letter in _LETTERS[:-1]:
+        game.players["host"].letters[letter] = "success"
+    game.players["guest"].time_remaining = 0.0
+    first = client.post("/api/games/rooms/TARDI1/rosco/answer",
+                        json={"letter": "Z", "answer": "CampeonZ", "time_remaining": 30.0},
+                        headers=_headers())
+    assert first.status_code == 200
+    assert first.json()["status"] == "finished"
+    n_before = len(_fake_bus["calls"])
+
+    # El cliente atascado reintenta (incluso con una letra que ya no toca): estado final, no 400.
+    r = client.post("/api/games/rooms/TARDI1/rosco/answer",
+                    json={"letter": "A", "answer": "CampeonA", "time_remaining": 30.0},
+                    headers=_headers())
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "finished"
+    assert body["current_turn"] is None
+    assert body["winner"] == "host"
+    assert body["draw"] is False
+    assert (_fake_bus["calls"][-1][0], _fake_bus["calls"][-1][1]) == ("TARDI1", "game_over")
+    assert len(_fake_bus["calls"]) == n_before + 1
+
+
+def test_timeout_tardio_sobre_partida_acabada_devuelve_estado_final_y_redifunde(
+    client, games, _fake_bus,
+):
+    session = games("TARDI2")
+    game = session.rosco
+    for letter in _LETTERS:
+        game.players["guest"].letters[letter] = "success"
+    game.players["host"].time_remaining = 0.0
+    first = client.post("/api/games/rooms/TARDI2/rosco/timeout", headers=_headers())
+    assert first.status_code == 200
+    assert first.json()["status"] == "finished"
+    n_before = len(_fake_bus["calls"])
+
+    # Timeout duplicado de un reloj desincronizado: estado final, nunca un 400.
+    r = client.post("/api/games/rooms/TARDI2/rosco/timeout", headers=_headers(GUEST_UUID))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "finished"
+    assert body["current_turn"] is None
+    assert body["winner"] == "guest"
+    assert _fake_bus["calls"][-1][1] == "game_over"
+    assert len(_fake_bus["calls"]) == n_before + 1
+
+
+# ───────────────────────────── endpoints: snapshot del Rosco ─────────────────────────────
+
+
+def test_snapshot_devuelve_foto_viva_del_estado_sin_mutar(client, games, _fake_bus):
+    session = games("SNSHOT")
+    r = client.get("/api/games/rooms/SNSHOT/rosco", headers=_headers())
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "rosco"
+    assert body["current_turn"] == "host"
+    assert len(body["players"]["host"]["letters"]) == 26
+    assert body["players"]["host"]["letters"][0]["letter"] == "A"
+    # Un snapshot es de solo lectura: no dispara ningún broadcast.
+    assert _fake_bus["calls"] == []
+
+
+def test_snapshot_devuelve_estado_final_de_partida_acabada(client, games, _fake_bus):
+    session = games("SNSFIN")
+    for letter in _LETTERS:
+        session.rosco.players["guest"].letters[letter] = "success"
+    session.rosco.players["host"].time_remaining = 0.0
+    r = client.post("/api/games/rooms/SNSFIN/rosco/timeout", headers=_headers())
+    assert r.status_code == 200
+    assert r.json()["status"] == "finished"
+    n_before = len(_fake_bus["calls"])
+
+    # Un cliente que llegó tarde encuentra el estado final (y de propina se re-difunde game_over).
+    r = client.get("/api/games/rooms/SNSFIN/rosco", headers=_headers(GUEST_UUID))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "finished"
+    assert body["current_turn"] is None
+    assert body["winner"] == "guest"
+    assert _fake_bus["calls"][-1][1] == "game_over"
+    assert len(_fake_bus["calls"]) == n_before + 1
+
+
+def test_snapshot_rechaza_no_miembros_y_fases_sin_motor(client, games, _fake_bus):
+    games("SNALIE")
+    r = client.get("/api/games/rooms/SNALIE/rosco", headers=_headers(OUTSIDER_UUID))
+    assert r.status_code == 400
+    assert "No estás" in r.json()["detail"]
+
+    # Fase no-rosco SIN motor arrancado (p. ej. proceso reiniciado): no hay estado que dar.
+    session = games("SNFASE", status="minigames")
+    session.rosco = None
+    r = client.get("/api/games/rooms/SNFASE/rosco", headers=_headers())
+    assert r.status_code == 400
+    assert "fase" in r.json()["detail"]

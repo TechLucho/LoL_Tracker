@@ -4,6 +4,7 @@ import { isAxiosError } from 'axios'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
+  getRoscoSnapshot,
   roscoAnswer,
   roscoTimeout,
   type GameRoom,
@@ -67,15 +68,36 @@ export default function RoscoPhase({ room, role, rosco, onRosco }: RoscoPhasePro
   // Autofocus programático (el autoFocus nativo falla al re-renderizar turnos).
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Re-sincronización con el árbitro: si el backend rechaza una respuesta (letra ya resuelta,
+  // turno cambiado o partida cerrada sin `game_over`) este frontend puede haberse quedado atrás
+  // al perder un broadcast Realtime. Pido la foto actual del árbitro y la aplico para
+  // desatascar la pantalla sin que el jugador tenga que recargar la pestaña.
+  const resync = () => {
+    getRoscoSnapshot(room.room_code)
+      .then(onRosco)
+      .catch(() => {
+        /* si la red tampoco responde, nos quedamos con el toast de error original */
+      })
+  }
+
   // ── mutaciones ──────────────────────────────────────────────────────────────
 
   const timeoutMutation = useMutation({
     mutationFn: () => roscoTimeout(room.room_code),
     onSuccess: (state) => {
-      toast.error('⏱ Se agotó tu tiempo: terminaste tu participación en el Rosco.', { duration: 8000 })
+      // `current_turn` None = el backend ya había cerrado la partida (reloj desincronizado):
+      // mostramos el cierre, no el mensaje de participación agotada.
+      if (state.current_turn === null) {
+        toast('🏁 El Rosco ha terminado.', { duration: 8000 })
+      } else {
+        toast.error('⏱ Se agotó tu tiempo: terminaste tu participación en el Rosco.', { duration: 8000 })
+      }
       onRosco(state)
     },
-    onError: (err) => toast.error(apiErrorDetail(err, 'No se pudo notificar el fin del turno.')),
+    onError: (err) => {
+      toast.error(apiErrorDetail(err, 'No se pudo notificar el fin del turno.'))
+      resync()
+    },
   })
 
   const clock = useRoscoClock({
@@ -102,6 +124,12 @@ export default function RoscoPhase({ room, role, rosco, onRosco }: RoscoPhasePro
         time_remaining: clock,
       }),
     onSuccess: (state, vars) => {
+      // Partida ya cerrada (una respuesta tardía de un reloj desincronizado): suerte al final.
+      if (state.current_turn === null) {
+        toast('🏁 El Rosco ha terminado.', { duration: 8000 })
+        onRosco(state)
+        return
+      }
       const result = state.players[role]?.letters.find((l) => l.letter === vars.letter)?.status
       if (result === 'success') {
         toast.success(
@@ -114,7 +142,10 @@ export default function RoscoPhase({ room, role, rosco, onRosco }: RoscoPhasePro
       }
       onRosco(state)
     },
-    onError: (err) => toast.error(apiErrorDetail(err, 'No se pudo registrar la respuesta.')),
+    onError: (err) => {
+      toast.error(apiErrorDetail(err, 'No se pudo registrar la respuesta.'))
+      resync()
+    },
   })
 
   // ── efectos ─────────────────────────────────────────────────────────────────
@@ -125,9 +156,16 @@ export default function RoscoPhase({ room, role, rosco, onRosco }: RoscoPhasePro
     setAnswer('')
   }, [activeLetter?.letter, isMyTurn])
 
-  // El input se autoenfoca durante tu turno para que puedas jugar con el teclado sin ratón.
+  // El input se autoenfoca durante tu turno para que puedas jugar con el teclado sin ratón. El
+  // `setTimeout` difiere el focus fuera del commit del render: cuando el turno llega por un
+  // broadcast Realtime (o en StrictMode) el input se monta en el MISMO render que libera
+  // `isMyTurn`, y un `focus()` síncrono en el efecto se ejecuta antes de que el navegador pinte
+  // el nodo → no hace nada. 10ms después el nodo ya existe y el focus aterriza. El cleanup
+  // cancela el foco espurio si el turno muere antes de que se dispare.
   useEffect(() => {
-    if (isMyTurn) inputRef.current?.focus()
+    if (!isMyTurn) return
+    const timer = window.setTimeout(() => inputRef.current?.focus(), 10)
+    return () => window.clearTimeout(timer)
   }, [isMyTurn, activeLetter?.letter])
 
   // ── acciones ────────────────────────────────────────────────────────────────
