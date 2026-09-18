@@ -182,12 +182,12 @@ reglas para mantener una interfaz coherente entre los minijuegos.
    loader) y, tras ella, el **host avanza solo** a `minigames`; el botón de retry del host es el
    Pill canónico de la sección 4.
 
-### Catálogo (Sprint 5 y 6) — resumen de puntuación
+### Catálogo (Sprint 6) — resumen de puntuación
 
-- **La Fecha Justa** (Sprint 5): **timer global anti-Google** desde el inicio (45–60 s) + *timer
+- **La Fecha Justa** (Sprint 6): **timer global anti-Google** desde el inicio (45–60 s) + *timer
   de presión* — barra de progreso en `accent-primary` decreciente (20 s) que se activa al primer
   envío del rival; +3 cercano, +10 exacta.
-- **Letras Desordenadas** / **El Herrero** (Sprint 5): carreras con barra de posición y hit
+- **Letras Desordenadas** / **El Herrero** (Sprint 6): carreras con barra de posición y hit
   "tu turno" resaltado en `accent-primary`; +3 el primero en acertar.
 - **TOPS** (Sprint 6): turnos **estrictamente alternos** (uno y uno, sin bola de nieve) con
   puntos decrecientes **10 → 1** en mono y el acierto rápido en `emerald-400`.

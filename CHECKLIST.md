@@ -6,6 +6,19 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
 
 ---
 
+> **Cierre v2.3 (2026-09-19):** El Rosco multijugador completo — Sprints 1–4 del Roadmap v2.3
+> cerrados. Motor del Rosco (Reglas 1–6) con estado vivo en memoria, sincronización por
+> broadcasts Realtime y frontend "tonto". Blindaje de red y reconexiones: reintentos con backoff
+> solo ante fallos de transporte, watchdog anti-stall y `onReconnect` (fix `5c27d05`); autofocus
+> por rAF (fix `9a153d8`); fix de reinicios de uvicorn con `--reload` (snapshot idempotente +
+> arranque perezoso del motor); migración **016** (`winner_id`, aplicada a Supabase); rejoin de
+> miembros en cualquier fase y bypass de pausa en partidas finalizadas (fix `3e0244a`). Mapa
+> conceptual de minijuegos cerrado en los docs (economía sin tope, draft = 3 minijuegos del
+> catálogo, `starter`, contenido canónico de DataDragon); Sonidos bloqueado por falta de Storage.
+> QA: **133 pytest + oxlint + build en verde**.
+
+---
+
 > **Cierre v2.2 (2026-09-16):** Auditoría, rediseño global y estabilización. Ejecutada "La Gran Purga" eliminando más de 1,000 líneas de código muerto (vistas `/pool`, `/constitution` y endpoints huérfanos). Rediseño completo del frontend aplicando el nuevo `DESIGN.md` (tipografía mono-eyebrow, botones pill neón, tarjetas surface-1). Fixes críticos resueltos: error 500 en Trends por casteo numérico en Postgres y error 500 en Scout por el nuevo nivel de maestría sin tope de Riot. QA en verde (71 pytest + 40 vitest). Todo listo para iniciar el Sprint 1 del multijugador (El Rosco).
 
 ---
@@ -358,8 +371,8 @@ Migracion de **Streamlit monolitico** → **FastAPI (backend) + SPA moderna (fro
    acumuló en los minijuegos. El reloj es un **contador continuo** (recurso estratégico): decrece
    en tiempo real mientras sea tu turno; un **acierto no lo detiene** y pasas automáticamente a
    la siguiente letra; solo se congela ante **fallo** o **pasapalabra**. Quien gane los
-   minijuegos gana el derecho a empezar el Rosco. Si el tiempo llega a **0**, termina el turno de
-   ese jugador.
+   minijuegos (más puntos acumulados) empieza el Rosco y, si hay **empate**, empieza el host
+   (ver Mapa conceptual: `starter`). Si el tiempo llega a **0**, termina el turno de ese jugador.
 4. **Empates (tiebreaker)** — 1º gana quien tenga **más letras acertadas**; 2º a igualdad de
    letras, **quien conserve más tiempo restante**; 3º si todo coincide, **empate**.
 5. **Normalización extrema** — La validación convierte a **minúsculas**, elimina **tildes** y
@@ -408,13 +421,13 @@ el primer turno del Rosco con ese rol.
 - **Letras Desordenadas / TOPS** — nombres de campeones y stats de `championFull.json`
   (locale `es_ES`, regla 7).
 
-#### Catálogo de Minijuegos (Sprint 5 y 6)
+#### Catálogo de Minijuegos (Sprint 6)
 
-- **El Herrero** (Sprint 5) — Carrera realtime de builds: encadena los objetos correctos desde
+- **El Herrero** (Sprint 6) — Carrera realtime de builds: encadena los objetos correctos desde
   los ítems base hasta el objeto mítico/legendario.
-- **Letras Desordenadas** (Sprint 5) — Carrera realtime: el primero que envíe la respuesta
+- **Letras Desordenadas** (Sprint 6) — Carrera realtime: el primero que envíe la respuesta
   correcta se lleva **3 puntos**.
-- **La Fecha Justa** (Sprint 5) — Apuesta ciega con **timer global desde el inicio (45–60
+- **La Fecha Justa** (Sprint 6) — Apuesta ciega con **timer global desde el inicio (45–60
   segundos)** para impedir buscar la fecha en Google: al primer envío el reloj del rival baja
   automáticamente a **20 segundos** (timer de presión); el que más se acerque suma **3 puntos**
   y la fecha exacta **10**.
@@ -435,10 +448,20 @@ el primer turno del Rosco con ese rol.
 
 - [x] **Sprint 1: Infraestructura y Lobby (REST).** Migración SQL para `game_rooms` (id, room_code, host, guest, status) y `rosco_questions`. Endpoints en FastAPI para crear sala y unirse por código de 6 letras. Normalizador de texto (regla 5) + **semilla mínima de 26 preguntas** (regla 8).
 - [x] **Sprint 2: Conexión Realtime (Frontend).** UI del Lobby. Conexión de React al canal `room:{code}` de Supabase. Sincronización de presencia (Host avisa cuando entra el Guest) y **pausa por desconexión con grace period de 60s → forfeit** (regla 6).
-- [x] **Sprint 3: Sistema de Draft y Minijuegos.** Máquina de estados en la DB (`lobby` -> `drafting` -> `minigames`). Sistema de selección de 2 categorías alternando turnos. Motor de conversión de puntos a segundos que alimenta el banco de tiempo (regla 3).
-- [x] **Sprint 4: El Rosco (Core Game).** Estado alfabético (A-Z, Pasapalabra, Acierto, Fallo) mediante broadcasts de Supabase con **validación estricta en backend y estado vivo en memoria** (`dict[room_code, GameState]`, regla 1). Turnos "a la contra" con múltiples vueltas (regla 2), banco individual de 100s y contador continuo (regla 3), tiebreaker de victoria/empate (regla 4) y normalización extrema (regla 5). Probado contra la semilla de 26 letras. Rejoin de miembros en cualquier fase + sin pausa cuando la partida ya terminó (regla 6) + Fase Previa del Draft con cartas misteriosas.
-- [ ] **Sprint 5: Seed de Contenido (DataDragon).** Script Python que extrae campeones, habilidades, lore y fechas desde la API estática de Riot con locale `es_ES` (regla 7) e inyecta cientos de preguntas base en PostgreSQL. El seed genera el **pool masivo e independiente por jugador** (26 preguntas diferentes para cada rival en la misma partida, ver Economía). **Adecuar la Fase Previa (draft)**: sortear 3 minijuegos del catálogo y elegir 2 (se abandona Lore/Mecánicas/Jugabilidad) · calcular `starter` al cierre de minijuegos (ver Mapa conceptual). Minijuegos sin infraestructura nueva: **El Herrero**, **Letras Desordenadas** y **La Fecha Justa** (ver Catálogo).
-- [ ] **Sprint 6: Minijuegos con assets e infraestructura.** **TOPS**, **Siluetas** y **Sonidos** (ver Catálogo); Sonidos exige montar la infraestructura de audio en Supabase Storage. Recorrido de los minijuegos elegidos en el draft con la puntuación de la regla de cada uno.
+- [x] **Sprint 3: Sistema de Draft y Minijuegos.** Máquina de estados en la DB (`lobby` -> `drafting` -> `minigames`). Sistema de selección de 2 categorías alternando turnos. Motor de conversión de puntos a segundos que alimenta el banco de tiempo (regla 3). *Nota: las cartas del draft siguen siendo categorías en esta versión; el Sprint 5 migra la Fase Previa a 3 minijuegos del catálogo (Mapa conceptual).*
+- [x] **Sprint 4: El Rosco (Core Game) — COMPLETADO.** Motor completo + blindaje de red y reconexiones. Bloques de este Sprint:
+  - **Motor del Rosco (reglas 2/4/5):** estado alfabético A-Z (Pasapalabra/Acierto/Fallo), turnos "a la contra" con puntero circular a la primera letra pendiente, banco individual de 100s con **contador continuo** (regla 3), tiebreaker de victoria/empate (regla 4) y normalización extrema (regla 5). Validación estricta en backend con **estado vivo en memoria** (`_sessions`, regla 1).
+  - **Sincronización WebSockets:** broadcasts Realtime sobre `room:{code}` que difunden `state`/`draft`/`score`/`rosco`/`game_over`; el frontend solo pinta lo que llega del árbitro.
+  - **Prevención de condiciones de carrera y autofocus (fix `9a153d8`):** transición de estado con compare-and-swap (409 si la máquina avanzó), cerrojo del timeout en `useRoscoClock`, congelación visual a 0s y autofocus por rAF (sin depender del orden de commit de React).
+  - **Resiliencia de red (fix `5c27d05`):** reintentos con backoff solo ante fallos de transporte (nunca ante errores HTTP), watchdog anti-stall que pide snapshot si no llega estado y `onReconnect` que re-sincroniza tras caídas del canal.
+  - **Fix de reinicios de Uvicorn (`--reload`):** `GET /rosco` (snapshot idempotente que recrea el motor desde la DB), arranque perezoso (`_ensure_rosco`) y `_rosco_already_ended` que cierra y re-difunde partidas huérfanas.
+  - **Migración `winner_id` (016):** aplicada a Supabase; `game_rooms` persiste el id del ganador.
+  - **Lógica de Reconexión/Endgame (fix `3e0244a`):** el rejoin de miembros funciona en **cualquier fase** (200 + re-difusión del estado), la pausa por desconexión (regla 6) **no se activa si la partida ya terminó** y la Fase Previa del draft queda en su máquina de estados con cartas misteriosas.
+- [ ] **Sprint 5: Seed de Contenido (DataDragon).** Script Python que extrae de la API estática de Riot con locale `es_ES` (regla 7) e inyecta en PostgreSQL el **pool masivo e independiente por jugador** (26 preguntas diferentes por rival, ver Economía):
+  - **Preguntas del Rosco** por letra inicial: títulos, pasivas y spells (`spell.key`) con una única respuesta canónica.
+  - **Contenido canónico de los minijuegos:** fechas oficiales de lanzamiento (`championFull.json`), componentes de items (`item.json` → `from`) y splash arts base (`_0.jpg`) (ver Contenido canónico).
+  - **Adecuar la Fase Previa (draft):** sortear **3 minijuegos del catálogo** y elegir 2 (se abandona Lore/Mecánicas/Jugabilidad como carta del draft) · calcular `starter` al cierre de minijuegos (ver Mapa conceptual).
+- [ ] **Sprint 6: Motor de Minijuegos.** Mecánicas realtime y por turnos sobre el banco de segundos (regla 3): **TOPS** (turnos estrictamente alternos, 10→1), **Letras Desordenadas** (carrera, +3), **La Fecha Justa** (apuesta ciega con timer global anti-Google y timer de presión), **El Herrero** (carrera de builds) y **Siluetas** (aclarado 20%/3s). Recorrido de los minijuegos elegidos en el draft con la puntuación de cada uno. **Sonidos queda BLOQUEADO**: exige montar la infraestructura de audio en Supabase Storage (sin fuente de contenido por ahora) — ver Catálogo.
 
 ### Ideas Congeladas (Prioridad Nula)
 
