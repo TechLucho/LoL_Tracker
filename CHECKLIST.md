@@ -393,9 +393,12 @@ el host avanza a la fase `minigames`.
   los ítems base hasta el objeto mítico/legendario.
 - **Letras Desordenadas** (Sprint 5) — Carrera realtime: el primero que envíe la respuesta
   correcta se lleva **3 puntos**.
-- **La Fecha Justa** (Sprint 5) — Apuesta ciega: al primer envío se activa un timer de presión
-  de **20 segundos** para el rival; el que más se acerque suma **3 puntos** y la fecha exacta **10**.
-- **TOPS** (Sprint 6) — Turnos enfrentados con rebote: cuanto más rápido respondas, más puntos
+- **La Fecha Justa** (Sprint 5) — Apuesta ciega con **timer global desde el inicio (45–60
+  segundos)** para impedir buscar la fecha en Google: al primer envío el reloj del rival baja
+  automáticamente a **20 segundos** (timer de presión); el que más se acerque suma **3 puntos**
+  y la fecha exacta **10**.
+- **TOPS** (Sprint 6) — Turnos **ESTRICTAMENTE alternos** (uno y uno pase lo que pase, sin
+  bola de nieve: el que acierta no se repite turno); cuanto más rápido respondas, más puntos
   (**10 → 1**).
 - **Siluetas** (Sprint 6) — Splash art en negro que se aclara **20% cada 3 s**; más puntos
   cuanto más oscura esté la imagen cuando aciertas.

@@ -183,12 +183,13 @@ reglas para mantener una interfaz coherente entre los minijuegos.
 
 ### Catálogo (Sprint 5 y 6) — resumen de puntuación
 
-- **La Fecha Justa** (Sprint 5): *timer de presión* — barra de progreso en `accent-primary`
-  decreciente (20 s) disparada por el primer envío; +3 cercano, +10 exacta.
+- **La Fecha Justa** (Sprint 5): **timer global anti-Google** desde el inicio (45–60 s) + *timer
+  de presión* — barra de progreso en `accent-primary` decreciente (20 s) que se activa al primer
+  envío del rival; +3 cercano, +10 exacta.
 - **Letras Desordenadas** / **El Herrero** (Sprint 5): carreras con barra de posición y hit
   "tu turno" resaltado en `accent-primary`; +3 el primero en acertar.
-- **TOPS** (Sprint 6): puntos decrecientes **10 → 1** en mono, con el acierto rápido en
-  `emerald-400`.
+- **TOPS** (Sprint 6): turnos **estrictamente alternos** (uno y uno, sin bola de nieve) con
+  puntos decrecientes **10 → 1** en mono y el acierto rápido en `emerald-400`.
 - **Siluetas** (Sprint 6): imagen en negro que se aclara **20% cada 3 s**; el acierto temprano
   vale más (más oscura = más puntos).
 - **Sonidos** (Sprint 6): *pendiente infraestructura de audio*; puntos **5 / 3 / 2 / 1**.
