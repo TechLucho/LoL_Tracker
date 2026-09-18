@@ -77,6 +77,8 @@ interface UseGameRoomOptions {
   onBroadcast?: (broadcast: GameBroadcast) => void
   /** Se dispara con cada broadcast del Rosco (Sprint 4): `rosco` o `game_over`. */
   onRosco?: (broadcast: RoscoBroadcast) => void
+  /** Se dispara cuando el canal Realtime se RE-CONECTA tras una caída (Regla 1). */
+  onReconnect?: () => void
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -88,6 +90,7 @@ export function useGameRoom({
   onForfeit,
   onBroadcast,
   onRosco,
+  onReconnect,
 }: UseGameRoomOptions): UseGameRoomState {
   const [subscribed, setSubscribed] = useState(false)
   const [connectionError, setConnectionError] = useState(false)
@@ -111,6 +114,8 @@ export function useGameRoom({
   onBroadcastRef.current = onBroadcast
   const onRoscoRef = useRef(onRosco)
   onRoscoRef.current = onRosco
+  const onReconnectRef = useRef(onReconnect)
+  onReconnectRef.current = onReconnect
   const forfeitedRef = useRef(false)
   const sessionStartedRef = useRef(false)
   const graceEndsAtRef = useRef<number | null>(null)
@@ -135,6 +140,7 @@ export function useGameRoom({
 
     const channel: RealtimeChannel = supabase.channel(`room:${code}`)
     let disposed = false
+    let wasSubscribed = false
     let graceTimer: ReturnType<typeof setInterval> | null = null
 
     // ── presencia ──────────────────────────────────────────────────────────────
@@ -260,6 +266,12 @@ export function useGameRoom({
           setSubscribed(true)
           setConnectionError(false)
           void channel.track({ userId: currentUserId, role } satisfies PresenceProfile)
+          // Regla de oro anti-limbo (Regla 1): la primera SUBSCRIBED es la suscripción inicial;
+          // cualquier SUBSCRIBED posterior significa que el canal se RE-CONECTÓ. Los broadcasts
+          // que murieron en el corte se perdieron para siempre → avisar al consumidor para que
+          // vuelva a pedir el estado al árbitro (snapshot) y no se quede congelado.
+          if (wasSubscribed) onReconnectRef.current?.()
+          wasSubscribed = true
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           setConnectionError(true)
         }

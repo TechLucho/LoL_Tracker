@@ -19,6 +19,27 @@ import { useRoscoClock } from '../hooks/useRoscoClock'
 const ROSCO_STEP_DEG = 360 / 26
 const LETTER_COUNT = 26
 
+// ── resiliencia anti-limbo ────────────────────────────────────────────────────
+// Los POST answer/timeout se reintentan SOLO cuando el fallo es de transporte (sin respuesta
+// HTTP: red caída, uvicorn reiniciado con --reload, etc.). Un 4xx con `detail` es una decisión
+// del árbitro y NO se reintenta (sí es accionable); un 5xx cuenta como transitorio (p. ej. el
+// pool reabriéndose tras un reboot) y entra en la misma cesta.
+const RETRY_MAX_ATTEMPTS = 3
+const RETRY_BASE_MS = 750
+const RETRY_MAX_BACKOFF_MS = 8000
+// Watchdog: si el estado vivo no cambia durante demasiado rato (`STALL_THRESHOLD_MS`), el
+// frontend pide el snapshot al árbitro (GET idempotente) para desenterrar la partida. Con
+// uvicorn --reload el proceso local muere y `_sessions` se borra: sin este perro guardián el
+// rival "idle" se quedaría congelado para siempre porque ningún broadcast vuelve a llegar.
+const STALL_THRESHOLD_MS = 6000
+const STALL_CHECK_MS = 2000
+
+function isTransportError(err: unknown): boolean {
+  if (!isAxiosError(err)) return false
+  if (err.response === undefined) return true
+  return (err.response.status ?? 0) >= 500
+}
+
 function apiErrorDetail(err: unknown, fallback: string): string {
   if (isAxiosError(err)) {
     const detail = (err.response?.data as { detail?: string } | undefined)?.detail
@@ -80,10 +101,20 @@ export default function RoscoPhase({ room, role, rosco, onRosco }: RoscoPhasePro
       })
   }
 
+  // Versión estable de `resync` para intervalos/watchdogs: se reasigna en cada render por lo
+  // que el efecto no necesita re-suscribirse (y el linter no se queja de deps).
+  const resyncRef = useRef(resync)
+  resyncRef.current = resync
+
   // ── mutaciones ──────────────────────────────────────────────────────────────
 
   const timeoutMutation = useMutation({
     mutationFn: () => roscoTimeout(room.room_code),
+    // Regla anti-limbo: reintenta SOLO fallos de transporte (sin respuesta HTTP). Si el primer
+    // intento llegó al servidor y solo se perdió la respuesta, el reintento devuelve un 400 con
+    // `detail` (no transporte) → onError → resync() → snapshot real del árbitro.
+    retry: (failureCount, err) => failureCount < RETRY_MAX_ATTEMPTS && isTransportError(err),
+    retryDelay: (attempt) => Math.min(RETRY_BASE_MS * 2 ** attempt, RETRY_MAX_BACKOFF_MS),
     onSuccess: (state) => {
       // `current_turn` None = el backend ya había cerrado la partida (reloj desincronizado):
       // mostramos el cierre, no el mensaje de participación agotada.
@@ -123,6 +154,11 @@ export default function RoscoPhase({ room, role, rosco, onRosco }: RoscoPhasePro
         // desempate por tiempo restante.
         time_remaining: clock,
       }),
+    // Regla anti-limbo: reintenta SOLO fallos de transporte (sin respuesta HTTP). Si el primer
+    // intento llegó al servidor y solo se perdió la respuesta, el reintento devuelve un 400 con
+    // `detail` (no transporte) → onError → resync() → snapshot real del árbitro.
+    retry: (failureCount, err) => failureCount < RETRY_MAX_ATTEMPTS && isTransportError(err),
+    retryDelay: (attempt) => Math.min(RETRY_BASE_MS * 2 ** attempt, RETRY_MAX_BACKOFF_MS),
     onSuccess: (state, vars) => {
       // Partida ya cerrada (una respuesta tardía de un reloj desincronizado): suerte al final.
       if (state.current_turn === null) {
@@ -167,6 +203,27 @@ export default function RoscoPhase({ room, role, rosco, onRosco }: RoscoPhasePro
     const timer = window.setTimeout(() => inputRef.current?.focus(), 10)
     return () => window.clearTimeout(timer)
   }, [isMyTurn, activeLetter?.letter])
+
+  // ── watchdog anti-limbo ─────────────────────────────────────────────────────
+  // El estado solo llega por broadcasts Realtime + respuestas REST (Regla 1). Un reinicio de
+  // uvicorn con --reload mata `_sessions` en memoria y elimina el rosco en curso: el rival que
+  // está esperando su turno (idle) no tiene ninguna mutación pendiente que reintentar y ningún
+  // broadcast volverá a llegar → partida congelada. Este perro guardián solo interviene cuando
+  // NO llega estado: si pasan STALL_THRESHOLD_MS sin un `rosco` nuevo, pide el snapshot al
+  // árbitro y lo aplica (GET idempotente). Durante el juego normal los eventos son constantes y
+  // el watchdog nunca dispara; en cuanto la partida cierra (`isFinished`) deja de molestar.
+  const lastRoscoUpdateRef = useRef(Date.now())
+  useEffect(() => {
+    lastRoscoUpdateRef.current = Date.now()
+  }, [rosco])
+
+  useEffect(() => {
+    if (isFinished) return
+    const id = window.setInterval(() => {
+      if (Date.now() - lastRoscoUpdateRef.current >= STALL_THRESHOLD_MS) resyncRef.current()
+    }, STALL_CHECK_MS)
+    return () => window.clearInterval(id)
+  }, [room.room_code, room.status, isFinished])
 
   // ── acciones ────────────────────────────────────────────────────────────────
 

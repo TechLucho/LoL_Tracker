@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import {
   advanceGameState,
   createGameRoom,
+  getRoscoSnapshot,
   joinGameRoom,
   type GameLiveState,
   type GameRoom,
@@ -139,6 +140,18 @@ export default function RoscoLobby() {
     },
     onBroadcast: (broadcast) => applyLive(broadcast.payload),
     onRosco: (broadcast) => applyRosco(broadcast.payload),
+    onReconnect: () => {
+      // El canal se re-conectó tras una caída: los broadcasts perdidos no se recuperan (Regla 1:
+      // el estado vive en el backend). Pide el snapshot al árbitro para no quedarse congelado
+      // (p. ej. tras un reinicio del motor con --reload durante dev). Si la sala no está en fase
+      // 'rosco' (o el backend aún no responde), el error se ignora: el watchdog de RoscoPhase
+      // volverá a intentar.
+      if (room) {
+        getRoscoSnapshot(room.room_code)
+          .then(applyRosco)
+          .catch(() => {})
+      }
+    },
   })
 
   // ── pantalla de inicio (crear / unirse) ─────────────────────────────────────
