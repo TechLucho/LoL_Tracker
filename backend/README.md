@@ -9,7 +9,7 @@ de Riot al frontend, sin que ninguna credencial llegue al navegador.
 $PY = "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe"   # el `python` del PATH es el stub de Store
 
 & $PY -m pip install -r backend/requirements.txt
-& $PY -m uvicorn backend.app.main:app --reload
+& $PY -m uvicorn backend.app.main:app --reload --reload-exclude "*.db" --reload-exclude "*.sqlite"
 ```
 
 Docs interactivas en <http://localhost:8000/docs>. Todos los comandos se ejecutan **desde la raíz

@@ -52,7 +52,7 @@ $PY = "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe"
 
 # Backend (from repo root) — API on http://localhost:8000, docs at /docs
 & $PY -m pip install -r backend/requirements.txt
-& $PY -m uvicorn backend.app.main:app --reload
+& $PY -m uvicorn backend.app.main:app --reload --reload-exclude "*.db" --reload-exclude "*.sqlite"
 
 # Frontend (from frontend/) — dev server on http://localhost:5173
 npm install

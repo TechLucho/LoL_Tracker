@@ -19,6 +19,10 @@ import { useRoscoClock } from '../hooks/useRoscoClock'
 const ROSCO_STEP_DEG = 360 / 26
 const LETTER_COUNT = 26
 
+// Espera antes de enfocar el input: en un cambio de turno el input se remonta y el focus a 10ms
+// competía con el paint del anillo → había que clicar a mano. 150ms + rAF aterriza tras el paint.
+const AUTOFOCUS_DELAY_MS = 150
+
 // ── resiliencia anti-limbo ────────────────────────────────────────────────────
 // Los POST answer/timeout se reintentan SOLO cuando el fallo es de transporte (sin respuesta
 // HTTP: red caída, uvicorn reiniciado con --reload, etc.). Un 4xx con `detail` es una decisión
@@ -192,16 +196,23 @@ export default function RoscoPhase({ room, role, rosco, onRosco }: RoscoPhasePro
     setAnswer('')
   }, [activeLetter?.letter, isMyTurn])
 
-  // El input se autoenfoca durante tu turno para que puedas jugar con el teclado sin ratón. El
-  // `setTimeout` difiere el focus fuera del commit del render: cuando el turno llega por un
-  // broadcast Realtime (o en StrictMode) el input se monta en el MISMO render que libera
-  // `isMyTurn`, y un `focus()` síncrono en el efecto se ejecuta antes de que el navegador pinte
-  // el nodo → no hace nada. 10ms después el nodo ya existe y el focus aterriza. El cleanup
-  // cancela el foco espurio si el turno muere antes de que se dispare.
+  // El input se autoenfoca durante tu turno para que puedas jugar con el teclado sin ratón. En un
+  // cambio de turno (fallo/pasapalabra) el input se REMONTA: cuando `isMyTurn` vuelve a `true`,
+  // React hace commit del re-render y el DOM ya tiene el nodo, pero el montaje compite con el
+  // paint del anillo + marcadores y un focus síncrono (o a 10ms) aterrizaba demasiado pronto → el
+  // jugador tenía que hacer clic manualmente. `setTimeout` de 150ms + `requestAnimationFrame`
+  // garantiza que el DOM esté listo y pintado cuando el focus llega. El cleanup aborta el focus
+  // espurio si el turno muere antes de que se dispare (también cubre StrictMode).
   useEffect(() => {
     if (!isMyTurn) return
-    const timer = window.setTimeout(() => inputRef.current?.focus(), 10)
-    return () => window.clearTimeout(timer)
+    let rafId = 0
+    const timer = window.setTimeout(() => {
+      rafId = window.requestAnimationFrame(() => inputRef.current?.focus())
+    }, AUTOFOCUS_DELAY_MS)
+    return () => {
+      window.cancelAnimationFrame(rafId)
+      window.clearTimeout(timer)
+    }
   }, [isMyTurn, activeLetter?.letter])
 
   // ── watchdog anti-limbo ─────────────────────────────────────────────────────
