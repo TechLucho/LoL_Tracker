@@ -163,17 +163,18 @@ reglas para mantener una interfaz coherente entre los minijuegos.
 
 - **Ambos jugadores empiezan con 100 segundos base** de banco individual, mostrado en mono
   (`data-huge`) y neutro (`text-text-ink`).
-- **Los puntos ganados en los minijuegos se suman como segundos extra** (1 punto = 1 segundo):
-  los incrementos se animan en `emerald-400` (semántica "Victoria/Bueno" de la sección 6) y los
-  descuentos de presión en `amber-400`/`red-400`.
+- **Los puntos ganados en los minijuegos se suman como segundos extra** (1 punto = 1 segundo,
+  **sin tope**): los incrementos se animan en `emerald-400` (semántica "Victoria/Bueno" de la
+  sección 6) y los descuentos de presión en `amber-400`/`red-400`.
 - Los **26 aciertos del Rosco** son **independientes y diferentes por jugador** (pool masivo sin
   repeticiones): la UI nunca muestra la letra del rival como si fuera la tuya.
 
 ### Fase Previa (Draft) — patrón "Carta Misteriosa"
 
-1. **3 cartas misteriosas** en rejilla (`grid-cols-3`): la categoría se oculta tras un `?` grande
+1. **3 cartas misteriosas = 3 minijuegos al azar del catálogo de 6** (no categorías generales) en
+   rejilla (`grid-cols-3`): el nombre del minijuego se oculta tras un `?` grande
    (`text-4xl font-black`); la carta usa `rounded-xl` + `border-hairline` + `bg-surface-2`.
-2. Al **elegir** (tu turno), la carta se revela con la categoría + rol (`Host`/`Invitado`) en
+2. Al **elegir** (tu turno), la carta se revela con el minijuego + rol (`Host`/`Invitado`) en
    `text-accent-primary` (`bg-accent-primary/10` + glow sutil), como marca de "estado activo".
 3. La carta **descartada** (la 3ª) se tacha (`line-through`) y se atenúa (`opacity-50`) al
    completar el draft.
@@ -192,4 +193,5 @@ reglas para mantener una interfaz coherente entre los minijuegos.
   puntos decrecientes **10 → 1** en mono y el acierto rápido en `emerald-400`.
 - **Siluetas** (Sprint 6): imagen en negro que se aclara **20% cada 3 s**; el acierto temprano
   vale más (más oscura = más puntos).
-- **Sonidos** (Sprint 6): *pendiente infraestructura de audio*; puntos **5 / 3 / 2 / 1**.
+- **Sonidos** (Sprint 6): **BLOQUEADO** — pendiente infraestructura de audio en Supabase Storage;
+  puntos **5 / 3 / 2 / 1**.
